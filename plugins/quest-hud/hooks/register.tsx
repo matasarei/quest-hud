@@ -14,8 +14,7 @@ import { road, roadScene, SCENE_MIN_COLUMNS } from '../src/road'
 import { applyTaskCall } from '../src/tasks'
 import { parseZones, zoneFor } from '../src/zones'
 import type { Allies, FightKind, Foes, LogEntry } from '../types'
-import type { RgbaSource } from '../src/avatar'
-import { drawRoad, PANE_ID, PANE_TITLE, SCENE_IMAGE_KEY, SCENE_KEY, sceneCells, sceneImage, type SceneMode } from './pane'
+import { drawRoad, PANE_ID, PANE_TITLE, SCENE_IMAGE_KEY, SCENE_KEY, sceneCells, sceneImage, type PngSource, type SceneMode } from './pane'
 
 // The values the HUD keeps for the session, each declared in types/index.d.ts.
 // The engine lists what a module reads and writes from atoms defined in the
@@ -110,7 +109,7 @@ function resetProbe(): void {
  * Either answer is written for the session; a blit that throws counts as a
  * refusal, as an image the engine cannot place is no image either.
  */
-async function probeImages($: EngineInterface, source: RgbaSource, generation: number): Promise<void> {
+async function probeImages($: EngineInterface, source: PngSource, generation: number): Promise<void> {
   let works = false
 
   try {

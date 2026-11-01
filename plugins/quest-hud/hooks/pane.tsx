@@ -2,7 +2,9 @@
 // elements. It reads no state: register.tsx reads the values and passes them in.
 import type { EngineInterface, RenderInput } from 'claude-code'
 
-import { gridSize, gridToRasterCells, gridToRgba, gridToSvg, imageScale, type Grid, type RgbaSource } from '../src/avatar'
+import { gridSize, gridToRasterCells, gridToSvg, imageScale, type Grid } from '../src/avatar'
+import { gridToRgb } from '../src/paint/pixels'
+import { encodePng } from '../src/paint/png'
 import { TONE_COLOR } from '../src/meters'
 import type { Road } from '../src/road'
 
@@ -24,14 +26,17 @@ export type SceneMode = 'raster' | 'image' | 'svg'
 /** The scene as RasterProps.cells, for a draw or a blit. */
 export const sceneCells = (grid: Grid): string => gridToRasterCells(grid)
 
-/** The scene as an Image's pixels, scaled as large as the Image's limits allow. */
-export const sceneImage = (grid: Grid): RgbaSource => {
+/** An Image's source as a whole PNG file, base64: a frame of pixel art is a few kilobytes. */
+export type PngSource = { png: string }
+
+/** The scene as an Image: each pixel a crisp square, as large as the Image's limits allow, as a PNG. */
+export const sceneImage = (grid: Grid): PngSource => {
   const { columns } = gridSize(grid)
-  return gridToRgba(grid, imageScale(columns, grid.length))
+  return { png: encodePng(gridToRgb(grid, imageScale(columns, grid.length))) }
 }
 
 /** The pane's tree, the scene drawn the way `mode` says. */
-export function drawRoad($: EngineInterface, e: RenderInput<'Pane'>, road: Road, mode: SceneMode, image?: RgbaSource) {
+export function drawRoad($: EngineInterface, e: RenderInput<'Pane'>, road: Road, mode: SceneMode, image?: PngSource) {
   const elements = $.ui.resolve(e)
   const { Box, Text } = elements
   const { columns, rows } = gridSize(road.scene)

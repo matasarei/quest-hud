@@ -189,17 +189,150 @@ const forge = (columns: number, step: number): Shape[] => {
   ]
 }
 
-/**
- * The zone's landscape `columns` units wide, `step` steps into the walk (0
- * when still). Zones not drawn yet borrow the Wilds until the scene step.
- */
+/** The Arena: a sunset over tiers of stone arches, banners on poles, a sand floor. */
+const arena = (columns: number, step: number): Shape[] => {
+  const far = step * PARALLAX.far
+  const mid = step * PARALLAX.mid
+  const near = step * PARALLAX.near
+  return [
+    { kind: 'rect', x: 0, y: 0, w: columns, h: GROUND, fill: { top: 0x6a4a78, bottom: 0xf0b07a, y0: 0, y1: GROUND - 6 } },
+    ...glow(columns * 0.7, GROUND - 9, FIRE.gold, 4),
+    { kind: 'rect', x: 0, y: 8, w: columns, h: GROUND - 8, fill: CASTLE.shade },
+    ...every(columns, far, 6, (x): Shape[] => [
+      { kind: 'ellipse', cx: x + 3, cy: 11.5, rx: 1.8, ry: 2, fill: 0x4a3a40 },
+      { kind: 'rect', x: x + 1.2, y: 11.5, w: 3.6, h: 3, fill: 0x4a3a40 },
+      { kind: 'ellipse', cx: x + 3, cy: 17.5, rx: 1.8, ry: 2, fill: 0x4a3a40 },
+      { kind: 'rect', x: x + 1.2, y: 17.5, w: 3.6, h: 3, fill: 0x4a3a40 },
+    ]),
+    { kind: 'rect', x: 0, y: 8, w: columns, h: 1, fill: CASTLE.wall },
+    { kind: 'rect', x: 0, y: 14.5, w: columns, h: 1, fill: CASTLE.wall },
+    ...every(columns, mid, 30, (x, i): Shape[] => [
+      { kind: 'rect', x, y: 4, w: 0.6, h: GROUND - 4, fill: WOOD.dark },
+      { kind: 'polygon', points: [[x + 0.6, 4.5], [x + 5, 4.5], [x + 5, 10], [x + 2.8, 8.6], [x + 0.6, 10]], fill: i % 2 === 0 ? 0xc8402e : 0x3f5a9a },
+    ]),
+    { kind: 'rect', x: 0, y: GROUND, w: columns, h: HEIGHT - GROUND, fill: { top: 0xe0c08a, bottom: 0xb8935e, y0: GROUND, y1: HEIGHT } },
+    ...every(columns, near, 5, (x, i): Shape[] => [{ kind: 'rect', x: x + (i % 3), y: GROUND + 1 + (i % 2) * 1.5, w: 0.5, h: 0.5, fill: 0x9a7a4a }]),
+  ]
+}
+
+/** The Harbour: the banner's sea, distant sails, a wooden pier, gulls. */
+const harbour = (columns: number, step: number): Shape[] => {
+  const far = step * PARALLAX.far
+  const mid = step * PARALLAX.mid
+  const near = step * PARALLAX.near
+  return [
+    { kind: 'rect', x: 0, y: 0, w: columns, h: GROUND, fill: { top: SKY.top, bottom: SKY.bottom, y0: 0, y1: 12 } },
+    ...every(columns, far * 0.5, 41, (x, i) => cloud(x, 3 + (i % 3) * 1.4, 2 + (i % 2))),
+    { kind: 'rect', x: 0, y: 12, w: columns, h: GROUND - 12, fill: { top: 0x8ea2bc, bottom: 0x4e6a8e, y0: 12, y1: GROUND } },
+    ...every(columns, far, 29, (x, i): Shape[] => [
+      { kind: 'polygon', points: [[x, 12], [x + 4, 12], [x + 3.4, 13], [x + 0.6, 13]], fill: WOOD.mid },
+      { kind: 'polygon', points: [[x + 2, 6 + (i % 2)], [x + 2, 11.8], [x + 4.5, 11.8]], fill: SKY.cloud },
+    ]),
+    ...every(columns, mid, 7, (x, i): Shape[] => [{ kind: 'rect', x: x + (i % 4), y: 15 + (i % 3) * 2.5, w: 2.5, h: 0.5, fill: 0xb8cce0 }]),
+    ...every(columns, far, 23, (x, i): Shape[] => [
+      { kind: 'rect', x: x + 3, y: 5 + (i % 3), w: 1, h: 0.5, fill: 0x3a3440 },
+      { kind: 'rect', x: x + 2, y: 4.5 + (i % 3), w: 1, h: 0.5, fill: 0x3a3440 },
+      { kind: 'rect', x: x + 4, y: 4.5 + (i % 3), w: 1, h: 0.5, fill: 0x3a3440 },
+    ]),
+    ...every(columns, near, 12, (x): Shape[] => [{ kind: 'rect', x, y: GROUND - 3, w: 1.2, h: 3, fill: WOOD.dark }]),
+    { kind: 'rect', x: 0, y: GROUND, w: columns, h: HEIGHT - GROUND, fill: WOOD.plank },
+    ...every(columns, near, 4, (x): Shape[] => [{ kind: 'rect', x, y: GROUND, w: 0.5, h: HEIGHT - GROUND, fill: WOOD.gap }]),
+    { kind: 'rect', x: 0, y: GROUND, w: columns, h: 0.5, fill: WOOD.light },
+  ]
+}
+
+/** The Watchtower: dusk over snowy peaks, a dark pine forest, a dirt road between grass. */
+const watchtower = (columns: number, step: number): Shape[] => {
+  const far = step * PARALLAX.far
+  const mid = step * PARALLAX.mid
+  const near = step * PARALLAX.near
+  return [
+    { kind: 'rect', x: 0, y: 0, w: columns, h: GROUND, fill: { top: 0x3a3e6a, bottom: 0xd89a8a, y0: 0, y1: GROUND - 6 } },
+    ...every(columns, far, 21, (x, i) => peak(x, 5 + ((i * 5) % 4) * 1.5, 6 + (i % 3))),
+    ...every(columns, mid, 5, (x, i): Shape[] => {
+      const h = 6 + ((i * 7) % 5)
+      return [
+        { kind: 'polygon', points: [[x - 2.4, GROUND - 2], [x + 2.4, GROUND - 2], [x, GROUND - 2 - h]], fill: 0x2e4a3a },
+        { kind: 'rect', x: x - 0.3, y: GROUND - 2, w: 0.6, h: 2, fill: 0x2a2420 },
+      ]
+    }),
+    ridge(columns, near, GROUND - 0.6, 0.5, 5, GRASS.mid),
+    { kind: 'rect', x: 0, y: GROUND, w: columns, h: HEIGHT - GROUND, fill: 0x7a5a3e },
+    ...every(columns, near, 6, (x, i): Shape[] => [{ kind: 'rect', x: x + (i % 3), y: GROUND + 1.5 + (i % 2), w: 1, h: 0.5, fill: 0x5a3e2a }]),
+    { kind: 'rect', x: 0, y: GROUND, w: columns, h: 0.6, fill: GRASS.dark },
+  ]
+}
+
+/** The Dungeon: a cave of dark stone — arches behind, pillars hung with chains, torchlight, a flagstone floor. */
+const dungeon = (columns: number, step: number): Shape[] => {
+  const far = step * PARALLAX.far
+  const mid = step * PARALLAX.mid
+  const near = step * PARALLAX.near
+  return [
+    { kind: 'rect', x: 0, y: 0, w: columns, h: GROUND, fill: { top: 0x15121c, bottom: 0x342c3e, y0: 0, y1: GROUND } },
+    ...every(columns, far, 18, (x): Shape[] => [
+      { kind: 'ellipse', cx: x + 7, cy: 9, rx: 6, ry: 5, fill: 0x0e0c14 },
+      { kind: 'rect', x: x + 1, y: 9, w: 12, h: GROUND - 9, fill: 0x0e0c14 },
+    ]),
+    ...every(columns, mid, 27, (x, i): Shape[] => [
+      { kind: 'rect', x, y: 0, w: 4, h: GROUND, fill: 0x4a4256 },
+      { kind: 'rect', x: x + 3, y: 0, w: 1, h: GROUND, fill: 0x3a3446 },
+      { kind: 'rect', x: x + 5, y: 0, w: 0.4, h: 5 + (i % 3) * 2, fill: STEEL.mid },
+      { kind: 'ellipse', cx: x + 5.2, cy: 5.5 + (i % 3) * 2, rx: 0.8, ry: 0.6, fill: STEEL.lit },
+    ]),
+    ...every(columns, near, 44, (x): Shape[] => [
+      ...glow(x, 10, FIRE.orange, 3.5),
+      { kind: 'rect', x: x - 0.3, y: 10, w: 0.6, h: 3, fill: WOOD.dark },
+      { kind: 'ellipse', cx: x, cy: 9, rx: 0.9, ry: 1.4, fill: FIRE.gold },
+    ]),
+    { kind: 'rect', x: 0, y: GROUND, w: columns, h: HEIGHT - GROUND, fill: 0x221c28 },
+    ...[0, 1].flatMap(row =>
+      every(columns, near + row * 2.5, 5, (x): Shape[] => [{ kind: 'rect', x: x + 0.3, y: GROUND + 0.3 + row * 2, w: 4.4, h: 1.6, fill: row === 0 ? 0x3e3848 : 0x2e2a38 }]),
+    ),
+  ]
+}
+
+/** The Camp: a starry night, dark mountains, pines, a dirt clearing. */
+const camp = (columns: number, step: number): Shape[] => {
+  const far = step * PARALLAX.far
+  const mid = step * PARALLAX.mid
+  const near = step * PARALLAX.near
+  return [
+    { kind: 'rect', x: 0, y: 0, w: columns, h: GROUND, fill: { top: 0x101430, bottom: 0x3a3a6a, y0: 0, y1: GROUND - 4 } },
+    ...every(columns, far * 0.25, 7, (x, i): Shape[] => [{ kind: 'rect', x: x + ((i * 5) % 7), y: 1 + ((i * 3) % 9), w: 0.5, h: 0.5, fill: i % 4 === 0 ? FIRE.gold : SKY.cloud }]),
+    { kind: 'ellipse', cx: columns * 0.82, cy: 5, rx: 2.2, ry: 2.2, fill: SKY.cloud },
+    ...every(columns, far, 24, (x, i): Shape[] => [
+      { kind: 'polygon', points: [[x - 8, GROUND - 4], [x, GROUND - 13 - (i % 3) * 2], [x + 8, GROUND - 4]], fill: 0x2a2c52 },
+    ]),
+    ...every(columns, mid, 5, (x, i): Shape[] => {
+      const h = 5 + ((i * 7) % 4)
+      return [{ kind: 'polygon', points: [[x - 2.2, GROUND - 1.5], [x + 2.2, GROUND - 1.5], [x, GROUND - 1.5 - h]], fill: 0x1e2e2e }]
+    }),
+    { kind: 'rect', x: 0, y: GROUND - 1.6, w: columns, h: 1.6, fill: 0x1e2e2e },
+    { kind: 'rect', x: 0, y: GROUND, w: columns, h: HEIGHT - GROUND, fill: 0x4a3a2e },
+    ...every(columns, near, 7, (x, i): Shape[] => [{ kind: 'rect', x: x + (i % 4), y: GROUND + 1.5 + (i % 2), w: 1, h: 0.5, fill: 0x33281f }]),
+    { kind: 'rect', x: 0, y: GROUND, w: columns, h: 0.5, fill: 0x2e4a32 },
+  ]
+}
+
+/** The zone's landscape `columns` units wide, `step` steps into the walk (0 when still). */
 export const landscape = (zone: Zone, columns: number, step = 0): Picture => {
   switch (zone) {
+    case 'wilds':
+      return wilds(columns, step)
     case 'map':
       return mapRoom(columns, step)
     case 'forge':
       return forge(columns, step)
-    default:
-      return wilds(columns, step)
+    case 'arena':
+      return arena(columns, step)
+    case 'harbour':
+      return harbour(columns, step)
+    case 'watchtower':
+      return watchtower(columns, step)
+    case 'dungeon':
+      return dungeon(columns, step)
+    case 'camp':
+      return camp(columns, step)
   }
 }
