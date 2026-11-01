@@ -1,8 +1,10 @@
 # quest-hud — notes for Claude
 
 A Claude Code marketplace with one mod, `quest-hud` (`plugins/quest-hud/`): a hooks module
-(`hooks/register.tsx`) over pure modules (`src/`), a state contract (`types/index.d.ts`), and a
-status-line script (`scripts/hud-line.sh`). TypeScript run by the Claude Code engine; there is no
+(`hooks/register.tsx`, with the Road pane's layout in `hooks/pane.tsx`) over pure modules
+(`src/`), a state contract (`types/index.d.ts`), and a status-line script
+(`scripts/hud-line.sh`). Tests are `plugins/quest-hud/tests/*.test.ts(x)`; `tests/kit.tsx`
+stands for the engine in the newer ones. TypeScript run by the Claude Code engine; there is no
 package.json, no build and no node_modules.
 
 ## Commands
@@ -36,6 +38,12 @@ Claude Code 2.1.316 and, as a warning only, on the latest release.
   CI step's bidi scan; a literal bidirectional control character is refused.
 - **A helper that takes `$` is a top-level function declaration**; the validator follows `$`
   statically and refuses one bound inside `register`.
+- **Atoms live in `register.tsx`, the file that reads and writes them**: the engine's scan
+  refuses `read`/`update` of an atom defined in another file. `hooks/pane.tsx` draws only the
+  values passed to it.
+- **The bob is one timer at most**, started by the main loop's `turn.start` only when the pane
+  is shown on a terminal, stopped by `turn.complete`, `ui.close`, a pane no longer shown, or a
+  refused blit — and stopping blits the frame at rest. Nothing else may run on a timer.
 - **`resolve()` lists every element on every surface**; one a surface lacks draws as an empty
   fragment. Choose by `e.surface`, not by `'X' in elements`.
 - **No `version`** in `plugin.json` or `marketplace.json`, so every commit is an update.
