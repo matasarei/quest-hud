@@ -73,7 +73,7 @@ export const FRAME_MS = 500
 // The scene's bob: one timer at most, running only while a main turn runs and
 // the pane is shown on a terminal. `columns` and `surface` are where the pane
 // was last drawn; a reload starts this over, and the engine drops its timers.
-const bob: { timer?: Timer; frame: 0 | 1; columns?: number; surface?: string } = { frame: 0 }
+const bob: { timer?: Timer; isStarting: boolean; frame: 0 | 1; columns?: number; surface?: string } = { isStarting: false, frame: 0 }
 
 const isPaneShown = async ($: EngineInterface): Promise<boolean> =>
   (await $.ui.panes()).some(pane => pane.id === PANE_ID && pane.isShown)
@@ -115,10 +115,23 @@ async function bobStep($: EngineInterface): Promise<void> {
   await blitScene($, bob.frame)
 }
 
-/** Starts the bob when the pane is shown on a terminal and none runs yet. */
+/**
+ * Starts the bob when the pane is shown on a terminal and none runs yet.
+ * Two paths call it (a main turn's start, and a draw while a turn runs), and
+ * they can overlap across the await: the slot is claimed before it, and the
+ * timer checked again after it, so a second timer is never made.
+ */
 async function startBob($: EngineInterface): Promise<void> {
-  if (bob.timer !== undefined || bob.surface !== 'terminal' || !(await isPaneShown($))) return
-  bob.timer = $.clock.every(FRAME_MS, () => void bobStep($))
+  if (bob.timer !== undefined || bob.isStarting || bob.surface !== 'terminal') return
+  bob.isStarting = true
+
+  try {
+    if ((await isPaneShown($)) && bob.timer === undefined) {
+      bob.timer = $.clock.every(FRAME_MS, () => void bobStep($))
+    }
+  } finally {
+    bob.isStarting = false
+  }
 }
 
 /** Stops the bob and leaves the figures standing at rest. */
@@ -396,7 +409,8 @@ export const register: Register = (on, options) => {
 
     // A turn that began before the pane's first draw had no surface to bob on:
     // the draw starts it. startBob does nothing if a bob already runs.
-    if (await read($, isWorking)) void startBob($)
+    // Not awaited, so the draw is not held up; a start that fails leaves no timer.
+    if (await read($, isWorking)) startBob($).catch(() => stopTimer())
 
     const view = road({
       quest: await read($, quest),
