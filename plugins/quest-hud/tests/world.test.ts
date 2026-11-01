@@ -9,7 +9,7 @@ import { GROUND, HEIGHT, landscape } from '../src/world/landscapes'
 const CAST: ReadonlyArray<readonly [string, Sprite, number, number]> = [
   ...POSES.map(pose => [`wizard ${pose}`, WIZARD[pose], 32, 32] as const),
   ['mascot', MASCOT.still, 20, 16], ['mascot hop', MASCOT.hop, 20, 16], ['ghost', GHOST, 32, 32], ['dragon', DRAGON, 32, 32],
-  ['spider', SPIDER, 32, 32], ['octocat', OCTOCAT, 32, 32], ['fox', FOX, 32, 32], ['chest', CHEST, 32, 24],
+  ['spider', SPIDER, 32, 32], ['octocat', OCTOCAT, 24, 24], ['fox', FOX, 32, 32], ['chest', CHEST, 32, 24],
   ['flag done', FLAG.done, 16, 32], ['flag now', FLAG.now, 16, 32], ['flag todo', FLAG.todo, 16, 32],
   ['band icon', BAND_ICON, 10, 6],
 ]

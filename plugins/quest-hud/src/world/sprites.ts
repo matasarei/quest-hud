@@ -45,6 +45,7 @@ export const PALETTE: Readonly<Record<string, number>> = {
   "L": 0x3a3a40,
   "l": 0x19181a,
   "e": 0xf8bca4,
+  "E": 0xfcd4c0,
   "y": 0xd99a88,
   "N": 0xb07a52,
   "M": 0x8a5a3c,
@@ -450,41 +451,40 @@ export const SPIDER = sprite([
     '.o......o..o........o..o......o.',
   ])
 
-/** GitHub's Octocat, brought by gh. */
+/**
+ * GitHub's Octocat, brought by gh: our own drawing after the real one — a
+ * wide black cat's head with pointed ears and whiskers, a peach face with
+ * white-and-brown eyes and a smile, tentacles splaying into a blue puddle.
+ * 24 × 24, smaller than the wizard. Drawn for the text cells first: every
+ * 2 × 2 block reduces to the 12 × 12 cell picture as designed, and only the
+ * finer touches (glints, nose, thin whiskers) are for images.
+ */
 export const OCTOCAT = sprite([
-    '....oloo...............oolo.....',
-    '....olllo...ooooooo...olllo.....',
-    '....ollllooolllllllooollllo.....',
-    '....olllllllllllllllllllllo.....',
-    '....olllllllllllllllllllllo.....',
-    '....olllllllllllllllllllllo.....',
-    '....olllllllllllllllllllllo.....',
-    '...ollllllllleeeeelllllllllo....',
-    '...olllllleeeeeeeeeeellllllo....',
-    '...ollllleeeeeeeeeeeeelllllo....',
-    '...ollllee2<2eeeee2<2eellllo....',
-    '...olllee22<<2eee22<<2eelllo....',
-    'oooolllee2<<<2eee2<<<2eelllooooo',
-    'lllllllee2<1<2eee2<1<2eelllollll',
-    'ooooolllee2<2eeeee2<2eelllo.oooo',
-    'lllloolleeeeeee@@eeeeeello.ollll',
-    'oooo..olleeeeyeeeeyeeello...oooo',
-    '.......ollleeeyyyyeelllo........',
-    '........oollllllllllloo.........',
-    '.........olllllllllllo..........',
-    '........olllllllllllllo.........',
-    '........olllllllllllllo.........',
-    '........oloollllllloolo.........',
-    '........olooloolooloolo.........',
-    '.......ollooloolooloollo........',
-    '.......ollollooloollollo........',
-    '.......oloollooloolloolo........',
-    '.......oloollooloolloolo........',
-    '......olloollooloolloollo.......',
-    '.....ollo.olllllo.olloollo......',
-    '.....olo...olllo...olloolo......',
-    '......o.....ooo.....oo..o.......',
-  ])
+    '..ll................ll..',
+    '..ll................ll..',
+    '..llll............llll..',
+    '..llll............llll..',
+    '..llllllllllllllllllll..',
+    '..llllllllllllllllllll..',
+    '..llEEEEEEEEEEEEEEEEll..',
+    '..llEEEEEEEEEEEEEEEEll..',
+    'llllee22eeeeeeee22eellll',
+    '..llee22eeeeeeee22eell..',
+    'llllee<2eeeeeeee<2eellll',
+    '..llee<<eee@@eee<<eell..',
+    '..lllleeee<<<<eeeellll..',
+    '..lllleeeee<<eeeeellll..',
+    '....llllllllllllllll....',
+    '....llllllllllllllll....',
+    '........llllllll........',
+    '........llllllll........',
+    '......ll..llll..ll......',
+    '......ll..llll..ll......',
+    '....ll....llll....ll....',
+    '....ll....llll....ll....',
+    '""""ll""""llll""""ll""""',
+    '====ll====llll====ll====',
+])
 
 /** GitLab's fox, brought by glab: a fox of sharp crystal facets, its head the GitLab mark. */
 export const FOX = sprite([

@@ -227,7 +227,8 @@ describe('the allies', () => {
     expect(octocat.length > 0 && fox.length > 0).toBe(true)
     expect(octocat[octocat.length - 1]! < chestStart).toBe(true)
     expect(fox[fox.length - 1]! < octocat[0]!).toBe(true)
-    expect(roadWidth(160, 'wilds', { loot: 1, allies: { octopus: true, fox: true } })).toBe(roadWidth(160, 'wilds') - 3 * (SIZE.extra + 2))
+    // The chest and the fox are 16 units wide, the Octocat 12, each with its gap of 2.
+    expect(roadWidth(160, 'wilds', { loot: 1, allies: { octopus: true, fox: true } })).toBe(roadWidth(160, 'wilds') - (SIZE.extra + 2) - (12 + 2) - (SIZE.extra + 2))
   })
 
   test('neither, until they came', () => {
