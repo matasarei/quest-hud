@@ -2,7 +2,7 @@ import { describe, expect, test } from 'claude-code/testing'
 
 import { SPRITES } from '../src/art/sprites'
 import {
-  avatarX, BACKDROPS, FLAG_WIDTH, fitWaypoints, flagSlots, GROUND_ROW, half, MAX_FLAGS, MAX_GHOSTS, roadWidth, scene,
+  avatarX, BACKDROPS, FLAG_WIDTH, fitWaypoints, flagSlots, FOE_COLOR, foeX, GROUND_ROW, half, MAX_FLAGS, MAX_GHOSTS, roadWidth, scene,
   SCENE_HEIGHT, skyColor, waypointsOf, waypointX, WIZARD_COLOR, type Waypoint,
 } from '../src/scene'
 import type { Task, Zone } from '../types'
@@ -139,5 +139,65 @@ describe('the Map room', () => {
     const props = BACKDROPS.map.props.map(prop => (typeof prop === 'string' ? prop : prop[0]))
     expect(BACKDROPS.map.far.filter(name => outdoors.includes(name))).toEqual([])
     expect(props.filter(name => crates.includes(name) || outdoors.includes(name))).toEqual([])
+  })
+})
+
+describe('the monsters', () => {
+  const three: Waypoint[] = ['done', 'now', 'todo']
+  const columnsOf = (grid: ReturnType<typeof scene>, color: number): number[] =>
+    [...new Set(grid.flatMap(line => line.flatMap((c, x) => (c === color ? [x] : []))))].sort((a, b) => a - b)
+
+  test('none up: neither colour is drawn', () => {
+    const grid = scene({ columns: 160, zone: 'arena', waypoints: three, companions: 0, foes: { test: 'none', lint: 'none' }, frame: 0 })
+    expect(columnsOf(grid, FOE_COLOR.test)).toEqual([])
+    expect(columnsOf(grid, FOE_COLOR.lint)).toEqual([])
+  })
+
+  test('a test fight draws the dragon right of the wizard, on the ground, whether fought or standing', () => {
+    const road = roadWidth(160, 'arena')
+    const hero = avatarX(fitWaypoints(three, flagSlots(road)), road)
+    for (const foe of ['fighting', 'standing'] as const) {
+      const grid = scene({ columns: 160, zone: 'arena', waypoints: three, companions: 0, foes: { test: foe, lint: 'none' }, frame: 0 })
+      const xs = columnsOf(grid, FOE_COLOR.test)
+      expect(xs[0]! >= hero + SPRITES.wizard.width).toBe(true)
+      expect(xs[xs.length - 1]! < hero + SPRITES.wizard.width + 2 + SPRITES.dragon.width).toBe(true)
+      // Its sprite's last row is blank: it stands a pixel above the line, as the pack draws it.
+      const lowest = grid.findLastIndex(line => line.some(c => c === FOE_COLOR.test))
+      expect(lowest >= GROUND_ROW - 2 && lowest < GROUND_ROW).toBe(true)
+      expect(wizardAt(grid, hero, GROUND_ROW - SPRITES.wizard.height)).toBe(true)
+    }
+  })
+
+  test('both up: the spider stands behind the dragon, further from the wizard', () => {
+    const grid = scene({ columns: 160, zone: 'arena', waypoints: three, companions: 0, foes: { test: 'standing', lint: 'fighting' }, frame: 0 })
+    const dragon = columnsOf(grid, FOE_COLOR.test)
+    const spider = columnsOf(grid, FOE_COLOR.lint)
+    expect(dragon.length > 0 && spider.length > 0).toBe(true)
+    expect(spider[spider.length - 1]! > dragon[dragon.length - 1]!).toBe(true)
+  })
+
+  test('on a short road they close up and keep off the props, though never onto the wizard', () => {
+    const hero = 40
+    expect(foeX(hero, 200, 2, 1) - foeX(hero, 200, 2, 0)).toBe(SPRITES.dragon.width + 2)
+    // 40 + 16 + 2 = 58 to the road's end at 90: room for the dragon and 16 of the spider.
+    expect(foeX(hero, 90, 2, 0)).toBe(58)
+    expect(foeX(hero, 90, 2, 1)).toBe(74)
+    // No room at all: they stand against the wizard, the one behind peeking out by 10.
+    expect(foeX(hero, 50, 2, 0)).toBe(hero + SPRITES.wizard.width)
+    expect(foeX(hero, 50, 2, 1)).toBe(hero + SPRITES.wizard.width + 10)
+  })
+
+  test('frame 1 lifts the monsters with the wizard', () => {
+    const at = (frame: 0 | 1) => scene({ columns: 160, zone: 'arena', waypoints: three, companions: 0, foes: { test: 'standing', lint: 'none' }, frame })
+    const top = (grid: ReturnType<typeof scene>) => grid.findIndex(line => line.some(c => c === FOE_COLOR.test))
+    expect(top(at(1))).toBe(top(at(0)) - 1)
+  })
+
+  test('narrow widths still give a full grid with both up', () => {
+    for (const columns of [40, 20, 0]) {
+      const grid = scene({ columns, zone: 'dungeon', waypoints: three, companions: 2, foes: { test: 'standing', lint: 'standing' }, frame: 1 })
+      expect(grid).toHaveLength(SCENE_HEIGHT)
+      expect(grid.every(line => line.length === columns && line.every(c => c !== undefined))).toBe(true)
+    }
   })
 })

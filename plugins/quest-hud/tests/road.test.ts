@@ -17,6 +17,7 @@ const args = (over: Partial<RoadArgs> = {}): RoadArgs => ({
   log: entries(3),
   companions: [],
   activity: null,
+  foes: { test: 'none', lint: 'none' },
   bars: 'hpmp',
   columns: 60,
   rows: 30,
@@ -96,6 +97,6 @@ describe('the scene\'s zone', () => {
     expect(sceneZone(implement, 'map')).toBe('forge')
     expect(sceneZone(null, 'map')).toBe('map')
     expect(sceneZone(null, null)).toBe('wilds')
-    expect(roadScene({ quest: null, tasks: [], companions: [], activity: 'map', columns: 10, frame: 0 })[0]?.[0]).toBe(skyColor('map'))
+    expect(roadScene({ quest: null, tasks: [], companions: [], activity: 'map', foes: { test: 'none', lint: 'none' }, columns: 10, frame: 0 })[0]?.[0]).toBe(skyColor('map'))
   })
 })

@@ -1,7 +1,7 @@
 // What the Road pane shows, as plain values for a given size: the header, the
 // scene, the companions, a window of the task list, the bars and the log's
 // tail. Pure; hooks/pane.tsx only lays it out.
-import type { Companion, LogEntry, Meters, Quest, Task, Zone } from '../types'
+import type { Companion, Foes, LogEntry, Meters, Quest, Task, Zone } from '../types'
 import type { Grid } from './avatar'
 import { clockTime } from './log'
 import { bar, hpLeft, mpLeft, zoneLine, type Bars, type Segment } from './meters'
@@ -22,6 +22,8 @@ export type RoadArgs = {
   log: readonly LogEntry[]
   companions: readonly Companion[]
   activity: Zone | null
+  /** The monsters on the road. */
+  foes: Foes
   bars: Bars
   columns: number
   rows: number
@@ -42,12 +44,13 @@ export type Road = {
 export const sceneZone = (quest: Quest | null, activity: Zone | null): Zone => quest?.zone ?? activity ?? 'wilds'
 
 /** The scene alone, for a redraw or a blit of one frame. */
-export const roadScene = (args: Pick<RoadArgs, 'quest' | 'tasks' | 'companions' | 'activity' | 'columns' | 'frame'>): Grid =>
+export const roadScene = (args: Pick<RoadArgs, 'quest' | 'tasks' | 'companions' | 'activity' | 'foes' | 'columns' | 'frame'>): Grid =>
   scene({
     columns: args.columns,
     zone: sceneZone(args.quest, args.activity),
     waypoints: waypointsOf(args.tasks),
     companions: args.companions.length,
+    foes: args.foes,
     frame: args.frame,
   })
 

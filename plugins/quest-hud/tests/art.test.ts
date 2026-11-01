@@ -5,7 +5,7 @@ import { BACKDROPS } from '../src/scene'
 
 // Every sprite the scene draws: the import must keep producing these.
 const USED: readonly SpriteName[] = [
-  'wizard', 'ghost', 'flag',
+  'wizard', 'ghost', 'flag', 'dragon', 'spider',
   'dirt', 'grassTexture', 'water',
   'pine', 'pineLayered', 'roundTree', 'twinPines', 'oak', 'grass', 'palm',
   'campfire', 'tent', 'tower', 'redWall', 'brickWall', 'cobweb', 'tombstone', 'skull', 'torch',

@@ -136,6 +136,7 @@ async function blitScene($: EngineInterface, frame: 0 | 1): Promise<void> {
     tasks: await read($, tasks),
     companions: await read($, companions),
     activity: await read($, activity),
+    foes: await read($, foes),
     columns: bob.columns,
     frame,
   })
@@ -514,6 +515,7 @@ export const register: Register = (on, options) => {
       log: await read($, log),
       companions: await read($, companions),
       activity: await read($, activity),
+      foes: await read($, foes),
       bars,
       columns: e.props.bodyColumns,
       rows: e.viewport?.rows ?? 30,

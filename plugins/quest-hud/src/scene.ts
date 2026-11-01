@@ -3,7 +3,7 @@
 // props, the task list as flags, the wizard beside the flag in progress, and
 // ghosts behind it for the subagents at work. Pure: it returns a Grid, which
 // the pane draws as a Raster, an Image or an Svg.
-import type { Task, Zone } from '../types'
+import type { FightKind, Foes, Task, Zone } from '../types'
 import { SPRITES, type SpriteName } from './art/sprites'
 import { mapToGrid, type Grid } from './avatar'
 
@@ -61,6 +61,13 @@ const CLOTH: Readonly<Record<Waypoint, number>> = { done: 0x4fd37a, now: 0xf2d15
 /** The wizard's colour: the pack draws its figures in one beige; ours is purple. */
 export const WIZARD_COLOR = 0xb18cff
 const GHOST = 0xbfe3ff
+/** The monsters' colours: the dragon of a test run, the spider of a lint run. */
+export const FOE_COLOR: Readonly<Record<FightKind, number>> = { test: 0xe2643a, lint: 0xc94a5c }
+/** Pixels between the wizard and the first monster, and between monsters. */
+const FOE_GAP = 2
+/** The least a monster behind another shows of itself, in pixels, when the road is short. */
+const FOE_PEEK = 10
+const NO_FOES: Foes = { test: 'none', lint: 'none' }
 
 const channel = (color: number, shift: number): number => (color >> shift) & 0xff
 const rgb = (r: number, g: number, b: number): number =>
@@ -154,14 +161,52 @@ export type SceneArgs = {
   zone: Zone
   waypoints: readonly Waypoint[]
   companions: number
+  /** The monsters on the road; none when left out. */
+  foes?: Foes
   frame: 0 | 1
 }
+
+/**
+ * Where the monster in place `index` of `count` starts: right of the wizard,
+ * the first nearest. On a short road the ones behind close up, down to
+ * FOE_PEEK pixels apart, and all of them move left as far as the wizard to
+ * stay off the zone's props; past that they stand in front of the props.
+ */
+export const foeX = (hero: number, width: number, count: number, index: number): number => {
+  const size = SPRITES.dragon.width
+  const start = hero + SPRITES.wizard.width + FOE_GAP
+  const pitch = count <= 1 ? size + FOE_GAP : Math.max(FOE_PEEK, Math.min(size + FOE_GAP, Math.floor((width - start - size) / (count - 1))))
+  const first = Math.max(hero + SPRITES.wizard.width, Math.min(start, width - (count - 1) * pitch - size))
+  return first + index * pitch
+}
+
+/**
+ * Paints a one-pixel ring around a sprite's pixels in `color`, above the
+ * ground line only, so a figure stands clear of whatever is behind it.
+ */
+const outline = (canvas: Array<Array<number | undefined>>, grid: Grid, x: number, y: number, color: number): void => {
+  const isSet = (gx: number, gy: number): boolean => grid[gy]?.[gx] !== undefined
+  grid.forEach((line, gy) => line.forEach((pixel, gx) => {
+    if (pixel === undefined) return
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+      const row = canvas[y + gy + dy]
+      if (isSet(gx + dx, gy + dy) || !row || y + gy + dy >= GROUND_ROW || x + gx + dx < 0 || x + gx + dx >= row.length) continue
+      row[x + gx + dx] = color
+    }
+  }))
+}
+
+/** A monster facing left, towards the wizard: the dragon is drawn facing right, so it is mirrored. */
+const foeGrid = (kind: FightKind): Grid =>
+  kind === 'test'
+    ? spriteGrid('dragon', () => FOE_COLOR.test).map(line => [...line].reverse())
+    : spriteGrid('spider', () => FOE_COLOR.lint)
 
 /**
  * The scene as columns × SCENE_HEIGHT pixels: the waypoints are fitted to the
  * flags the road has room for. Frame 1 lifts the figures a pixel: the bob.
  */
-export const scene = ({ columns, zone, waypoints, companions, frame }: SceneArgs): Grid => {
+export const scene = ({ columns, zone, waypoints, companions, foes = NO_FOES, frame }: SceneArgs): Grid => {
   const width = Math.max(0, Math.floor(columns))
   const backdrop = BACKDROPS[zone]
   // Under everything: the background above the ground line, the ground below it.
@@ -202,6 +247,17 @@ export const scene = ({ columns, zone, waypoints, companions, frame }: SceneArgs
     const flag = flagGrid(state)
     stamp(canvas, flag, waypointX(i, flags.length, road), GROUND_ROW - flag.length)
   })
+
+  // The monsters face the wizard from the right: the dragon nearest, the spider
+  // behind it, drawn first so the dragon stands in front.
+  const up = (['test', 'lint'] as const).filter(kind => foes[kind] !== 'none')
+  for (let i = up.length - 1; i >= 0; i--) {
+    const foe = foeGrid(up[i] as FightKind)
+    const x = foeX(hero, road, up.length, i)
+    const y = GROUND_ROW - foe.length + lift
+    outline(canvas, foe, x, y, backdrop.background)
+    stamp(canvas, foe, x, y)
+  }
 
   stamp(canvas, wizard, hero, GROUND_ROW - wizard.length + lift)
 

@@ -24,6 +24,8 @@ SPRITES = {
     # figures
     "wizard": 467,
     "ghost": 419,
+    "dragon": 421,
+    "spider": 273,
     # waypoints
     "flag": 409,
     # ground textures: their top rows lie on the ground band
