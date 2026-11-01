@@ -478,8 +478,8 @@ export const OCTOCAT = sprite([
   '....llllllllllll....',
   '....ll..llll..ll....',
   '....ll..llll..ll....',
-  '""ll""""llll""""ll""',
-  '==ll====llll====ll==',
+  '."ll".."llll".."ll".',
+  '."ll".."llll".."ll".',
 ])
 
 /**
