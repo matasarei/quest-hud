@@ -1,15 +1,17 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { AVATAR, DEFAULT_COLOR, MAGE, rasterSize, rasterWords, toBase64, toRasterCells, toSvg } from '../src/avatar'
+import { AVATAR, AVATAR_SMALL, DEFAULT_COLOR, MAGE, rasterSize, rasterWords, toBase64, toRasterCells, toSvg } from '../src/avatar'
 
 describe('the avatar map', () => {
   test('every row is as wide as the first', () => {
     expect(AVATAR.every(row => row.length === 12)).toBe(true)
     expect(AVATAR).toHaveLength(16)
+    expect(AVATAR_SMALL.every(row => row.length === 6)).toBe(true)
+    expect(AVATAR_SMALL).toHaveLength(6)
   })
 
-  test('every pixel has a colour in the palette', () => {
-    const missing = AVATAR.join('').split('').filter(c => c !== '.' && MAGE[c] === undefined)
+  test('every pixel of both maps has a colour in the palette', () => {
+    const missing = [...AVATAR, ...AVATAR_SMALL].join('').split('').filter(c => c !== '.' && MAGE[c] === undefined)
     expect(missing).toEqual([])
   })
 })
