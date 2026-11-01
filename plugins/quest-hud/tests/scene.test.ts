@@ -2,7 +2,7 @@ import { describe, expect, test } from 'claude-code/testing'
 
 import { SPRITES } from '../src/art/sprites'
 import {
-  ALLY_COLOR, avatarX, BACKDROPS, propsWidth, FLAG_WIDTH, fitWaypoints, flagSlots, FOE_COLOR, foeX, GROUND_ROW, half, MAX_FLAGS, MAX_GHOSTS, roadWidth, scene,
+  ALLY_COLOR, avatarX, BACKDROPS, figures, FLAG_SLOT, FLAG_WIDTH, layout, MIN_FLAGS, propsWidth, fitWaypoints, flagSlots, FOE_COLOR, foeX, GROUND_ROW, half, MAX_FLAGS, MAX_GHOSTS, roadWidth, scene,
   SCENE_HEIGHT, skyColor, waypointsOf, waypointX, WIZARD_COLOR, type Waypoint,
 } from '../src/scene'
 import type { Task, Zone } from '../types'
@@ -247,5 +247,76 @@ describe('the allies', () => {
     const grid = scene({ columns: 160, zone: 'wilds', waypoints: [], companions: 0, allies: { octopus: false, fox: false }, frame: 0 })
     expect(columnsOf(grid, ALLY_COLOR.octopus)).toEqual([])
     expect(columnsOf(grid, ALLY_COLOR.fox)).toEqual([])
+  })
+})
+
+describe('a narrow pane', () => {
+  const five: Waypoint[] = ['done', 'done', 'now', 'todo', 'todo']
+  const busy = { waypoints: five, foes: { test: 'standing', lint: 'none' }, loot: 1, allies: { octopus: true, fox: true } } as const
+
+  test('nothing gives way where everything fits, so wide scenes stay as they were', () => {
+    for (const zone of ZONES) {
+      const laid = layout({ columns: 120, zone, waypoints: five })
+      expect(laid.props).toEqual(BACKDROPS[zone].props)
+      expect(laid.isPacked).toBe(false)
+      expect(laid.road).toBe(roadWidth(120, zone))
+    }
+  })
+
+  test('things give way in order as the pane narrows: props from the left, the fox, the octopus, the chest, the last prop', () => {
+    const all = BACKDROPS.dungeon.props
+    // How far down the order a layout is, and whether it is a state the order passes through.
+    const rank = (laid: ReturnType<typeof layout>): number => {
+      const props = laid.props.length
+      const fox = laid.extras.allies?.fox === true
+      const octopus = laid.extras.allies?.octopus === true
+      const chest = (laid.extras.loot ?? 0) > 0
+      expect(laid.props).toEqual(all.slice(all.length - props))
+      if (props > 1) expect(fox && octopus && chest).toBe(true)
+      if (!octopus) expect(fox).toBe(false)
+      if (!chest) expect(octopus).toBe(false)
+      if (props === 0) expect(chest).toBe(false)
+      return (all.length - props) + (fox ? 0 : 1) + (octopus ? 0 : 1) + (chest ? 0 : 1)
+    }
+    let last = -1
+    const seen = new Set<number>()
+    for (let columns = 260; columns >= 32; columns--) {
+      const r = rank(layout({ columns, zone: 'dungeon', ...busy }))
+      expect(r >= last).toBe(true)
+      last = r
+      seen.add(r)
+    }
+    expect(seen.has(0)).toBe(true)
+    expect(last).toBe(all.length + 3)
+  })
+
+  test('at 60 and 80 columns every zone shows three flags clear of the wizard, and the dragon clear of what is kept', () => {
+    for (const columns of [60, 80]) {
+      for (const zone of ZONES) {
+        const laid = layout({ columns, zone, ...busy })
+        const flags = fitWaypoints(five, flagSlots(laid.flagRoad))
+        const { flagXs, hero, ahead } = figures(flags, laid)
+        // Spread flags sit closer than the wizard is wide, so the one after it may stand behind it, as on a wide pane.
+        expect(flagXs.filter(x => x + FLAG_WIDTH <= hero || x >= hero + SPRITES.wizard.width).length >= MIN_FLAGS).toBe(true)
+        const dragon = foeX(hero, laid.road, 1, 0, ahead)
+        const keptRight = laid.props.length > 0 || (laid.extras.loot ?? 0) > 0 || laid.extras.allies?.octopus === true || laid.extras.allies?.fox === true
+        if (keptRight) expect(dragon + SPRITES.dragon.width <= laid.road).toBe(true)
+        expect(dragon >= hero + SPRITES.wizard.width).toBe(true)
+      }
+    }
+  })
+
+  test('packed flags: those to do stand right after the wizard, the monsters beyond them', () => {
+    const { flagXs, hero, ahead } = figures(['done', 'now', 'todo'], { flagRoad: 37, isPacked: true })
+    expect(flagXs.slice(0, 2)).toEqual([2, 2 + FLAG_SLOT])
+    expect(hero).toBe(2 + FLAG_SLOT + FLAG_WIDTH)
+    expect(flagXs[2]).toBe(hero + SPRITES.wizard.width + 1)
+    expect(ahead).toBe(flagXs[2]! + FLAG_WIDTH + 1)
+  })
+
+  test('a ghost with no room left of the wizard is not drawn, rather than cut at the edge', () => {
+    const none = scene({ columns: 50, zone: 'wilds', waypoints: [], companions: 0, frame: 0 })
+    const four = scene({ columns: 50, zone: 'wilds', waypoints: [], companions: 4, frame: 0 })
+    expect(four).toEqual(none)
   })
 })
