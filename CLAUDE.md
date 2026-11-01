@@ -12,7 +12,7 @@ package.json, no build and no node_modules.
 | Validate | `claude plugin validate . && claude plugin validate plugins/quest-hud` (the `version` warning is intended) |
 | Test | `claude plugin test plugins/quest-hud`, then `bash plugins/quest-hud/tests/hud-line.sh` |
 | Lint | `shellcheck --severity=warning plugins/quest-hud/scripts/*.sh plugins/quest-hud/tests/*.sh` |
-| Type-check | after one `claude --plugin-dir plugins/quest-hud` load has laid the types: `npx -y -p typescript tsc -p plugins/quest-hud` |
+| Type-check | `npx -y -p typescript tsc -p plugins/quest-hud`, once `plugins/quest-hud/.claude-plugin/types/` holds the engine's API types: an interactive `claude --plugin-dir` session lays them; a headless `claude -p` does not |
 | Run | `claude --plugin-dir /Users/hc/Projects/quest-hud/plugins/quest-hud` in a throwaway git repository |
 
 CI (`.github/workflows/checks.yml`) runs the same on every push and pull request, gated on
