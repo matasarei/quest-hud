@@ -56,12 +56,16 @@ describe('the band\'s wizard', () => {
     }
   })
 
-  test('casts with the staff as long as at rest, down to the bottom row', () => {
-    const staff = (sprite: Sprite): number[] => sprite.rows.map(row => row.indexOf('w'))
-    const bottom = (sprite: Sprite): number => staff(sprite)[sprite.rows.length - 1] ?? -1
-    expect(bottom(BAND_ICON)).toBeGreaterThan(-1)
-    expect(bottom(BAND_CAST)).toBe(bottom(BAND_ICON))
-    expect(staff(BAND_CAST)).toEqual(staff(BAND_ICON))
+  test('casts by raising the whole staff a row: as long as at rest, its foot off the ground', () => {
+    /** The rows the staff spans, orb to foot: the first and last row with its wood or orb in it. */
+    const span = (sprite: Sprite): readonly [number, number] => {
+      const rows = sprite.rows.map((row, y) => (/[w~`]/.test(row) ? y : -1)).filter(y => y >= 0)
+      return [rows[0] ?? -1, rows[rows.length - 1] ?? -1]
+    }
+    const [top, foot] = span(BAND_ICON)
+    expect(foot).toBe(BAND_ICON.rows.length - 1)
+    // One cell-pixel row up is two art rows.
+    expect(span(BAND_CAST)).toEqual([top - 2, foot - 2])
   })
 })
 

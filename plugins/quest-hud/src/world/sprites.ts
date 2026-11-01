@@ -1188,9 +1188,8 @@ export const BAND_ICON = sprite([
 ])
 
 /**
- * The band's portrait casting: his hand up the staff, the orb flaring with
- * gold sparks. The staff stays where it is, as long as at rest and down to
- * the bottom row.
+ * The band's portrait casting: his hand raises the staff a row, whole — as
+ * long as at rest, its foot off the ground — the orb flaring with gold sparks.
  */
 export const BAND_CAST = sprite([
   '.......((.....``{...',
@@ -1203,6 +1202,6 @@ export const BAND_CAST = sprite([
   '..]]ssssss]]ssw.....',
   '..]]]]]]]]]]..w.....',
   '..]]]]]]]]]]..w.....',
-  '..((]]]]]]((..w.....',
-  '..((]]]]]]((..w.....',
+  '..((]]]]]]((........',
+  '..((]]]]]]((........',
 ])
