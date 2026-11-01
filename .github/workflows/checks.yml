@@ -53,8 +53,10 @@ jobs:
       - uses: actions/checkout@v4
       # Trojan Source: a literal bidi override makes code read differently from
       # what it does. Write such characters as escapes, never literally.
+      # Text files only (git grep -I skips binaries): perl's UTF-8 decoding dies
+      # on a PNG, which would end the scan before the files after it.
       - run: |
-          if git ls-files -z | xargs -0 perl -CSD -ne 'if (/[\x{200E}\x{200F}\x{202A}-\x{202E}\x{2066}-\x{2069}]/) { print "$ARGV:$.\n"; $found = 1 } close ARGV if eof; END { exit($found ? 1 : 0) }'; then
+          if git grep -zIl '' | xargs -0 perl -CSD -ne 'if (/[\x{200E}\x{200F}\x{202A}-\x{202E}\x{2066}-\x{2069}]/) { print "$ARGV:$.\n"; $found = 1 } close ARGV if eof; END { exit($found ? 1 : 0) }'; then
             echo "none found"
           else
             echo "literal bidirectional control characters above; write them as escapes"
