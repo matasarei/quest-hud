@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'claude-code/testing'
 
 import {
-  AVATAR, AVATAR_SMALL, DEFAULT_COLOR, gridSize, gridToRasterCells, gridToSvg, gridWords, MAGE, mapToGrid,
-  rasterSize, rasterWords, toBase64, toRasterCells, toSvg, type Grid,
+  AVATAR, AVATAR_SMALL, DEFAULT_COLOR, gridSize, gridToRasterCells, gridToRgba, gridToSvg, gridWords, IMAGE_BYTES, imageScale,
+  MAGE, mapToGrid, rasterSize, rasterWords, toBase64, toRasterCells, toSvg, type Grid,
 } from '../src/avatar'
 
 /** Paints an SVG's rectangles back onto a grid of its size, to compare pixel for pixel. */
@@ -133,5 +133,50 @@ describe('the grid', () => {
     expect(svg.split('<rect ').length - 1).toBe(1)
     expect(paint(svg, 200, 2)).toEqual(wide)
     expect(paint(gridToSvg(grid), 3, 3)).toEqual(grid)
+  })
+})
+
+describe('the image output', () => {
+  /** base64 back to bytes, for checking what gridToRgba wrote. */
+  const bytes = (b64: string): number[] => {
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+    const out: number[] = []
+    const clean = b64.replace(/=+$/, '')
+    for (let i = 0; i < clean.length; i += 4) {
+      const n = [0, 1, 2, 3].map(k => alphabet.indexOf(clean[i + k] ?? 'A'))
+      const triple = ((n[0] ?? 0) << 18) | ((n[1] ?? 0) << 12) | ((n[2] ?? 0) << 6) | (n[3] ?? 0)
+      out.push((triple >> 16) & 255)
+      if (i + 2 < clean.length) out.push((triple >> 8) & 255)
+      if (i + 3 < clean.length) out.push(triple & 255)
+    }
+    return out
+  }
+
+  test('a 2×1 grid at scale 2 is 4×2 pixels, each a 2×2 square, opaque', () => {
+    const image = gridToRgba([[0x112233, 0x445566]], 2)
+    expect([image.width, image.height]).toEqual([4, 2])
+    const row = [0x11, 0x22, 0x33, 255, 0x11, 0x22, 0x33, 255, 0x44, 0x55, 0x66, 255, 0x44, 0x55, 0x66, 255]
+    expect(bytes(image.rgba)).toEqual([...row, ...row])
+  })
+
+  test('an empty pixel is fully transparent', () => {
+    expect(bytes(gridToRgba([[undefined, 0xffffff]], 1).rgba)).toEqual([0, 0, 0, 0, 255, 255, 255, 255])
+  })
+
+  test('an empty grid is one transparent pixel', () => {
+    const image = gridToRgba([], 3)
+    expect([image.width, image.height]).toEqual([1, 1])
+    expect(bytes(image.rgba)).toEqual([0, 0, 0, 0])
+  })
+
+  test('the scale keeps within 2 MiB and 2048 pixels a side', () => {
+    expect(imageScale(255, 28)).toBe(4)
+    expect(imageScale(600, 28)).toBe(3)
+    expect(imageScale(400, 400)).toBe(1)
+    for (const [w, h] of [[255, 28], [600, 28], [120, 28], [1000, 300]] as const) {
+      const s = imageScale(w, h)
+      expect(w * s * h * s * 4 <= IMAGE_BYTES || s === 1).toBe(true)
+      expect(w * s <= 2048 || s === 1).toBe(true)
+    }
   })
 })

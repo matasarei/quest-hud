@@ -124,6 +124,57 @@ export const gridToRasterCells = (grid: Grid): string => {
 
 export const toRasterCells = (map: readonly string[], palette: Palette): string => gridToRasterCells(mapToGrid(map, palette))
 
+/** An Image's base64 pixels may decode to at most this many bytes. */
+export const IMAGE_BYTES = 2 * 1024 * 1024
+/** An Image's `rgba` source is at most this many pixels a side. */
+export const IMAGE_SIDE = 2048
+
+/**
+ * The largest of 4, 3, 2 and 1 at which a `width × height` grid, each pixel a
+ * scale × scale square, stays within the Image's limits: 2 MiB of RGBA bytes,
+ * 2048 pixels a side. 1 when even that does not fit, as the caller has no smaller.
+ */
+export const imageScale = (width: number, height: number): number =>
+  [4, 3, 2].find(s => width * s * height * s * 4 <= IMAGE_BYTES && width * s <= IMAGE_SIDE && height * s <= IMAGE_SIDE) ?? 1
+
+export type RgbaSource = { rgba: string; width: number; height: number }
+
+/**
+ * `ImageSource`'s `{ rgba, width, height }`: each pixel a scale × scale square
+ * (nearest neighbour, so pixel art stays crisp), empty pixels fully
+ * transparent. An empty grid is one transparent pixel, as a source needs one.
+ */
+export const gridToRgba = (grid: Grid, scale: number): RgbaSource => {
+  const s = Math.max(1, Math.floor(scale))
+  const columns = width(grid)
+  const rows = grid.length
+
+  if (columns === 0 || rows === 0) {
+    return { rgba: toBase64(new Uint8Array(4)), width: 1, height: 1 }
+  }
+
+  const out = new Uint8Array(columns * s * rows * s * 4)
+  const stride = columns * s * 4
+
+  grid.forEach((line, y) => {
+    for (let x = 0; x < columns; x++) {
+      const color = line[x]
+      if (color === undefined) continue
+      for (let dy = 0; dy < s; dy++) {
+        for (let dx = 0; dx < s; dx++) {
+          const at = (y * s + dy) * stride + (x * s + dx) * 4
+          out[at] = (color >> 16) & 0xff
+          out[at + 1] = (color >> 8) & 0xff
+          out[at + 2] = color & 0xff
+          out[at + 3] = 0xff
+        }
+      }
+    }
+  })
+
+  return { rgba: toBase64(out), width: columns * s, height: rows * s }
+}
+
 const hex = (color: number): string => `#${color.toString(16).padStart(6, '0')}`
 
 /**
