@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { road, roadScene, SCENE_ROWS, sceneZone, taskWindow, type RoadArgs } from '../src/road'
+import { road, roadScene, SCENE_MIN_COLUMNS, SCENE_ROWS, sceneZone, taskWindow, type RoadArgs } from '../src/road'
 import { SCENE_HEIGHT, skyColor } from '../src/scene'
 import type { LogEntry, Quest, Task } from '../types'
 
@@ -108,5 +108,16 @@ describe('the loot count', () => {
     expect(road(args({ loot: 3 })).count).toBe('task 2/5 · loot 3')
     expect(road(args({ tasks: [], loot: 1 })).count).toBe('loot 1')
     expect(road(args({ tasks: [], loot: 0 })).count).toBe(undefined)
+  })
+})
+
+describe('a pane too narrow for the scene', () => {
+  test('below SCENE_MIN_COLUMNS there is no scene, and the log gets its rows', () => {
+    const narrow = road(args({ columns: SCENE_MIN_COLUMNS - 1, log: entries(40) }))
+    const wide = road(args({ columns: SCENE_MIN_COLUMNS, log: entries(40) }))
+    expect(narrow.scene).toEqual([])
+    expect(wide.scene).toHaveLength(SCENE_HEIGHT)
+    expect(wide.scene[0]).toHaveLength(SCENE_MIN_COLUMNS)
+    expect(narrow.log.length).toBe(wide.log.length + SCENE_ROWS)
   })
 })

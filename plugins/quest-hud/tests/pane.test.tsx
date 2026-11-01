@@ -377,3 +377,38 @@ describe('the monsters on the Road', () => {
     await ui.unmount()
   })
 })
+
+describe('a pane too narrow for the scene', () => {
+  test('no scene at all, on any surface', async ($, on) => {
+    engine(on)
+    await implementing($)
+    for (const surface of ['terminal', 'desktop'] as const) {
+      const ui = await $.ui.mount(pane(surface, 30))
+      expect(await ui.find({ type: 'Image' })).toBeFalsy()
+      expect(await ui.find({ type: 'Raster' })).toBeFalsy()
+      expect(await ui.find({ type: 'Svg' })).toBeFalsy()
+      await ui.unmount()
+    }
+  })
+
+  test('no probe in auto', async ($, on) => {
+    const clock = engine(on)
+    await implementing($)
+    const ui = await $.ui.mount(pane('terminal', 30))
+    await clock.advance(150)
+    expect(world.imageBlits).toBe(0)
+    expect(world.state.imagesWork).toBe(null)
+    await ui.unmount()
+  })
+
+  test('no bob in cells while Claude works', CELLS, async ($, on) => {
+    const clock = engine(on)
+    world.panes = [{ id: 'quest-hud', isShown: true }]
+    await implementing($)
+    const ui = await $.ui.mount(pane('terminal', 30))
+    await $.turn.start({ text: 'go', turnId: 'turn-1' })
+    await clock.advance(1000)
+    expect(world.blits).toEqual([])
+    await ui.unmount()
+  })
+})
