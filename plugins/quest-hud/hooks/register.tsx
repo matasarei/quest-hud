@@ -5,15 +5,24 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import { AVATAR_SMALL, MAGE, rasterSize, toRasterCells, toSvg } from '../src/avatar'
-import { bandModel, fromMeasure, statusText, zoneLine, type Bars, type Tone } from '../src/meters'
+import { activeCompanions, sameCompanions } from '../src/companions'
+import { appendEntry, castText, scoutCounts, scoutText } from '../src/log'
+import { bandModel, fromMeasure, shortTokens, statusText, ZONE_LABEL, zoneLine, type Bars, type Tone } from '../src/meters'
 import { afterPrompt, cleanTitle, fromSkill } from '../src/quest'
 import { applyTaskCall } from '../src/tasks'
 import { parseZones, zoneFor } from '../src/zones'
-
+import type { LogEntry } from '../types'
+// The values the HUD keeps for the session, each declared in types/index.d.ts.
+// The engine lists what a module reads and writes from atoms defined in the
+// file that uses them, so they live here; the pane draws from values passed in.
 const sessionId = atom({ plugin: 'quest-hud', key: 'sessionId' } as const, null)
 const quest = atom({ plugin: 'quest-hud', key: 'quest' } as const, null)
 const tasks = atom({ plugin: 'quest-hud', key: 'tasks' } as const, [])
 const meters = atom({ plugin: 'quest-hud', key: 'meters' } as const, null)
+const log = atom({ plugin: 'quest-hud', key: 'log' } as const, [])
+const companions = atom({ plugin: 'quest-hud', key: 'companions' } as const, [])
+const activity = atom({ plugin: 'quest-hud', key: 'activity' } as const, null)
+const isWorking = atom({ plugin: 'quest-hud', key: 'isWorking' } as const, false)
 
 type Detail = 'off' | 'status' | 'band'
 
@@ -64,6 +73,24 @@ async function showStatus($: EngineInterface, detail: Detail, bars: Bars): Promi
   }
 }
 
+/** One more line in the pane's log, stamped with the time now. */
+async function addLog($: EngineInterface, entry: Omit<LogEntry, 'at'>): Promise<void> {
+  const at = await $.clock.now()
+  await update($, log, entries => appendEntry(entries, { ...entry, at }))
+}
+
+/** Rereads the subagents at work and logs who joined and who left. */
+async function refreshCompanions($: EngineInterface): Promise<void> {
+  const now = activeCompanions(await $.agent.list())
+  const before = await read($, companions)
+
+  if (sameCompanions(before, now)) return
+
+  await update($, companions, () => now)
+  for (const joined of now.filter(c => !before.some(b => b.id === c.id))) await addLog($, { kind: 'fork', text: `${joined.type} joined` })
+  for (const left of before.filter(b => !now.some(c => c.id === b.id))) await addLog($, { kind: 'fork', text: `${left.type} left` })
+}
+
 export const register: Register = (on, options) => {
   const detail = pick<Detail>(options.detail, ['off', 'status', 'band'], 'band')
   const bars = pick<Bars>(options.bars, ['hpmp', 'all'], 'hpmp')
@@ -72,10 +99,12 @@ export const register: Register = (on, options) => {
   // subagents may run the same one): their skill.prompt fires inside that
   // call, and must not become the session's quest.
   const subagentSkills = new Map<string, number>()
+  // The main loop's turn: reads and searches of one turn share a log line.
+  let turn: string | undefined
 
   // State survives a reload, which runs session.start again with the same
   // session id: the quest in progress is kept. A new id (/clear, a resume of
-  // another session) starts the quest and the task list over.
+  // another session) starts everything over.
   on('session.start', async ($, e, next) => {
     await $.command.register({ name: 'hud', description: 'Show the Quest HUD state; "/hud statusline" prints the fallback setup' })
     const id = await $.session.id()
@@ -83,9 +112,13 @@ export const register: Register = (on, options) => {
     if ((await read($, sessionId)) !== id) {
       await update($, quest, () => null)
       await update($, tasks, () => [])
+      await update($, log, () => [])
+      await update($, companions, () => [])
+      await update($, activity, () => null)
       await update($, sessionId, () => id)
     }
 
+    await update($, isWorking, () => false)
     const usage = await $.session.usage()
     await update($, meters, () => fromMeasure(usage))
     await showStatus($, detail, bars)
@@ -108,12 +141,15 @@ export const register: Register = (on, options) => {
     const name = skillName(e.skill, e.pluginName)
 
     if (subagentSkills.has(e.skill) || subagentSkills.has(name)) {
+      await addLog($, { kind: 'fork', text: `a subagent ran ${cleanTitle(name)}` })
       return result
     }
 
     const description = typeof e.frontmatter.description === 'string' ? e.frontmatter.description : ''
     const now = await $.clock.now()
-    await update($, quest, () => fromSkill(name, zoneFor(name, description, overrides), now))
+    const started = fromSkill(name, zoneFor(name, description, overrides), now)
+    await update($, quest, () => started)
+    await addLog($, { kind: 'skill', text: `${started.title} · ${ZONE_LABEL[started.zone]}` })
     await showStatus($, detail, bars)
 
     return result
@@ -131,15 +167,85 @@ export const register: Register = (on, options) => {
       else subagentSkills.delete(subagentSkill)
     })
 
-    if (TASK_TOOLS.has(e.tool) && e.agentId === undefined && ran.deny === undefined && ran.isError !== true) {
+    // A subagent's own calls stay out of the session's task list and log.
+    if (e.agentId !== undefined || ran.deny !== undefined || ran.isError === true) {
+      return ran
+    }
+
+    if (TASK_TOOLS.has(e.tool)) {
+      const before = await read($, tasks)
       await update($, tasks, list => {
         const changed = applyTaskCall(list, e.tool, e, ran.result)
         return changed === list ? list : [...changed]
       })
+
+      if (e.tool === 'TaskUpdate' && e.status === 'completed') {
+        const done = before.find(task => task.id === e.taskId && task.status !== 'completed')
+        if (done) await addLog($, { kind: 'task', text: `✓ ${cleanTitle(done.subject)}` })
+      }
+
       await showStatus($, detail, bars)
     }
 
+    const counts = scoutCounts(e.tool)
+
+    if (counts) {
+      await addLog($, { kind: 'scout', text: scoutText(counts), counts, ...(turn === undefined ? {} : { turn }) })
+      await update($, activity, () => 'map')
+    }
+
+    const cast = castText(e.tool, e, ran.result)
+
+    if (cast !== undefined) {
+      await addLog($, { kind: 'cast', text: cast, ...(turn === undefined ? {} : { turn }) })
+      await update($, activity, () => 'forge')
+    }
+
+    if (e.tool === 'EnterPlanMode') {
+      await addLog($, { kind: 'plan', text: 'plan mode' })
+      await update($, activity, () => 'map')
+    }
+
     return ran
+  }).catch(($, e, next) => next(e))
+
+  on('turn.start', async ($, e, next) => {
+    const started = await next(e)
+
+    if (e.agentId === undefined) {
+      turn = e.turnId
+      await update($, isWorking, () => true)
+    } else {
+      await refreshCompanions($)
+    }
+
+    return started
+  }).catch(($, e, next) => next(e))
+
+  on('turn.complete', async ($, e, next) => {
+    const completed = await next(e)
+
+    if (e.agentId === undefined) {
+      await update($, isWorking, () => false)
+    }
+
+    await refreshCompanions($)
+
+    return completed
+  }).catch(($, e, next) => next(e))
+
+  on('session.compact', async ($, e, next) => {
+    const compacted = await next(e)
+
+    if (compacted.skip === undefined) {
+      const { tokensBefore, tokensAfter } = compacted
+      const text = tokensBefore !== undefined && tokensAfter !== undefined
+        ? `camp · ${shortTokens(tokensBefore)} → ${shortTokens(tokensAfter)}`
+        : 'camp · context compacted'
+      await addLog($, { kind: 'camp', text })
+    }
+
+    return compacted
   }).catch(($, e, next) => next(e))
 
   on('session.measure', async ($, e, next) => {

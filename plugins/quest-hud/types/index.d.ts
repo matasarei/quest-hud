@@ -55,6 +55,14 @@ declare module 'claude-code' {
       quest: Quest | null
       tasks: Task[]
       meters: Meters | null
+      /** The pane's log, newest last, at most 50. */
+      log: LogEntry[]
+      /** Subagents at work. */
+      companions: Companion[]
+      /** The Wilds' backdrop, from the last tool kind: reading is the map room, editing the forge. */
+      activity: Zone | null
+      /** A main turn is running: the scene bobs while the pane is shown. */
+      isWorking: boolean
     }
   }
 }
