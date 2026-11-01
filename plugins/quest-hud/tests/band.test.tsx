@@ -168,7 +168,7 @@ describe('/hud', () => {
     await $.tool.call({ tool: 'TaskCreate', subject: 'two\nlines \u202eevil', description: '' })
     const result = await $.command.run({ command: 'hud', args: '', ...RUN })
     expect(result.text).toContain('· two lines evil')
-    expect(result.text.split('\n')).toHaveLength(2)
+    expect((result.text ?? '').split('\n')).toHaveLength(2)
   })
 
   test('with no argument prints the state and the task list', async ($, on) => {
