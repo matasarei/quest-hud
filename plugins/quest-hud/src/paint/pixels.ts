@@ -55,20 +55,22 @@ export const ditherBand = (t: number, bands: number, x: number, y: number): numb
 export const ditherOn = (opacity: number, x: number, y: number): boolean => opacity > bayer(x, y)
 
 /**
- * The grid made `factor` times smaller: each block becomes its most common
- * colour (the first seen of equals), so pixel art stays crisp in the cells.
+ * The grid made `fx` times narrower and `fy` times shorter (`fx` both ways
+ * when `fy` is left out): each block becomes its most common colour, the first
+ * seen of equals, so pixel art stays crisp.
  */
-export const downsample = (grid: Grid, factor: number): Grid => {
-  const f = Math.max(1, Math.floor(factor))
-  const width = Math.floor(gridWidth(grid) / f)
-  const height = Math.floor(grid.length / f)
+export const downsample = (grid: Grid, fx: number, fy = fx): Grid => {
+  const w = Math.max(1, Math.floor(fx))
+  const h = Math.max(1, Math.floor(fy))
+  const width = Math.floor(gridWidth(grid) / w)
+  const height = Math.floor(grid.length / h)
   return Array.from({ length: height }, (_, y) =>
     Array.from({ length: width }, (_, x) => {
       // A Map keeps the order colours were first seen in, so equals go to the first.
       const counts = new Map<number | undefined, number>()
-      for (let dy = 0; dy < f; dy++) {
-        for (let dx = 0; dx < f; dx++) {
-          const color = grid[y * f + dy]?.[x * f + dx]
+      for (let dy = 0; dy < h; dy++) {
+        for (let dx = 0; dx < w; dx++) {
+          const color = grid[y * h + dy]?.[x * w + dx]
           counts.set(color, (counts.get(color) ?? 0) + 1)
         }
       }
