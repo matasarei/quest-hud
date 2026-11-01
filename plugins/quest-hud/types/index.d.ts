@@ -34,10 +34,17 @@ export type Meters = {
 /** What reading and searching came to in one turn, kept as numbers so lines merge. */
 export type ScoutCounts = { reads: number; searches: number; pages: number }
 
+/** A run Claude Code fights: a test run, or a lint or type check. */
+export type FightKind = 'test' | 'lint'
+
+/** A monster on the Road: none, fought right now, or still standing after a lost run. */
+export type Foe = 'none' | 'fighting' | 'standing'
+export type Foes = Readonly<Record<FightKind, Foe>>
+
 /** One line of the pane's log: what Claude did, as Claude Code reported it. */
 export type LogEntry = {
   at: number
-  kind: 'skill' | 'scout' | 'cast' | 'fork' | 'task' | 'plan' | 'camp'
+  kind: 'skill' | 'scout' | 'cast' | 'fork' | 'task' | 'plan' | 'camp' | 'fight'
   text: string
   /** The main turn it happened in: scout lines of one turn merge. */
   turn?: string
@@ -65,6 +72,8 @@ declare module 'claude-code' {
       isWorking: boolean
       /** Whether the terminal shows images, as the probe found: null until it has run. */
       imagesWork: boolean | null
+      /** The monsters on the Road: one per kind of fight, standing after a lost run. */
+      foes: Foes
     }
   }
 }

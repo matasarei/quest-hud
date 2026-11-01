@@ -116,3 +116,74 @@ describe('a new session id', () => {
     expect(await stateOf($, 'activity')).toBe(null)
   })
 })
+
+describe('fights, from Bash calls', () => {
+  const foes = ($: Parameters<typeof start>[0]) => stateOf($, 'foes')
+
+  test('a failed test run leaves the dragon standing; a passing one clears it', async ($, on) => {
+    engine(on)
+    await start($)
+    world.bash = { error: 'Exit code 1\n 231 pass\n 1 fail' }
+    await $.tool.call({ tool: 'Bash', command: 'cd /repo && claude plugin test plugins/quest-hud', description: '' })
+    expect(await foes($)).toEqual({ test: 'standing', lint: 'none' })
+    world.bash = { stdout: ' 232 pass\n 0 fail\n' }
+    await $.tool.call({ tool: 'Bash', command: 'claude plugin test plugins/quest-hud', description: '' })
+    expect(await foes($)).toEqual({ test: 'none', lint: 'none' })
+    expect(await texts($)).toEqual(['tests lost · 231 pass · 1 fail', 'tests won · 232 pass · 0 fail'])
+  })
+
+  test('the monster is up while the run is', async ($, on) => {
+    engine(on)
+    await start($)
+    await $.tool.call({ tool: 'Bash', command: 'npx eslint src', description: '' })
+    expect(world.foesDuringBash).toEqual([{ test: 'none', lint: 'fighting' }])
+    expect(await foes($)).toEqual({ test: 'none', lint: 'none' })
+  })
+
+  test('interrupted and background runs log nothing and change nothing', async ($, on) => {
+    engine(on)
+    await start($)
+    world.bash = { error: 'Exit code 1' }
+    await $.tool.call({ tool: 'Bash', command: 'pytest', description: '' })
+    world.bash = { interrupted: true }
+    await $.tool.call({ tool: 'Bash', command: 'pytest', description: '' })
+    world.bash = { backgroundTaskId: 'b1' }
+    await $.tool.call({ tool: 'Bash', command: 'pytest', description: '' })
+    await $.tool.call({ tool: 'Bash', command: 'pytest', description: '', run_in_background: true })
+    expect(await foes($)).toEqual({ test: 'standing', lint: 'none' })
+    expect(await texts($)).toEqual(['tests lost'])
+  })
+
+  test('a subagent\'s test run is a fight, led by its type; its reads stay out of the log', async ($, on) => {
+    engine(on)
+    await start($)
+    world.agents = [agent('a1', 'gku:runner', 'running')]
+    await $.turn.start({ text: 'run the suite', turnId: 'turn-1', agentId: 'a1' })
+    world.bash = { stdout: 'Tests:       30 passed, 30 total' }
+    await $.tool.call({ tool: 'Bash', command: 'npm test', description: '', agentId: 'a1' })
+    await $.tool.call({ tool: 'Read', file_path: '/repo/a.ts', agentId: 'a1' })
+    expect((await texts($)).filter(text => !text.endsWith('joined'))).toEqual(['gku:runner · tests won · 30 pass · 0 fail'])
+  })
+
+  test('other commands are not fights, and the hook returns what the call resolved to', async ($, on) => {
+    engine(on)
+    await start($)
+    world.bash = { stdout: 'hello' }
+    const ran = await $.tool.call({ tool: 'Bash', command: 'echo "npm test"', description: '' })
+    expect(ran.result).toEqual({ stdout: 'hello', stderr: '', interrupted: false })
+    expect(await foes($)).toEqual({ test: 'none', lint: 'none' })
+    expect(world.foesDuringBash).toEqual([{ test: 'none', lint: 'none' }])
+    expect(await texts($)).toEqual([])
+  })
+
+  test('a new session sends the monsters away', async ($, on) => {
+    engine(on)
+    await start($)
+    world.bash = { error: 'Exit code 2' }
+    await $.tool.call({ tool: 'Bash', command: 'npm run lint', description: '' })
+    expect(await foes($)).toEqual({ test: 'none', lint: 'standing' })
+    world.id = 's2'
+    await start($)
+    expect(await foes($)).toEqual({ test: 'none', lint: 'none' })
+  })
+})

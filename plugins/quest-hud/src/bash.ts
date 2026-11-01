@@ -2,6 +2,7 @@
 // or type check, a commit, a gh or glab call. Pure. It recognises known shapes
 // only, and nothing here is ever drawn as it was typed: callers draw the kind,
 // a score, a commit subject or a PR number.
+import type { FightKind, Foe, Foes } from '../types'
 
 export type BashKind = 'test' | 'lint' | 'commit' | 'gh' | 'glab'
 
@@ -302,3 +303,61 @@ export const fightScore = (output: string): Score | undefined => {
 
   return found.reduce<Found | undefined>((last, item) => (last === undefined || item.at >= last.at ? item : last), undefined)?.score
 }
+
+/** The fights among a command's kinds. */
+export const fightKinds = (kinds: readonly BashKind[]): FightKind[] =>
+  kinds.filter((kind): kind is FightKind => kind === 'test' || kind === 'lint')
+
+/** How a fight ended: won, lost, or not at all (interrupted, refused, sent to the background). */
+export type Outcome = { result: 'won' | 'lost' | 'none'; score?: Score }
+
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null
+
+/**
+ * A fight's end, from what the Bash call resolved to. A score the output
+ * shows decides it; without one, an error is a loss. A run interrupted,
+ * refused or still running in the background has no outcome yet.
+ */
+export const fightOutcome = (ran: { deny?: string; isError?: boolean; result?: unknown; text?: string }): Outcome => {
+  if (ran.deny !== undefined) return { result: 'none' }
+
+  if (ran.isError === true) {
+    const text = typeof ran.text === 'string' ? ran.text : typeof ran.result === 'string' ? ran.result : ''
+    if (/^[^\n]*interrupted/i.test(text)) return { result: 'none' }
+    const score = fightScore(text)
+    return { result: score?.isLost === false ? 'won' : 'lost', ...(score ? { score } : {}) }
+  }
+
+  const result = isRecord(ran.result) ? ran.result : {}
+  if (result.interrupted === true || typeof result.backgroundTaskId === 'string') return { result: 'none' }
+
+  const output = [result.stdout, result.stderr].filter((part): part is string => typeof part === 'string').join('\n')
+  const score = fightScore(output)
+  return { result: score?.isLost === true ? 'lost' : 'won', ...(score ? { score } : {}) }
+}
+
+export const NO_FOES: Foes = { test: 'none', lint: 'none' }
+
+/** The monsters once these fights start. */
+export const startFights = (foes: Foes, kinds: readonly FightKind[]): Foes =>
+  kinds.reduce<Foes>((next, kind) => ({ ...next, [kind]: 'fighting' }), foes)
+
+/**
+ * The monsters once these fights end: gone after a win, standing after a
+ * loss, and as they were before the run when it had no outcome.
+ */
+export const endFights = (foes: Foes, kinds: readonly FightKind[], outcome: Outcome, before: Foes): Foes =>
+  kinds.reduce<Foes>((next, kind) => {
+    const foe: Foe = outcome.result === 'won' ? 'none' : outcome.result === 'lost' ? 'standing' : before[kind]
+    return { ...next, [kind]: foe }
+  }, foes)
+
+const FIGHT_LABEL: Readonly<Record<FightKind, string>> = { test: 'tests', lint: 'lint' }
+
+/** `tests won · 232 pass · 0 fail`, led by the subagent that fought it when one did. */
+export const fightText = (kinds: readonly FightKind[], outcome: Outcome, who?: string): string =>
+  [
+    ...(who === undefined ? [] : [who]),
+    `${kinds.map(kind => FIGHT_LABEL[kind]).join(' + ')} ${outcome.result}`,
+    ...(outcome.score ? [outcome.score.text] : []),
+  ].join(' · ')

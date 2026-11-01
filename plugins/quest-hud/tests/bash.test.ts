@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { type BashKind, commandKinds, fightScore, SCORE_TAIL } from '../src/bash'
+import { type BashKind, commandKinds, endFights, fightKinds, fightOutcome, fightScore, fightText, NO_FOES, SCORE_TAIL, startFights } from '../src/bash'
 
 // Each command as Claude might run it, and the kinds it holds, in order.
 const COMMANDS: ReadonlyArray<readonly [string, readonly BashKind[]]> = [
@@ -152,5 +152,46 @@ describe('fightScore', () => {
     expect(fightScore(' 1 pass\n 1 fail\n…\n 2 pass\n 0 fail\n')).toEqual({ text: '2 pass · 0 fail', isLost: false })
     const early = ' 9 pass\n 9 fail\n' + 'x'.repeat(SCORE_TAIL)
     expect(fightScore(early)).toBe(undefined)
+  })
+})
+
+describe('fights', () => {
+  test('only test and lint runs are fights', () => {
+    expect(fightKinds(['commit', 'test', 'gh', 'lint'])).toEqual(['test', 'lint'])
+  })
+
+  test('a clean exit is a win, an error a loss, and a known score decides over both', () => {
+    expect(fightOutcome({ result: { stdout: 'ok', stderr: '', interrupted: false } })).toEqual({ result: 'won' })
+    expect(fightOutcome({ isError: true, result: 'Exit code 1', text: 'Exit code 1\nboom' })).toEqual({ result: 'lost' })
+    // A pipe into grep exits 0 whatever the tests did; the summary tells.
+    expect(fightOutcome({ result: { stdout: ' 231 pass\n 1 fail\n', stderr: '', interrupted: false } }))
+      .toEqual({ result: 'lost', score: { text: '231 pass · 1 fail', isLost: true } })
+    // grep found nothing and exited 1, yet the tests passed.
+    expect(fightOutcome({ isError: true, text: 'Exit code 1\n 232 pass\n 0 fail' }))
+      .toEqual({ result: 'won', score: { text: '232 pass · 0 fail', isLost: false } })
+  })
+
+  test('interrupted, refused or backgrounded runs have no outcome', () => {
+    expect(fightOutcome({ result: { stdout: '', stderr: '', interrupted: true } })).toEqual({ result: 'none' })
+    expect(fightOutcome({ result: { stdout: '', stderr: '', interrupted: false, backgroundTaskId: 'b1' } })).toEqual({ result: 'none' })
+    expect(fightOutcome({ isError: true, text: 'Command interrupted by the user' })).toEqual({ result: 'none' })
+    expect(fightOutcome({ deny: 'no' })).toEqual({ result: 'none' })
+  })
+
+  test('a win clears the monster, a loss leaves it standing, no outcome puts back what was there', () => {
+    const fighting = startFights(NO_FOES, ['test'])
+    expect(fighting).toEqual({ test: 'fighting', lint: 'none' })
+    expect(endFights(fighting, ['test'], { result: 'won' }, NO_FOES)).toEqual(NO_FOES)
+    expect(endFights(fighting, ['test'], { result: 'lost' }, NO_FOES)).toEqual({ test: 'standing', lint: 'none' })
+    const standing = { test: 'standing', lint: 'none' } as const
+    expect(endFights(startFights(standing, ['test']), ['test'], { result: 'none' }, standing)).toEqual(standing)
+    expect(endFights(startFights(standing, ['lint']), ['lint'], { result: 'won' }, standing)).toEqual(standing)
+  })
+
+  test('the log line: kinds, result, score, and who fought', () => {
+    const score = { text: '232 pass · 0 fail', isLost: false }
+    expect(fightText(['test'], { result: 'won', score })).toBe('tests won · 232 pass · 0 fail')
+    expect(fightText(['test', 'lint'], { result: 'lost' })).toBe('tests + lint lost')
+    expect(fightText(['lint'], { result: 'won' }, 'gku:runner')).toBe('gku:runner · lint won')
   })
 })
