@@ -55,14 +55,14 @@ describe('the Road pane', () => {
     })
   }
 
-  test('the terminal\'s scene is a Raster keyed scene, as wide as the body and 8 rows tall', async ($, on) => {
+  test('the terminal\'s scene is a Raster keyed scene, as wide as the body and 14 rows tall', async ($, on) => {
     engine(on)
     await implementing($)
     const ui = await $.ui.mount(pane('terminal', 60))
     const scene = await ui.find({ type: 'Raster', key: 'scene' })
     expect(scene).toBeTruthy()
     expect(scene?.props.columns).toBe(60)
-    expect(scene?.props.rows).toBe(8)
+    expect(scene?.props.rows).toBe(14)
     await ui.unmount()
   })
 

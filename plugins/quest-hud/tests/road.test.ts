@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'claude-code/testing'
 
 import { road, roadScene, SCENE_ROWS, sceneZone, taskWindow, type RoadArgs } from '../src/road'
-import { BACKDROPS, SCENE_HEIGHT } from '../src/scene'
+import { SCENE_HEIGHT, skyColor } from '../src/scene'
 import type { LogEntry, Quest, Task } from '../types'
 
 const implement: Quest = { title: 'gku:implement', skill: 'gku:implement', zone: 'forge', startedAt: 0 }
@@ -96,6 +96,6 @@ describe('the scene\'s zone', () => {
     expect(sceneZone(implement, 'map')).toBe('forge')
     expect(sceneZone(null, 'map')).toBe('map')
     expect(sceneZone(null, null)).toBe('wilds')
-    expect(roadScene({ quest: null, tasks: [], companions: [], activity: 'map', columns: 10, frame: 0 })[0]?.[0]).toBe(BACKDROPS.map.sky)
+    expect(roadScene({ quest: null, tasks: [], companions: [], activity: 'map', columns: 10, frame: 0 })[0]?.[0]).toBe(skyColor('map'))
   })
 })

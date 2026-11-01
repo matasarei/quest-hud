@@ -7,7 +7,7 @@ const USED: readonly SpriteName[] = [
   'astronaut', 'astronautStep', 'flag',
   'winterA', 'winterB', 'winterC', 'desertA', 'desertB', 'forestA', 'forestB',
   'grass', 'sand', 'snow', 'dirt', 'water',
-  'brick', 'crate', 'lever', 'spikes', 'banner', 'bridgeLeft', 'bridgeMid', 'bridgeRight',
+  'brick', 'crate', 'lever', 'spikes', 'bridgeLeft', 'bridgeMid', 'bridgeRight',
   'sign', 'arrow', 'door', 'key', 'brickCross', 'mushroom', 'sprout', 'pine', 'ladder', 'bush',
 ]
 
