@@ -8,6 +8,10 @@ export const world: {
   id: string
   agents: AgentInfo[]
   blits: string[]
+  /** Blits that swap an Image (the probe), apart from the bob's cell blits. */
+  imageBlits: number
+  /** When true, the engine answers an Image blit as where it drew the alt. */
+  refuseImages: boolean
   opened: string[]
   panes: Array<{ id: string; isShown: boolean }>
   state: Record<string, unknown>
@@ -16,6 +20,8 @@ export const world: {
   state: {},
   agents: [],
   blits: [],
+  imageBlits: 0,
+  refuseImages: false,
   opened: [],
   panes: [],
 }
@@ -26,6 +32,8 @@ export const engine = (on: On) => {
   world.id = 's1'
   world.agents = []
   world.blits = []
+  world.imageBlits = 0
+  world.refuseImages = false
   world.opened = []
   world.panes = []
   world.state = {}
@@ -52,6 +60,10 @@ export const engine = (on: On) => {
   })
   on('ui.panes', () => ({ value: world.panes.map(p => ({ ...p, title: 'The Road', isFocused: false, isPlaced: p.isShown })) }))
   on('ui.blit', (_, e) => {
+    if ('source' in e) {
+      world.imageBlits += 1
+      return { value: world.refuseImages ? { deny: 'the Image draws its alt there' } : {} }
+    }
     world.blits.push('cells' in e && typeof e.cells === 'string' ? e.cells : '')
     return { value: {} }
   })

@@ -21,6 +21,13 @@
       "options": ["hpmp", "all"],
       "default": "hpmp"
     },
+    "graphics": {
+      "type": "string",
+      "title": "Graphics",
+      "description": "How the Road's scene is drawn in a terminal: found out once a session (auto: images where the terminal shows them, text cells elsewhere), or always as text cells, or always as images.",
+      "options": ["auto", "cells", "images"],
+      "default": "auto"
+    },
     "zones": {
       "type": "string",
       "title": "Zone overrides",

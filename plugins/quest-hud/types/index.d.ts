@@ -61,8 +61,10 @@ declare module 'claude-code' {
       companions: Companion[]
       /** The Wilds' backdrop, from the last tool kind: reading is the map room, editing the forge. */
       activity: Zone | null
-      /** A main turn is running: the scene bobs while the pane is shown. */
+      /** A main turn is running: the scene bobs while the pane is shown as cells. */
       isWorking: boolean
+      /** Whether the terminal shows images, as the probe found: null until it has run. */
+      imagesWork: boolean | null
     }
   }
 }

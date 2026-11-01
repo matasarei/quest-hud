@@ -13,7 +13,8 @@ import { road, roadScene } from '../src/road'
 import { applyTaskCall } from '../src/tasks'
 import { parseZones, zoneFor } from '../src/zones'
 import type { LogEntry } from '../types'
-import { drawRoad, PANE_ID, PANE_TITLE, SCENE_KEY, sceneCells } from './pane'
+import type { RgbaSource } from '../src/avatar'
+import { drawRoad, PANE_ID, PANE_TITLE, SCENE_IMAGE_KEY, SCENE_KEY, sceneCells, sceneImage, type SceneMode } from './pane'
 
 // The values the HUD keeps for the session, each declared in types/index.d.ts.
 // The engine lists what a module reads and writes from atoms defined in the
@@ -26,9 +27,12 @@ const log = atom({ plugin: 'quest-hud', key: 'log' } as const, [])
 const companions = atom({ plugin: 'quest-hud', key: 'companions' } as const, [])
 const activity = atom({ plugin: 'quest-hud', key: 'activity' } as const, null)
 const isWorking = atom({ plugin: 'quest-hud', key: 'isWorking' } as const, false)
+const imagesWork = atom({ plugin: 'quest-hud', key: 'imagesWork' } as const, null)
 
 /** off, a status entry, the band, or the band and the Road pane opened at the start. */
 type Detail = 'off' | 'status' | 'band' | 'pane'
+/** How the terminal's scene is drawn: found out (`auto`), or forced. */
+type Graphics = 'auto' | 'cells' | 'images'
 
 const pick = <T extends string>(value: unknown, allowed: readonly T[], fallback: T): T =>
   typeof value === 'string' && (allowed as readonly string[]).includes(value) ? (value as T) : fallback
@@ -71,12 +75,51 @@ async function showStatus($: EngineInterface, detail: Detail, bars: Bars): Promi
 export const FRAME_MS = 500
 
 // The scene's bob: one timer at most, running only while a main turn runs and
-// the pane is shown on a terminal. `columns` and `surface` are where the pane
-// was last drawn; a reload starts this over, and the engine drops its timers.
-const bob: { timer?: Timer; isStarting: boolean; generation: number; frame: 0 | 1; columns?: number; surface?: string } = {
+// the pane's scene is drawn as cells. `columns` and `mode` are how the pane was
+// last drawn; a reload starts this over, and the engine drops its timers.
+const bob: { timer?: Timer; isStarting: boolean; generation: number; frame: 0 | 1; columns?: number; mode?: SceneMode } = {
   isStarting: false,
   generation: 0,
   frame: 0,
+}
+
+/** Milliseconds after an image's first draw before the probe blits it back. */
+export const PROBE_MS = 100
+
+// The probe that learns whether images draw here: at most one waiting at a
+// time. A new session cancels its timer and moves the generation on, so a
+// probe from the session before writes nothing, fired or not.
+const probe: { isPending: boolean; generation: number; timer?: Timer } = { isPending: false, generation: 0 }
+
+/** Forgets any probe of the session that is ending: its timer is cancelled, its answer ignored. */
+function resetProbe(): void {
+  probe.timer?.cancel()
+  probe.timer = undefined
+  probe.isPending = false
+  probe.generation += 1
+}
+
+/**
+ * Blits the drawn image back, the same source: the engine takes it where the
+ * terminal shows images, and refuses it where it drew the image's alt instead.
+ * Either answer is written for the session; a blit that throws counts as a
+ * refusal, as an image the engine cannot place is no image either.
+ */
+async function probeImages($: EngineInterface, source: RgbaSource, generation: number): Promise<void> {
+  let works = false
+
+  try {
+    works = (await $.ui.blit({ requestId: PANE_ID, key: SCENE_IMAGE_KEY, source })).deny === undefined
+  } catch {
+    works = false
+  }
+
+  // A new session started while this probe was waiting: its answer is not that session's.
+  if (probe.generation !== generation) return
+
+  probe.isPending = false
+  probe.timer = undefined
+  await update($, imagesWork, () => works)
 }
 
 const isPaneShown = async ($: EngineInterface): Promise<boolean> =>
@@ -122,14 +165,15 @@ async function bobStep($: EngineInterface): Promise<void> {
 }
 
 /**
- * Starts the bob when the pane is shown on a terminal and none runs yet.
+ * Starts the bob when the pane's scene is drawn as cells and shown, and none
+ * runs yet; an image scene stays still, redrawn only when something changes.
  * Two paths call it (a main turn's start, and a draw while a turn runs), and
  * either can meet a stop across the await. The slot is claimed before it, so
  * a second start returns; and a stop during it (turn.complete, a session
  * start, a close) moves the generation on, so this start makes no timer.
  */
 async function startBob($: EngineInterface): Promise<void> {
-  if (bob.timer !== undefined || bob.isStarting || bob.surface !== 'terminal') return
+  if (bob.timer !== undefined || bob.isStarting || bob.mode !== 'raster') return
   bob.isStarting = true
   const generation = bob.generation
 
@@ -174,6 +218,7 @@ export const register: Register = (on, options) => {
   const hasBand = detail === 'band' || detail === 'pane'
   const bars = pick<Bars>(options.bars, ['hpmp', 'all'], 'hpmp')
   const overrides = parseZones(typeof options.zones === 'string' ? options.zones : '')
+  const graphics = pick<Graphics>(options.graphics, ['auto', 'cells', 'images'], 'auto')
   // Skills a subagent's Skill call is running right now, counted (two
   // subagents may run the same one): their skill.prompt fires inside that
   // call, and must not become the session's quest.
@@ -194,6 +239,8 @@ export const register: Register = (on, options) => {
       await update($, log, () => [])
       await update($, companions, () => [])
       await update($, activity, () => null)
+      await update($, imagesWork, () => null)
+      resetProbe()
       await update($, sessionId, () => id)
     }
 
@@ -414,8 +461,18 @@ export const register: Register = (on, options) => {
   }).catch(($, e, next) => next(e))
 
   on('ui.render', { component: 'Pane', requestId: PANE_ID }, async ($, e) => {
+    // The terminal draws images when they are forced, or in auto until the
+    // probe has found they do not draw here; every other surface, an Svg.
+    const images = await read($, imagesWork)
+    const mode: SceneMode = e.surface !== 'terminal'
+      ? 'svg'
+      : graphics === 'images' || (graphics === 'auto' && images !== false) ? 'image' : 'raster'
+
     bob.columns = e.props.bodyColumns
-    bob.surface = e.surface
+    bob.mode = mode
+
+    // An image scene does not bob: one left from a cells draw stops here.
+    if (mode !== 'raster' && bob.timer !== undefined) stopTimer()
 
     // A turn that began before the pane's first draw had no surface to bob on:
     // the draw starts it. startBob does nothing if a bob already runs.
@@ -434,7 +491,16 @@ export const register: Register = (on, options) => {
       rows: e.viewport?.rows ?? 30,
       frame: 0,
     })
+    const image = mode === 'image' ? sceneImage(view.scene) : undefined
 
-    return drawRoad($, e, view)
+    // The first image of a session in auto: once it is drawn, blit it back to
+    // learn whether the terminal shows it. Writes happen in the timer, not here.
+    if (image && graphics === 'auto' && images === null && !probe.isPending) {
+      probe.isPending = true
+      const generation = probe.generation
+      probe.timer = $.clock.after(PROBE_MS, () => void probeImages($, image, generation))
+    }
+
+    return drawRoad($, e, view, mode, image)
   })
 }
