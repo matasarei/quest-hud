@@ -2,10 +2,15 @@ import { describe, expect, mock, test } from 'claude-code/testing'
 import type { On } from 'claude-code'
 import type { Engine } from 'claude-code/testing'
 
+// The session id the engine answers; a test changes it to stand for /clear.
+const session = { id: 's1' }
+
 // Nothing sits beneath the plugin in a test: these hooks stand for the engine.
 const engine = (on: On, statuses: Array<string | undefined> = []) => {
+  session.id = 's1'
   mock.clock(on, { now: Date.parse('2026-11-01T10:00:00Z') })
   on('command.register', () => ({ value: { command: 'hud' } }))
+  on('session.id', () => ({ value: session.id }))
   on('session.usage', () => ({ value: { startedAt: 0, context: { window: 200_000 }, rateLimits: [] } }))
   on('session.start', (_, e) => ({ cwd: e.cwd }))
   on('skill.prompt', (_, e) => ({ text: e.text }))
@@ -175,7 +180,7 @@ describe('/hud', () => {
     await $.tool.call({ tool: 'TaskCreate', subject: 'two\nlines \u202eevil', description: '' })
     const result = await $.command.run({ command: 'hud', args: '', ...RUN })
     expect(result.text).toContain('· two lines evil')
-    expect((result.text ?? '').split('\n')).toHaveLength(2)
+    expect((result.text ?? '').split('\n')).toHaveLength(3)
   })
 
   test('with no argument prints the state and the task list', async ($, on) => {
@@ -231,4 +236,92 @@ describe('prompts', () => {
       await ui.unmount()
     })
   }
+})
+
+describe('session', () => {
+  test('a reload (same session id) keeps the quest and the tasks', async ($, on) => {
+    engine(on)
+    await implementWithTasks($)
+    await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+    const ui = await $.ui.mount(band('terminal'))
+    expect((await ui.find({ type: 'Text', text: /⚔/ }))?.text).toBe('⚔ gku:implement')
+    expect((await ui.find({ type: 'Text', text: /task \d/ }))?.text).toBe('  task 0/2')
+    await ui.unmount()
+  })
+
+  test('a new session id (/clear) starts the quest and the tasks over', async ($, on) => {
+    engine(on)
+    await implementWithTasks($)
+    session.id = 's2'
+    await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+    const ui = await $.ui.mount(band('terminal'))
+    expect(await ui.find({ type: 'Text', text: /⚔/ })).toBeFalsy()
+    expect(await ui.find({ type: 'Text', text: /task/ })).toBeFalsy()
+    expect((await ui.find({ type: 'Text', text: /Wilds/ }))?.text).toBe('Wilds')
+    await ui.unmount()
+  })
+})
+
+describe('skills run by subagents', () => {
+  // The engine runs a Skill call by expanding the skill: its skill.prompt
+  // fires while the call is still open. The gate holds the call open in the
+  // engine's place, so the test can raise the skill.prompt inside it.
+  const heldSkillCall = (on: On) => {
+    let entered = () => {}
+    let release = () => {}
+    const reached = new Promise<void>(resolve => (entered = resolve))
+    const gate = new Promise<void>(resolve => (release = resolve))
+    on('tool.call', { tool: 'Skill' }, async () => {
+      entered()
+      await gate
+      return { result: { success: true } }
+    })
+    return { reached, release }
+  }
+
+  test('a subagent\'s skill does not become the quest', async ($, on) => {
+    const held = heldSkillCall(on)
+    engine(on)
+    await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+    await $.skill.prompt({ skill: 'implement', pluginName: 'gku', text: 'x', frontmatter: { description: 'Build a task' } })
+    const call = $.tool.call({ tool: 'Skill', skill: 'review', agentId: 'a1' })
+    await held.reached
+    await $.skill.prompt({ skill: 'review', text: 'expanded' })
+    held.release()
+    await call
+    const ui = await $.ui.mount(band('terminal'))
+    expect((await ui.find({ type: 'Text', text: /⚔/ }))?.text).toBe('⚔ gku:implement')
+    await ui.unmount()
+  })
+
+  test('once the subagent\'s call is over, the same skill run by the person sets the quest', async ($, on) => {
+    const held = heldSkillCall(on)
+    engine(on)
+    await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+    const call = $.tool.call({ tool: 'Skill', skill: 'review', agentId: 'a1' })
+    await held.reached
+    held.release()
+    await call
+    await $.skill.prompt({ skill: 'review', text: 'expanded' })
+    const ui = await $.ui.mount(band('terminal'))
+    expect((await ui.find({ type: 'Text', text: /⚔/ }))?.text).toBe('⚔ review')
+    await ui.unmount()
+  })
+})
+
+describe('/hud says what the zone means', () => {
+  test('a planning skill is the Map room, planning and research', async ($, on) => {
+    engine(on)
+    await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+    await $.skill.prompt({ skill: 'plan', pluginName: 'gku', text: 'x', frontmatter: { description: 'Turn a request into a plan' } })
+    const result = await $.command.run({ command: 'hud', args: '', ...RUN })
+    expect(result.text).toContain('  Map room — planning and research')
+  })
+
+  test('with no skill running, the Wilds', async ($, on) => {
+    engine(on)
+    await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+    const result = await $.command.run({ command: 'hud', args: '', ...RUN })
+    expect(result.text).toContain('  Wilds — no skill running')
+  })
 })

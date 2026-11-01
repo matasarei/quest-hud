@@ -25,6 +25,21 @@ export const ZONE_LABEL: Readonly<Record<Zone, string>> = {
   wilds: 'Wilds',
 }
 
+/** What each zone stands for, said once where there is room: the pane and /hud. */
+export const ZONE_MEANING: Readonly<Record<Zone, string>> = {
+  watchtower: "reviewing someone else's change",
+  harbour: 'pull requests and releases',
+  dungeon: 'auditing the whole repository',
+  arena: 'review and tests',
+  forge: 'building and fixing',
+  map: 'planning and research',
+  camp: 'setup and docs',
+  wilds: 'no skill running',
+}
+
+/** `Map room — planning and research`. */
+export const zoneLine = (zone: Zone): string => `${ZONE_LABEL[zone]} — ${ZONE_MEANING[zone]}`
+
 const clamp = (value: number): number => Math.min(100, Math.max(0, value))
 
 export const fromMeasure = (usage: UsageLike): Meters => {
@@ -82,6 +97,18 @@ export const shortTokens = (tokens: number): string => {
 }
 
 export type Tone = 'accent' | 'plain' | 'dim' | 'hp' | 'mp' | 'five' | 'gold'
+
+/** The colour each tone is drawn in; undefined is the surface's own text colour. */
+export const TONE_COLOR: Readonly<Record<Tone, string | undefined>> = {
+  accent: '#c3a6ff',
+  plain: undefined,
+  dim: undefined,
+  hp: '#4fd37a',
+  mp: '#5b9bff',
+  five: '#f0b43a',
+  gold: '#f2d15b',
+}
+
 export type Segment = { text: string; tone: Tone }
 export type Band = { head: Segment[]; meters: Segment[] }
 

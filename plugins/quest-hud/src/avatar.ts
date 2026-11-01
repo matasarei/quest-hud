@@ -45,9 +45,22 @@ const UPPER_HALF = 0x2580
 const LOWER_HALF = 0x2584
 const SPACE = 0x20
 
-const pixel = (map: readonly string[], palette: Palette, x: number, y: number): number | undefined => palette[map[y]?.[x] ?? '.']
+/** Pixels as rows of 0xRRGGBB colours; undefined is an empty pixel. */
+export type Grid = ReadonlyArray<ReadonlyArray<number | undefined>>
+
+/** A pixel map through its palette; a character the palette lacks is empty. */
+export const mapToGrid = (map: readonly string[], palette: Palette): Grid =>
+  map.map(line => [...line].map(char => palette[char]))
+
+const width = (grid: Grid): number => grid[0]?.length ?? 0
 
 /** Cells across and down: one column per pixel, two pixel rows per cell row. */
+export const gridSize = (grid: Grid): { columns: number; rows: number } => ({
+  columns: width(grid),
+  rows: Math.ceil(grid.length / 2),
+})
+
+/** The same for a pixel map. */
 export const rasterSize = (map: readonly string[]): { columns: number; rows: number } => ({
   columns: map[0]?.length ?? 0,
   rows: Math.ceil(map.length / 2),
@@ -58,14 +71,14 @@ export const rasterSize = (map: readonly string[]): { columns: number; rows: num
  * empty uses the lower half block, so no half is painted in the terminal's
  * default foreground; an empty cell is a space on the default colours.
  */
-export const rasterWords = (map: readonly string[], palette: Palette): number[] => {
-  const { columns, rows } = rasterSize(map)
+export const gridWords = (grid: Grid): number[] => {
+  const { columns, rows } = gridSize(grid)
   const words: number[] = []
 
   for (let row = 0; row < rows; row++) {
     for (let x = 0; x < columns; x++) {
-      const top = pixel(map, palette, x, row * 2)
-      const bottom = pixel(map, palette, x, row * 2 + 1)
+      const top = grid[row * 2]?.[x]
+      const bottom = grid[row * 2 + 1]?.[x]
 
       if (top !== undefined) words.push(UPPER_HALF, top, bottom ?? DEFAULT_COLOR)
       else if (bottom !== undefined) words.push(LOWER_HALF, bottom, DEFAULT_COLOR)
@@ -75,6 +88,8 @@ export const rasterWords = (map: readonly string[], palette: Palette): number[] 
 
   return words
 }
+
+export const rasterWords = (map: readonly string[], palette: Palette): number[] => gridWords(mapToGrid(map, palette))
 
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
 
@@ -98,8 +113,8 @@ export const toBase64 = (bytes: Uint8Array): string => {
 }
 
 /** `RasterProps.cells`: the words as little-endian u32s, base64. */
-export const toRasterCells = (map: readonly string[], palette: Palette): string => {
-  const words = rasterWords(map, palette)
+export const gridToRasterCells = (grid: Grid): string => {
+  const words = gridWords(grid)
   const view = new DataView(new ArrayBuffer(words.length * 4))
 
   words.forEach((word, i) => view.setUint32(i * 4, word, true))
@@ -107,19 +122,31 @@ export const toRasterCells = (map: readonly string[], palette: Palette): string 
   return toBase64(new Uint8Array(view.buffer))
 }
 
+export const toRasterCells = (map: readonly string[], palette: Palette): string => gridToRasterCells(mapToGrid(map, palette))
+
 const hex = (color: number): string => `#${color.toString(16).padStart(6, '0')}`
 
-/** `Svg.source`: one rectangle per pixel, nothing else. */
-export const toSvg = (map: readonly string[], palette: Palette): string => {
-  const width = map[0]?.length ?? 0
+/**
+ * `Svg.source`: rectangles and nothing else. A run of same-coloured pixels in
+ * a row is one rectangle, which keeps a wide scene's markup small.
+ */
+export const gridToSvg = (grid: Grid): string => {
   let rects = ''
 
-  map.forEach((line, y) => {
-    for (let x = 0; x < line.length; x++) {
-      const color = pixel(map, palette, x, y)
-      if (color !== undefined) rects += `<rect x="${x}" y="${y}" width="1" height="1" fill="${hex(color)}"/>`
+  grid.forEach((line, y) => {
+    let x = 0
+
+    while (x < line.length) {
+      const color = line[x]
+      let end = x + 1
+
+      while (end < line.length && line[end] === color) end++
+      if (color !== undefined) rects += `<rect x="${x}" y="${y}" width="${end - x}" height="1" fill="${hex(color)}"/>`
+      x = end
     }
   })
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${map.length}" shape-rendering="crispEdges">${rects}</svg>`
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width(grid)} ${grid.length}" shape-rendering="crispEdges">${rects}</svg>`
 }
+
+export const toSvg = (map: readonly string[], palette: Palette): string => gridToSvg(mapToGrid(map, palette))
