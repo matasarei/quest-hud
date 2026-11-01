@@ -25,21 +25,42 @@ export const fromSkill = (skill: string, zone: Zone, now: number): Quest => ({
 
 const hasOpenTask = (tasks: readonly Task[]): boolean => tasks.some(task => task.status !== 'completed')
 
+// What a person pasted rather than wrote: a pasted block and fenced code,
+// each closed or running to the end. Neither is the person's own words.
+const PASTED = /<pasted_content\b[^>]*>[\s\S]*?(?:<\/pasted_content\b[^>]*>|$)/g
+const FENCED = /```[\s\S]*?(?:```|$)/g
+const LETTER = /\p{L}/u
+
+/**
+ * The words a person wrote in a prompt: pasted blocks and fenced code taken
+ * out, and every line without a letter dropped (box drawing, block glyphs,
+ * bare punctuation). Empty when the prompt held nothing else.
+ */
+export const ownWords = (text: string): string =>
+  text
+    .replace(PASTED, '\n')
+    .replace(FENCED, '\n')
+    .split('\n')
+    .filter(line => LETTER.test(line))
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
 /**
  * The quest after a plain prompt. A prompt titles a new quest when there is
- * none yet, or when the current one has no open task and the prompt has at
- * least three words, so "yes" or "go on" never retitle the work. A prompt
- * that starts with `/` is a command, never a title.
+ * none yet, or when the current one has no open task and the person's own
+ * words in it number at least three, so "yes", "go on" or a bare paste never
+ * retitle the work. A prompt that starts with `/` is a command, never a title.
  */
 export const fromPrompt = (current: Quest | null, text: string, tasks: readonly Task[], now: number): Quest | null => {
-  const trimmed = text.trim()
+  const own = ownWords(text)
 
-  if (trimmed === '' || trimmed.startsWith('/')) {
+  if (own === '' || text.trim().startsWith('/')) {
     return current
   }
 
-  const words = trimmed.split(/\s+/).length
+  const words = own.split(/\s+/).length
   const isNew = current === null || (!hasOpenTask(tasks) && words >= 3)
 
-  return isNew ? { title: cleanTitle(trimmed), zone: 'wilds', startedAt: now } : current
+  return isNew ? { title: cleanTitle(own), zone: 'wilds', startedAt: now } : current
 }
