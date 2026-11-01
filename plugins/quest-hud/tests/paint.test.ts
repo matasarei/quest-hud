@@ -2,6 +2,7 @@ import { describe, expect, test } from 'claude-code/testing'
 
 import { contains, mirror, translate, type Picture } from '../src/paint/picture'
 import { adler32, crc32, deflate, pngBytes } from '../src/paint/png'
+import { bayer, ditherBand, downsample, gridToRgb, mirrorGrid, spriteGrid, stamp, type Canvas } from '../src/paint/pixels'
 import { rasterize, rgbToGrid, type Rgb } from '../src/paint/raster'
 import { pictureToSvg } from '../src/paint/svg'
 
@@ -220,5 +221,48 @@ describe('the Svg writer', () => {
     expect(svg.includes('stroke-linecap="round"')).toBe(true)
     expect(svg.includes('fill-opacity="0.5"')).toBe(true)
     expect(svg.indexOf('fill="#1f1e1d"') < svg.indexOf('url(#g0)')).toBe(true)
+  })
+})
+
+describe('pixel art', () => {
+  test('hard edges: a pixel is the shape\'s colour or not at all', () => {
+    const narrow = rasterize([{ kind: 'rect', x: 0, y: 0, w: 0.4, h: 1, fill: 0xffffff }], 1, 1, 1, 0, { pixel: true })
+    const wide = rasterize([{ kind: 'rect', x: 0, y: 0, w: 0.6, h: 1, fill: 0xffffff }], 1, 1, 1, 0, { pixel: true })
+    expect([narrow.data[0], wide.data[0]]).toEqual([0, 255])
+  })
+
+  test('a gradient is a few flat bands dithered into each other, darkest at its top', () => {
+    const fill = { top: 0x000000, bottom: 0xffffff, y0: 0, y1: 32 }
+    const rgb = rasterize([{ kind: 'rect', x: 0, y: 0, w: 8, h: 32, fill }], 8, 32, 1, 0, { pixel: true, bands: 5 })
+    const reds = Array.from({ length: 32 * 8 }, (_, i) => rgb.data[i * 3] as number)
+    expect(new Set(reds).size <= 5).toBe(true)
+    const rowMean = (y: number) => reds.slice(y * 8, y * 8 + 8).reduce((a, b) => a + b, 0) / 8
+    expect(rowMean(0) < rowMean(16) && rowMean(16) < rowMean(31)).toBe(true)
+  })
+
+  test('half see-through is half the pixels of a block drawn, in the Bayer pattern', () => {
+    const rgb = rasterize([{ kind: 'rect', x: 0, y: 0, w: 4, h: 4, fill: 0xffffff, opacity: 0.5 }], 4, 4, 1, 0, { pixel: true })
+    const drawn = Array.from({ length: 16 }, (_, i) => rgb.data[i * 3]).filter(v => v === 255).length
+    expect(drawn).toBe(8)
+    expect(ditherBand(0.5, 3, 0, 0)).toBe(1)
+    expect(bayer(0, 0) < bayer(1, 1)).toBe(true)
+  })
+
+  test('sprites: palette keys to colours, \'.\' to nothing; mirrored; stamped where it fits', () => {
+    const sprite = { rows: ['a.', 'bb'], palette: { a: 0x111111, b: 0x222222 } }
+    expect(spriteGrid(sprite)).toEqual([[0x111111, undefined], [0x222222, 0x222222]])
+    expect(mirrorGrid(spriteGrid(sprite))).toEqual([[undefined, 0x111111], [0x222222, 0x222222]])
+    const canvas: Canvas = [[0, 0, 0], [0, 0, 0]]
+    stamp(canvas, spriteGrid(sprite), 2, 0)
+    expect(canvas).toEqual([[0, 0, 0x111111], [0, 0, 0x222222]])
+  })
+
+  test('down by blocks keeps each block\'s most common colour; up by squares keeps every pixel', () => {
+    expect(downsample([[1, 1], [1, 2]], 2)).toEqual([[1]])
+    expect(downsample([[1, 2], [2, 1]], 2)).toEqual([[1]])
+    expect(downsample([[1, 2, 3, 3], [2, 2, 3, 4]], 2)).toEqual([[2, 3]])
+    const rgb = gridToRgb([[0xff0000, 0x00ff00]], 2)
+    expect([rgb.width, rgb.height]).toEqual([4, 2])
+    expect([...rgb.data.slice(0, 12)]).toEqual([255, 0, 0, 255, 0, 0, 0, 255, 0, 0, 255, 0])
   })
 })
