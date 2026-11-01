@@ -97,6 +97,18 @@ export const shortTokens = (tokens: number): string => {
 }
 
 export type Tone = 'accent' | 'plain' | 'dim' | 'hp' | 'mp' | 'five' | 'gold'
+
+/** The colour each tone is drawn in; undefined is the surface's own text colour. */
+export const TONE_COLOR: Readonly<Record<Tone, string | undefined>> = {
+  accent: '#c3a6ff',
+  plain: undefined,
+  dim: undefined,
+  hp: '#4fd37a',
+  mp: '#5b9bff',
+  five: '#f0b43a',
+  gold: '#f2d15b',
+}
+
 export type Segment = { text: string; tone: Tone }
 export type Band = { head: Segment[]; meters: Segment[] }
 

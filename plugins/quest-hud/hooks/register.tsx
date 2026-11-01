@@ -7,11 +7,14 @@ import type { EngineInterface, Register } from 'claude-code'
 import { AVATAR_SMALL, MAGE, rasterSize, toRasterCells, toSvg } from '../src/avatar'
 import { activeCompanions, sameCompanions } from '../src/companions'
 import { appendEntry, castText, scoutCounts, scoutText } from '../src/log'
-import { bandModel, fromMeasure, shortTokens, statusText, ZONE_LABEL, zoneLine, type Bars, type Tone } from '../src/meters'
+import { bandModel, fromMeasure, shortTokens, statusText, TONE_COLOR, ZONE_LABEL, zoneLine, type Bars } from '../src/meters'
 import { afterPrompt, cleanTitle, fromSkill } from '../src/quest'
+import { road } from '../src/road'
 import { applyTaskCall } from '../src/tasks'
 import { parseZones, zoneFor } from '../src/zones'
 import type { LogEntry } from '../types'
+import { drawRoad, PANE_ID, PANE_TITLE } from './pane'
+
 // The values the HUD keeps for the session, each declared in types/index.d.ts.
 // The engine lists what a module reads and writes from atoms defined in the
 // file that uses them, so they live here; the pane draws from values passed in.
@@ -24,7 +27,8 @@ const companions = atom({ plugin: 'quest-hud', key: 'companions' } as const, [])
 const activity = atom({ plugin: 'quest-hud', key: 'activity' } as const, null)
 const isWorking = atom({ plugin: 'quest-hud', key: 'isWorking' } as const, false)
 
-type Detail = 'off' | 'status' | 'band'
+/** off, a status entry, the band, or the band and the Road pane opened at the start. */
+type Detail = 'off' | 'status' | 'band' | 'pane'
 
 const pick = <T extends string>(value: unknown, allowed: readonly T[], fallback: T): T =>
   typeof value === 'string' && (allowed as readonly string[]).includes(value) ? (value as T) : fallback
@@ -35,16 +39,6 @@ const pick = <T extends string>(value: unknown, allowed: readonly T[], fallback:
 const PERSON_ORIGINS: ReadonlySet<string> = new Set(['composer', 'bridge', 'sdk'])
 
 const TASK_TOOLS: ReadonlySet<string> = new Set(['TaskCreate', 'TaskUpdate', 'TodoWrite'])
-
-const COLOR: Readonly<Record<Tone, string | undefined>> = {
-  accent: '#c3a6ff',
-  plain: undefined,
-  dim: undefined,
-  hp: '#4fd37a',
-  mp: '#5b9bff',
-  five: '#f0b43a',
-  gold: '#f2d15b',
-}
 
 const AVATAR_CELLS = toRasterCells(AVATAR_SMALL, MAGE)
 const AVATAR_SVG = toSvg(AVATAR_SMALL, MAGE)
@@ -92,7 +86,8 @@ async function refreshCompanions($: EngineInterface): Promise<void> {
 }
 
 export const register: Register = (on, options) => {
-  const detail = pick<Detail>(options.detail, ['off', 'status', 'band'], 'band')
+  const detail = pick<Detail>(options.detail, ['off', 'status', 'band', 'pane'], 'band')
+  const hasBand = detail === 'band' || detail === 'pane'
   const bars = pick<Bars>(options.bars, ['hpmp', 'all'], 'hpmp')
   const overrides = parseZones(typeof options.zones === 'string' ? options.zones : '')
   // Skills a subagent's Skill call is running right now, counted (two
@@ -122,6 +117,11 @@ export const register: Register = (on, options) => {
     const usage = await $.session.usage()
     await update($, meters, () => fromMeasure(usage))
     await showStatus($, detail, bars)
+
+    // Unasked, the engine places it only from 144 columns; below that it waits.
+    if (detail === 'pane') {
+      await $.ui.open({ id: PANE_ID, title: PANE_TITLE })
+    }
 
     return next(e)
   }).catch(($, e, next) => next(e))
@@ -260,6 +260,11 @@ export const register: Register = (on, options) => {
       return { text: help($.plugin.root) }
     }
 
+    if (e.args.trim() === 'pane') {
+      const opened = await $.ui.open({ id: PANE_ID, title: PANE_TITLE })
+      return { text: opened.isPlaced ? 'The Road is open.' : `The Road waits: ${opened.reason}` }
+    }
+
     const current = await read($, quest)
     const list = await read($, tasks)
     const lines = [
@@ -274,7 +279,7 @@ export const register: Register = (on, options) => {
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     const below = await next(e)
 
-    if (detail !== 'band' || e.props.hasSurvey) {
+    if (!hasBand || e.props.hasSurvey) {
       return below
     }
 
@@ -285,7 +290,7 @@ export const register: Register = (on, options) => {
     const row = (key: string, segments: typeof band.head) => (
       <Box key={key} flexDirection="row">
         {segments.map(segment => (
-          <Text color={COLOR[segment.tone]} dimColor={segment.tone === 'dim'} wrap="truncate-end">
+          <Text color={TONE_COLOR[segment.tone]} dimColor={segment.tone === 'dim'} wrap="truncate-end">
             {segment.text}
           </Text>
         ))}
@@ -313,5 +318,22 @@ export const register: Register = (on, options) => {
         {below}
       </Box>
     )
+  })
+
+  on('ui.render', { component: 'Pane', requestId: PANE_ID }, async ($, e) => {
+    const view = road({
+      quest: await read($, quest),
+      tasks: await read($, tasks),
+      meters: await read($, meters),
+      log: await read($, log),
+      companions: await read($, companions),
+      activity: await read($, activity),
+      bars,
+      columns: e.props.bodyColumns,
+      rows: e.viewport?.rows ?? 30,
+      frame: 0,
+    })
+
+    return drawRoad($, e, view)
   })
 }
