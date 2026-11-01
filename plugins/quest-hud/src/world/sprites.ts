@@ -1165,43 +1165,44 @@ export const PROPS: Readonly<Record<PropName, Sprite>> = {
 }
 
 /**
- * The band's portrait above the prompt, drawn for its size rather than shrunk
- * from the wizard's sprite: his pointed hat, his face and white beard, his
- * staff with its blue orb. 20 × 12 art pixels — 10 columns by 3 rows of
- * quadrant cells, 2 × 2 pixels a cell — each row doubled, as a cell row is two
- * art rows deep, and each 2 × 2 block in at most two colours, as a quadrant
- * cell shows no more.
+ * The band's portrait above the prompt, the Road's wizard drawn small: his
+ * pointed hat, his face under the brim, his white beard over the purple robe,
+ * and his hand on the staff with its blue orb. 20 × 12 art pixels — 10
+ * columns by 3 rows of quadrant cells, 2 × 2 pixels a cell — each row
+ * doubled, as a cell row is two art rows deep, and each 2 × 2 block in at
+ * most two colours, as a quadrant cell shows no more.
  */
 export const BAND_ICON = sprite([
-  '........((..........',
-  '........((..........',
-  '....))))))))))....~~',
-  '....))))))))))....~~',
-  '.....]s1ss1s].....w.',
-  '.....]s1ss1s].....w.',
-  '.....]ssssss]...ssw.',
-  '.....]ssssss]...ssw.',
-  '.....]]]]]]]^.....w.',
-  '.....]]]]]]]^.....w.',
-  '......]]]]]^......w.',
-  '......]]]]]^......w.',
+  '.......((...........',
+  '.......((...........',
+  '......((((....~~....',
+  '......((((....~~....',
+  '..))))))))))..w.....',
+  '..))))))))))..w.....',
+  '..]]ssssss]]..w.....',
+  '..]]ssssss]]..w.....',
+  '..]]]]]]]]]]ssw.....',
+  '..]]]]]]]]]]ssw.....',
+  '..((]]]]]]((..w.....',
+  '..((]]]]]]((..w.....',
 ])
 
 /**
- * The band's portrait casting: his hand up, the orb flaring with gold sparks.
- * The staff stays where it is, as long as at rest and down to the bottom row.
+ * The band's portrait casting: his hand up the staff, the orb flaring with
+ * gold sparks. The staff stays where it is, as long as at rest and down to
+ * the bottom row.
  */
 export const BAND_CAST = sprite([
-  '........((.......{``',
-  '........((.......{``',
-  '....))))))))))..{.~~',
-  '....))))))))))..{.~~',
-  '.....]s1ss1s]...ssw.',
-  '.....]s1ss1s]...ssw.',
-  '.....]ssssss].....w.',
-  '.....]ssssss].....w.',
-  '.....]]]]]]]^.....w.',
-  '.....]]]]]]]^.....w.',
-  '......]]]]]^......w.',
-  '......]]]]]^......w.',
+  '.......((.....``{...',
+  '.......((.....``{...',
+  '......((((....~~.{..',
+  '......((((....~~.{..',
+  '..))))))))))..w.....',
+  '..))))))))))..w.....',
+  '..]]ssssss]]ssw.....',
+  '..]]ssssss]]ssw.....',
+  '..]]]]]]]]]]..w.....',
+  '..]]]]]]]]]]..w.....',
+  '..((]]]]]]((..w.....',
+  '..((]]]]]]((..w.....',
 ])
