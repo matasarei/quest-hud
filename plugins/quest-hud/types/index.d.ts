@@ -41,10 +41,13 @@ export type FightKind = 'test' | 'lint'
 export type Foe = 'none' | 'fighting' | 'standing'
 export type Foes = Readonly<Record<FightKind, Foe>>
 
+/** The characters a session's gh and glab calls brought to the Road. */
+export type Allies = Readonly<{ octopus: boolean; fox: boolean }>
+
 /** One line of the pane's log: what Claude did, as Claude Code reported it. */
 export type LogEntry = {
   at: number
-  kind: 'skill' | 'scout' | 'cast' | 'fork' | 'task' | 'plan' | 'camp' | 'fight' | 'loot'
+  kind: 'skill' | 'scout' | 'cast' | 'fork' | 'task' | 'plan' | 'camp' | 'fight' | 'loot' | 'ally'
   text: string
   /** The main turn it happened in: scout lines of one turn merge. */
   turn?: string
@@ -76,6 +79,8 @@ declare module 'claude-code' {
       foes: Foes
       /** The commits made this session: a chest on the Road once there is one. */
       loot: number
+      /** The octopus once gh ran this session, the fox once glab did. */
+      allies: Allies
     }
   }
 }

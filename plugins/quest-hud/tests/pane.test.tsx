@@ -362,12 +362,16 @@ describe('the monsters on the Road', () => {
     expect(after).not.toBe(before)
   })
 
-  test('at 200 columns with both up, the desktop Svg stays under the cap', async ($, on) => {
+  test('at 200 columns with everything up, the desktop Svg stays under the cap', async ($, on) => {
     engine(on)
     await implementing($)
     await lose($)
     world.bash = { error: 'Exit code 1' }
     await $.tool.call({ tool: 'Bash', command: 'npx eslint .', description: '' })
+    world.bash = { stdout: '[main 2af33ea] x' }
+    await $.tool.call({ tool: 'Bash', command: 'git commit -m x && gh pr view && glab mr view', description: '' })
+    expect(world.state.allies).toEqual({ octopus: true, fox: true })
+    expect(world.state.loot).toBe(1)
     const ui = await $.ui.mount(pane('desktop', 200))
     expect(String((await ui.find({ type: 'Svg' }))?.props.source).length < 131_072).toBe(true)
     await ui.unmount()

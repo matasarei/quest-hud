@@ -223,3 +223,49 @@ describe('loot, from commits', () => {
     expect(await stateOf($, 'loot')).toBe(0)
   })
 })
+
+describe('the octopus and the fox, from gh and glab', () => {
+  const allies = ($: Parameters<typeof start>[0]) => stateOf($, 'allies')
+
+  test('gh brings the octopus; a PR opened and merged is logged, a view is not', async ($, on) => {
+    engine(on)
+    await start($)
+    world.bash = { stdout: '[{"number":3}]' }
+    await $.tool.call({ tool: 'Bash', command: 'gh pr view --json number', description: '' })
+    expect(await allies($)).toEqual({ octopus: true, fox: false })
+    world.bash = { stdout: 'https://github.com/o/r/pull/3\n' }
+    await $.tool.call({ tool: 'Bash', command: 'gh pr create --title x --body-file b.md', description: '' })
+    world.bash = { stdout: '' }
+    await $.tool.call({ tool: 'Bash', command: 'gh pr merge 3 --merge', description: '' })
+    expect(await texts($)).toEqual(['PR #3 opened', 'PR #3 merged'])
+  })
+
+  test('failed checks are logged though the call errored', async ($, on) => {
+    engine(on)
+    await start($)
+    world.bash = { error: 'Exit code 8\nsome checks failed' }
+    await $.tool.call({ tool: 'Bash', command: 'gh pr checks 3', description: '' })
+    expect(await texts($)).toEqual(['PR #3 checks failed'])
+  })
+
+  test('glab brings the fox', async ($, on) => {
+    engine(on)
+    await start($)
+    world.bash = { stdout: 'https://gitlab.com/o/r/-/merge_requests/12\n' }
+    await $.tool.call({ tool: 'Bash', command: 'glab mr create --fill', description: '' })
+    expect(await allies($)).toEqual({ octopus: false, fox: true })
+    expect(await texts($)).toEqual(['MR !12 opened'])
+  })
+
+  test('a subagent\'s gh call brings no one, and a new session sends them home', async ($, on) => {
+    engine(on)
+    await start($)
+    await $.tool.call({ tool: 'Bash', command: 'gh pr list', description: '', agentId: 'a1' })
+    expect(await allies($)).toEqual({ octopus: false, fox: false })
+    await $.tool.call({ tool: 'Bash', command: 'gh pr list && glab mr list', description: '' })
+    expect(await allies($)).toEqual({ octopus: true, fox: true })
+    world.id = 's2'
+    await start($)
+    expect(await allies($)).toEqual({ octopus: false, fox: false })
+  })
+})

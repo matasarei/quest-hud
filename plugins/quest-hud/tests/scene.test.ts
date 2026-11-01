@@ -2,7 +2,7 @@ import { describe, expect, test } from 'claude-code/testing'
 
 import { SPRITES } from '../src/art/sprites'
 import {
-  avatarX, BACKDROPS, propsWidth, FLAG_WIDTH, fitWaypoints, flagSlots, FOE_COLOR, foeX, GROUND_ROW, half, MAX_FLAGS, MAX_GHOSTS, roadWidth, scene,
+  ALLY_COLOR, avatarX, BACKDROPS, propsWidth, FLAG_WIDTH, fitWaypoints, flagSlots, FOE_COLOR, foeX, GROUND_ROW, half, MAX_FLAGS, MAX_GHOSTS, roadWidth, scene,
   SCENE_HEIGHT, skyColor, waypointsOf, waypointX, WIZARD_COLOR, type Waypoint,
 } from '../src/scene'
 import type { Task, Zone } from '../types'
@@ -224,5 +224,28 @@ describe('the chest', () => {
     const flags = fitWaypoints(tasks, flagSlots(road))
     const last = waypointX(flags.length - 1, flags.length, road)
     expect(last + FLAG_WIDTH <= road).toBe(true)
+  })
+})
+
+describe('the allies', () => {
+  const columnsOf = (grid: ReturnType<typeof scene>, color: number): number[] =>
+    [...new Set(grid.flatMap(line => line.flatMap((c, x) => (c === color ? [x] : []))))].sort((a, b) => a - b)
+
+  test('the octopus and the fox stand left of the chest, the road giving them room', () => {
+    const grid = scene({ columns: 160, zone: 'wilds', waypoints: [], companions: 0, loot: 1, allies: { octopus: true, fox: true }, frame: 0 })
+    const octopus = columnsOf(grid, ALLY_COLOR.octopus)
+    const fox = columnsOf(grid, ALLY_COLOR.fox)
+    const propsStart = 160 - 2 - (propsWidth('wilds') - 4)
+    const chestStart = propsStart - SPRITES.chest.width - 2
+    expect(octopus.length > 0 && fox.length > 0).toBe(true)
+    expect(octopus[octopus.length - 1]! < chestStart).toBe(true)
+    expect(fox[fox.length - 1]! < octopus[0]!).toBe(true)
+    expect(roadWidth(160, 'wilds', { loot: 1, allies: { octopus: true, fox: true } })).toBe(roadWidth(160, 'wilds') - 3 * (16 + 2))
+  })
+
+  test('neither, until they came', () => {
+    const grid = scene({ columns: 160, zone: 'wilds', waypoints: [], companions: 0, allies: { octopus: false, fox: false }, frame: 0 })
+    expect(columnsOf(grid, ALLY_COLOR.octopus)).toEqual([])
+    expect(columnsOf(grid, ALLY_COLOR.fox)).toEqual([])
   })
 })

@@ -5,7 +5,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, Timer } from 'claude-code'
 
 import { AVATAR_SMALL, MAGE, rasterSize, toRasterCells, toSvg } from '../src/avatar'
-import { commandKinds, endFights, fightKinds, fightOutcome, fightText, lootText, NO_FOES, startFights, stdoutOf } from '../src/bash'
+import { commandKinds, endFights, fightKinds, fightOutcome, fightText, forgeEvent, lootText, NO_FOES, startFights, stdoutOf } from '../src/bash'
 import { activeCompanions, sameCompanions } from '../src/companions'
 import { appendEntry, castText, scoutCounts, scoutText } from '../src/log'
 import { bandModel, fromMeasure, shortTokens, statusText, TONE_COLOR, ZONE_LABEL, zoneLine, type Bars } from '../src/meters'
@@ -13,7 +13,7 @@ import { afterPrompt, cleanTitle, fromSkill } from '../src/quest'
 import { road, roadScene } from '../src/road'
 import { applyTaskCall } from '../src/tasks'
 import { parseZones, zoneFor } from '../src/zones'
-import type { FightKind, Foes, LogEntry } from '../types'
+import type { Allies, FightKind, Foes, LogEntry } from '../types'
 import type { RgbaSource } from '../src/avatar'
 import { drawRoad, PANE_ID, PANE_TITLE, SCENE_IMAGE_KEY, SCENE_KEY, sceneCells, sceneImage, type SceneMode } from './pane'
 
@@ -31,6 +31,8 @@ const isWorking = atom({ plugin: 'quest-hud', key: 'isWorking' } as const, false
 const imagesWork = atom({ plugin: 'quest-hud', key: 'imagesWork' } as const, null)
 const foes = atom({ plugin: 'quest-hud', key: 'foes' } as const, NO_FOES)
 const loot = atom({ plugin: 'quest-hud', key: 'loot' } as const, 0)
+const NO_ALLIES: Allies = { octopus: false, fox: false }
+const allies = atom({ plugin: 'quest-hud', key: 'allies' } as const, NO_ALLIES)
 
 /** off, a status entry, the band, or the band and the Road pane opened at the start. */
 type Detail = 'off' | 'status' | 'band' | 'pane'
@@ -139,6 +141,7 @@ async function blitScene($: EngineInterface, frame: 0 | 1): Promise<void> {
     activity: await read($, activity),
     foes: await read($, foes),
     loot: await read($, loot),
+    allies: await read($, allies),
     columns: bob.columns,
     frame,
   })
@@ -220,6 +223,17 @@ async function endFight($: EngineInterface, kinds: readonly FightKind[], before:
   await addLog($, { kind: 'fight', text: fightText(kinds, outcome, who) })
 }
 
+/** A Bash call's gh or glab part: brings its character, and logs what it did to a PR or MR. */
+async function forgeCall($: EngineInterface, command: string, ok: boolean, stdout: string): Promise<void> {
+  for (const kind of commandKinds(command)) {
+    if (kind !== 'gh' && kind !== 'glab') continue
+    const ally = kind === 'gh' ? 'octopus' : 'fox'
+    await update($, allies, now => (now[ally] ? now : { ...now, [ally]: true }))
+    const event = forgeEvent(kind, command, ok, stdout)
+    if (event !== undefined) await addLog($, { kind: 'ally', text: event })
+  }
+}
+
 /** Rereads the subagents at work and logs who joined and who left. */
 async function refreshCompanions($: EngineInterface): Promise<void> {
   const now = activeCompanions(await $.agent.list())
@@ -261,6 +275,7 @@ export const register: Register = (on, options) => {
       await update($, imagesWork, () => null)
       await update($, foes, () => NO_FOES)
       await update($, loot, () => 0)
+      await update($, allies, () => NO_ALLIES)
       resetProbe()
       await update($, sessionId, () => id)
     }
@@ -331,6 +346,12 @@ export const register: Register = (on, options) => {
       })
 
     if (fights.length > 0) await endFight($, fights, before, ran, e.agentId)
+
+    // gh brings the octopus and glab the fox, whatever the call; a change to a
+    // PR or MR is logged, and failed checks too, so this comes before the error return.
+    if (e.tool === 'Bash' && e.agentId === undefined && ran.deny === undefined) {
+      await forgeCall($, e.command, ran.isError !== true, stdoutOf(ran.result))
+    }
 
     // A subagent's own calls stay out of the session's task list and log.
     if (e.agentId !== undefined || ran.deny !== undefined || ran.isError === true) {
@@ -526,6 +547,7 @@ export const register: Register = (on, options) => {
       activity: await read($, activity),
       foes: await read($, foes),
       loot: await read($, loot),
+      allies: await read($, allies),
       bars,
       columns: e.props.bodyColumns,
       rows: e.viewport?.rows ?? 30,

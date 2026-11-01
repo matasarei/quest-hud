@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { type BashKind, commandKinds, commitLoot, endFights, fightKinds, fightOutcome, fightScore, fightText, NO_FOES, lootText, SCORE_TAIL, startFights, stdoutOf } from '../src/bash'
+import { type BashKind, commandKinds, commitLoot, endFights, fightKinds, fightOutcome, fightScore, fightText, forgeEvent, lootText, NO_FOES, SCORE_TAIL, startFights, stdoutOf } from '../src/bash'
 
 // Each command as Claude might run it, and the kinds it holds, in order.
 const COMMANDS: ReadonlyArray<readonly [string, readonly BashKind[]]> = [
@@ -214,5 +214,34 @@ describe('loot', () => {
     expect(stdoutOf({ stdout: 'x', stderr: '' })).toBe('x')
     expect(stdoutOf('Exit code 1')).toBe('')
     expect(stdoutOf(undefined)).toBe('')
+  })
+})
+
+describe('forgeEvent', () => {
+  test('gh: opened from the URL it prints, merged from the number it was given', () => {
+    expect(forgeEvent('gh', 'gh pr create --title "x" --body-file b.md', true, 'https://github.com/o/r/pull/3\n')).toBe('PR #3 opened')
+    expect(forgeEvent('gh', 'cd /repo && gh pr merge 3 --merge 2>&1 | tail -3', true, '')).toBe('PR #3 merged')
+    expect(forgeEvent('gh', 'gh pr merge --squash', true, '')).toBe('PR merged')
+    expect(forgeEvent('gh', 'gh pr close https://github.com/o/r/pull/7', true, '')).toBe('PR #7 closed')
+    expect(forgeEvent('gh', 'gh pr ready 4', true, '')).toBe('PR #4 ready')
+  })
+
+  test('gh: checks pass or fail; any other call, or a failed one, is not logged', () => {
+    expect(forgeEvent('gh', 'gh pr checks 3', true, '')).toBe('PR #3 checks passed')
+    expect(forgeEvent('gh', 'gh pr checks 3 --watch', false, '')).toBe('PR #3 checks failed')
+    expect(forgeEvent('gh', 'gh pr view --json number', true, '{}')).toBe(undefined)
+    expect(forgeEvent('gh', 'gh run list', true, '')).toBe(undefined)
+    expect(forgeEvent('gh', 'gh pr merge 3', false, '')).toBe(undefined)
+  })
+
+  test('glab: merge requests', () => {
+    expect(forgeEvent('glab', 'glab mr create --fill', true, 'https://gitlab.com/o/r/-/merge_requests/12\n')).toBe('MR !12 opened')
+    expect(forgeEvent('glab', 'glab mr merge 12', true, '')).toBe('MR !12 merged')
+    expect(forgeEvent('glab', 'glab ci status', true, '')).toBe(undefined)
+  })
+
+  test('a command without that tool gives nothing', () => {
+    expect(forgeEvent('glab', 'gh pr merge 3', true, '')).toBe(undefined)
+    expect(forgeEvent('gh', 'echo "gh pr merge 3"', true, '')).toBe(undefined)
   })
 })

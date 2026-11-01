@@ -269,6 +269,31 @@ export const lootText = (stdout: string): string => {
   return sha === undefined ? 'a commit' : cleanTitle(`${sha} ${subject ?? ''}`)
 }
 
+/** A PR or MR number from an argument: `3`, or a URL ending in one. */
+const changeNumber = (word: string | undefined): string | undefined =>
+  word === undefined ? undefined : /^\d+$/.test(word) ? word : /\/(?:pull|merge_requests)\/(\d+)/.exec(word)?.[1]
+
+/**
+ * The log line for a gh or glab call that changed a pull or merge request:
+ * opened, merged, ready, closed, and checks passed or failed. Undefined for
+ * every other call, and for a failed one but the checks.
+ */
+export const forgeEvent = (kind: 'gh' | 'glab', command: string, ok: boolean, stdout: string): string | undefined => {
+  const words = commandWords(command).map(unwrap).find(found => kindOf(found) === kind)
+  if (words === undefined) return undefined
+
+  const [, noun, verb, ...rest] = words
+  if (noun !== (kind === 'gh' ? 'pr' : 'mr')) return undefined
+
+  const number = verb === 'create' ? changeNumber(/\S*\/(?:pull|merge_requests)\/\d+/.exec(stdout)?.[0]) : changeNumber(rest.find(word => !word.startsWith('-')))
+  const name = kind === 'gh' ? (number ? `PR #${number}` : 'PR') : number ? `MR !${number}` : 'MR'
+
+  if (verb === 'checks') return `${name} checks ${ok ? 'passed' : 'failed'}`
+  if (!ok) return undefined
+  const done: Readonly<Record<string, string>> = { create: 'opened', merge: 'merged', ready: 'ready', close: 'closed' }
+  return verb !== undefined && done[verb] !== undefined ? `${name} ${done[verb]}` : undefined
+}
+
 /** The kinds a command line holds, each once, in the order they first appear. */
 export const commandKinds = (command: string): BashKind[] => {
   const kinds: BashKind[] = []
