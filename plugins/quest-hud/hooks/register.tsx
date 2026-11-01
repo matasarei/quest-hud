@@ -393,6 +393,11 @@ export const register: Register = (on, options) => {
   on('ui.render', { component: 'Pane', requestId: PANE_ID }, async ($, e) => {
     bob.columns = e.props.bodyColumns
     bob.surface = e.surface
+
+    // A turn that began before the pane's first draw had no surface to bob on:
+    // the draw starts it. startBob does nothing if a bob already runs.
+    if (await read($, isWorking)) void startBob($)
+
     const view = road({
       quest: await read($, quest),
       tasks: await read($, tasks),

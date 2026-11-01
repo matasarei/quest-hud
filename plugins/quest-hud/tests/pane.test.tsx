@@ -184,3 +184,16 @@ describe('the bob and a new session', () => {
     await ui.unmount()
   })
 })
+
+describe('the bob and the first draw', () => {
+  test('a turn that started before the pane was first drawn bobs once it is drawn', async ($, on) => {
+    const clock = engine(on)
+    world.panes = [{ id: 'quest-hud', isShown: true }]
+    await implementing($)
+    await $.turn.start({ text: 'go', turnId: 'turn-1' })
+    const ui = await $.ui.mount(pane('terminal'))
+    await clock.advance(1000)
+    expect(world.blits).toHaveLength(2)
+    await ui.unmount()
+  })
+})
