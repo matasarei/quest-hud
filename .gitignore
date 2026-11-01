@@ -1,0 +1,4 @@
+.DS_Store
+# local working notes of the developer's own tools, never part of the project
+.gku/
+.tasks/
