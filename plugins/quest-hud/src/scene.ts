@@ -92,15 +92,14 @@ export const propsWidth = (zone: Zone): number => propsUnits(ZONE_PROPS[zone]) +
 /** What the session gathered, standing left of the zone's landmarks. */
 export type Extras = { loot?: number; allies?: Allies }
 
-/**
- * The gathered things, right to left: the chest once there is loot, then
- * GitHub's Octocat and GitLab's fox once they came, the fox turned to face the road.
- */
-const extraGrids = ({ loot = 0, allies }: Extras): Grid[] => [
-  ...(loot > 0 ? [spriteGrid(CHEST)] : []),
+/** GitHub's Octocat and GitLab's fox once they came, right to left, the fox turned to face the road. */
+const allyGrids = ({ allies }: Extras): Grid[] => [
   ...(allies?.octopus ? [spriteGrid(OCTOCAT)] : []),
   ...(allies?.fox ? [mirrorGrid(spriteGrid(FOX))] : []),
 ]
+
+/** The gathered things, right to left: the chest once there is loot, then the allies. */
+const extraGrids = (extras: Extras): Grid[] => [...((extras.loot ?? 0) > 0 ? [spriteGrid(CHEST)] : []), ...allyGrids(extras)]
 
 /** Units between gathered things, and between them and the landmarks. */
 const EXTRA_GAP = 2
@@ -315,18 +314,30 @@ export const sceneArt = (args: SceneArgs): Grid => {
     : backdrop(zone).map(row => [...row])
   const kept = layout({ ...args, columns: width })
 
-  // The zone's landmarks stand by the road: they pass by with the near layer as
-  // the wizard walks, behind everyone, and come round again from the right.
-  const passed = motion.step * PARALLAX.near
-  const loop = width + propsUnits(kept.props) + LANDMARK_GAP
+  // What stands by the road — the zone's landmarks, and the chest once there is
+  // loot, just left of them — passes by with the near layer as the wizard walks,
+  // behind everyone, and comes round again from the right. At rest it stands at
+  // the right, where the layout keeps room for it.
+  const roadside: Array<{ grid: Grid; x: number; size: number }> = []
   let right = width - 2
   for (const prop of [...kept.props].reverse()) {
     const size = units(PROPS[prop])
     right -= size
-    const x = ((((right - passed + size) % loop) + loop) % loop) - size
-    if (x < width) standAt(art, spriteGrid(PROPS[prop]), x)
+    roadside.push({ grid: spriteGrid(PROPS[prop]), x: right, size })
   }
-  for (const grid of extraGrids(kept.extras)) {
+  if ((kept.extras.loot ?? 0) > 0) {
+    right -= SIZE.extra + EXTRA_GAP
+    roadside.push({ grid: spriteGrid(CHEST), x: right, size: SIZE.extra })
+  }
+  const passed = motion.step * PARALLAX.near
+  const loop = width + (width - 2 - right) + LANDMARK_GAP
+  for (const thing of roadside) {
+    const x = ((((thing.x - passed + thing.size) % loop) + loop) % loop) - thing.size
+    if (x < width) standAt(art, thing.grid, x)
+  }
+
+  // GitHub's Octocat and GitLab's fox joined the party: they keep their places as it walks.
+  for (const grid of allyGrids(kept.extras)) {
     right -= (grid[0]?.length ?? 0) / ART_SCALE + EXTRA_GAP
     standAt(art, grid, right)
   }

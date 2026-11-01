@@ -370,7 +370,14 @@ describe('the landmarks on the walk', () => {
     expect(columnsOf(at(loop), LEAF)).toEqual(start)
   })
 
-  test('the chest travels with the party: it stays where it stands', () => {
-    expect(columnsOf(at(5, 1), CHEST_WOOD)).toEqual(columnsOf(at(0, 1), CHEST_WOOD))
+  test('the chest stands by the road too: it passes by with the landmarks', () => {
+    const start = columnsOf(at(0, 1), CHEST_WOOD)
+    expect(start.length > 0).toBe(true)
+    expect(columnsOf(at(1, 1), CHEST_WOOD)[0]).toBe(start[0]! - 4)
+  })
+
+  test('GitHub\'s Octocat walks with the party: it keeps its place', () => {
+    const party = (step: number) => scene({ columns: 160, zone: 'wilds', waypoints: [], companions: 0, loot: 1, allies: { octopus: true, fox: false }, motion: { step, pose: 'stand', hop: false } })
+    expect(columnsOf(party(5), OCTOCAT)).toEqual(columnsOf(party(0), OCTOCAT))
   })
 })
