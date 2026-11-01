@@ -311,3 +311,69 @@ describe('the probe and a new session', () => {
     expect(world.state.imagesWork).toBe(null)
   })
 })
+
+describe('the monsters on the Road', () => {
+  const lose = async ($: Engine) => {
+    world.bash = { error: 'Exit code 1\n 231 pass\n 1 fail' }
+    await $.tool.call({ tool: 'Bash', command: 'claude plugin test plugins/quest-hud', description: '' })
+  }
+
+  test('a lost test run puts the dragon on the desktop scene, and a passing one takes it away', async ($, on) => {
+    engine(on)
+    await implementing($)
+    const svg = async () => {
+      const ui = await $.ui.mount(pane('desktop', 120))
+      const source = String((await ui.find({ type: 'Svg' }))?.props.source)
+      await ui.unmount()
+      return source
+    }
+    expect((await svg()).includes('#e2643a')).toBe(false)
+    await lose($)
+    expect((await svg()).includes('#e2643a')).toBe(true)
+    world.bash = { stdout: ' 232 pass\n 0 fail\n' }
+    await $.tool.call({ tool: 'Bash', command: 'claude plugin test plugins/quest-hud', description: '' })
+    expect((await svg()).includes('#e2643a')).toBe(false)
+  })
+
+  const drawn = async ($: Engine, find: { type: 'Raster' | 'Image'; key: string }) => {
+    const ui = await $.ui.mount(pane('terminal', 60))
+    const found = await ui.find(find)
+    await ui.unmount()
+    return JSON.stringify(found?.props)
+  }
+
+  test('the cells change with it', CELLS, async ($, on) => {
+    engine(on)
+    await implementing($)
+    const before = await drawn($, { type: 'Raster', key: 'scene' })
+    await lose($)
+    const after = await drawn($, { type: 'Raster', key: 'scene' })
+    expect(before.includes('"cells"') && after.includes('"cells"')).toBe(true)
+    expect(after).not.toBe(before)
+  })
+
+  test('the image changes with it', { options: { graphics: 'images' } }, async ($, on) => {
+    engine(on)
+    await implementing($)
+    const before = await drawn($, { type: 'Image', key: 'scene-image' })
+    await lose($)
+    const after = await drawn($, { type: 'Image', key: 'scene-image' })
+    expect(before.includes('"source"') && after.includes('"source"')).toBe(true)
+    expect(after).not.toBe(before)
+  })
+
+  test('at 200 columns with everything up, the desktop Svg stays under the cap', async ($, on) => {
+    engine(on)
+    await implementing($)
+    await lose($)
+    world.bash = { error: 'Exit code 1' }
+    await $.tool.call({ tool: 'Bash', command: 'npx eslint .', description: '' })
+    world.bash = { stdout: '[main 2af33ea] x' }
+    await $.tool.call({ tool: 'Bash', command: 'git commit -m x && gh pr view && glab mr view', description: '' })
+    expect(world.state.allies).toEqual({ octopus: true, fox: true })
+    expect(world.state.loot).toBe(1)
+    const ui = await $.ui.mount(pane('desktop', 200))
+    expect(String((await ui.find({ type: 'Svg' }))?.props.source).length < 131_072).toBe(true)
+    await ui.unmount()
+  })
+})

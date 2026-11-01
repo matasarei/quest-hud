@@ -17,6 +17,9 @@ const args = (over: Partial<RoadArgs> = {}): RoadArgs => ({
   log: entries(3),
   companions: [],
   activity: null,
+  foes: { test: 'none', lint: 'none' },
+  loot: 0,
+  allies: { octopus: false, fox: false },
   bars: 'hpmp',
   columns: 60,
   rows: 30,
@@ -96,6 +99,14 @@ describe('the scene\'s zone', () => {
     expect(sceneZone(implement, 'map')).toBe('forge')
     expect(sceneZone(null, 'map')).toBe('map')
     expect(sceneZone(null, null)).toBe('wilds')
-    expect(roadScene({ quest: null, tasks: [], companions: [], activity: 'map', columns: 10, frame: 0 })[0]?.[0]).toBe(skyColor('map'))
+    expect(roadScene({ quest: null, tasks: [], companions: [], activity: 'map', foes: { test: 'none', lint: 'none' }, loot: 0, allies: { octopus: false, fox: false }, columns: 10, frame: 0 })[0]?.[0]).toBe(skyColor('map'))
+  })
+})
+
+describe('the loot count', () => {
+  test('beside the task count, or alone', () => {
+    expect(road(args({ loot: 3 })).count).toBe('task 2/5 · loot 3')
+    expect(road(args({ tasks: [], loot: 1 })).count).toBe('loot 1')
+    expect(road(args({ tasks: [], loot: 0 })).count).toBe(undefined)
   })
 })

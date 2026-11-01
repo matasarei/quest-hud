@@ -50,6 +50,12 @@ files only (`git grep -I`): perl dies on binary input such as the art's PNG shee
   or a refused blit — and stopping blits the frame at rest. The only other timer is the image
   probe: one `$.clock.after` per session, after the first image draw in `auto`. Nothing else
   may run on a timer; an image scene never animates.
+- **Bash commands are read by `src/bash.ts` only, and never drawn.** It recognises known
+  shapes (a test runner, a linter, `git commit`, `gh`, `glab`, behind known wrappers), and
+  a mention inside quotes, a heredoc or `echo` is not a run. Callers draw a kind, a score, a
+  commit's sha and subject (through `cleanTitle()`), or a PR number — never the command.
+  Scores read at most the last `SCORE_TAIL` characters of the output. A new shape is a row
+  in `tests/bash.test.ts`'s table first.
 - **Never edit `src/art/sprites.ts` by hand**: it is generated. Change the tile list in
   `tools/import-art.py` (sprites by tile number on `art/1-bit-pack/colored-transparent_packed.png`,
   kept unmodified from the pack), then re-import. Ship only sprites the scene uses;

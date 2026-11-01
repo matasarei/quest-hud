@@ -33,10 +33,12 @@ It works with whatever skills you use. A skill's zone comes from its name and de
 inline above the prompt below that):
 
 ```
-⚔ gku:implement · Forge — building and fixing        task 2/5
+⚔ gku:implement · Forge — building and fixing        task 2/5 · loot 1
 [the zone's scene, 14 rows: its scenery dim behind, its ground, its props, a flag
  per task (green done, yellow in progress, grey to do), the purple wizard beside
- the one in progress, a ghost behind for each subagent — it bobs while Claude works]
+ the one in progress, a ghost behind for each subagent, a monster facing the wizard
+ while a fight is on or lost, and a chest, an octopus and a fox once they came —
+ it bobs while Claude works]
 with Explore
 ✓ Read the exporter
 ✓ Add the CSV writer
@@ -48,11 +50,32 @@ with Explore
 19:05 scout read 3 files · 1 search
 19:06 cast  csv.ts +4 -7
 19:06 fork  Explore joined
+19:07 fight tests lost · 231 pass · 1 fail
+19:09 fight tests won · 232 pass · 0 fail
+19:10 loot  2af33ea Write the CSV writer tests
+19:11 ally  PR #3 opened
 ```
 
 The log is what Claude did, from what Claude Code reports: skills, reads and searches, edits
-with lines added and removed, tasks done, plan mode, subagents joining and leaving, and
-compaction. A new session (`/clear`) starts the Road over.
+with lines added and removed, tasks done, plan mode, subagents joining and leaving,
+compaction, and the Bash commands below. A new session (`/clear`) starts the Road over.
+
+**Fights, loot and allies.** Some of the commands Claude runs in Bash show on the Road. The
+HUD reads only the command and its output, and never shows a command as it was typed.
+
+| Command | On the Road | In the log |
+|---|---|---|
+| a test run: `npm test`, `pytest`, `go test`, `cargo test`, `phpunit`, `rspec`, `bun test`, `claude plugin test` and others | a **dragon** while it runs; it stays after a failed run, until a run of the same kind passes | `fight tests won` or `lost`, with the score when the output shows one |
+| a lint or type check: `eslint`, `ruff check`, `mypy`, `tsc --noEmit`, `shellcheck`, `phpcs`, `npm run lint` and others | a **spider**, the same way | `fight lint won` or `lost` |
+| `git commit` | a **chest**, and `loot N` in the header | `loot`, with the commit's short sha and subject |
+| `gh` | the **octopus**, for the rest of the session | `ally PR #3 opened`, `merged`, `ready`, `closed`, checks passed or failed |
+| `glab` | the **fox**, for the rest of the session | `ally MR !12 opened`, and so on |
+
+Wrapped commands count too (`cd app && npm test`, `timeout 300 pytest`, `docker compose exec
+app vendor/bin/phpunit`, `uv run pytest`); a mention does not (`echo "npm test"`, `grep
+pytest`). A subagent's test and lint runs are fights, led by its name in the log; its commits
+and gh calls are not. A run sent to the background, or interrupted, has no outcome and
+changes nothing.
 
 **Images or text cells.** The scene is drawn as true pixels where the terminal shows images
 (kitty, Ghostty, iTerm2 3.5+), and as half-block text cells everywhere else, from the same

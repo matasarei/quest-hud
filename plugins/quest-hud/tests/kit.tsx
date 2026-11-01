@@ -13,6 +13,10 @@ export const world: {
   /** When true, the engine answers an Image blit as where it drew the alt. */
   refuseImages: boolean
   opened: string[]
+  /** How the engine answers a Bash call: its output, or the error text a failed command gives. */
+  bash: { stdout?: string; stderr?: string; error?: string; interrupted?: boolean; backgroundTaskId?: string }
+  /** The monsters as the plugin had stored them when each Bash call ran. */
+  foesDuringBash: unknown[]
   panes: Array<{ id: string; isShown: boolean }>
   state: Record<string, unknown>
 } = {
@@ -23,6 +27,8 @@ export const world: {
   imageBlits: 0,
   refuseImages: false,
   opened: [],
+  bash: {},
+  foesDuringBash: [],
   panes: [],
 }
 
@@ -35,6 +41,8 @@ export const engine = (on: On) => {
   world.imageBlits = 0
   world.refuseImages = false
   world.opened = []
+  world.bash = {}
+  world.foesDuringBash = []
   world.panes = []
   world.state = {}
   // Every value the plugin stores, as the kit's own store accepted it.
@@ -68,6 +76,12 @@ export const engine = (on: On) => {
     return { value: {} }
   })
   on('tool.call', (_, e) => {
+    if (e.tool === 'Bash') {
+      world.foesDuringBash.push(world.state.foes)
+      const { stdout = '', stderr = '', error, interrupted = false, backgroundTaskId } = world.bash
+      if (error !== undefined) return { isError: true, result: error, text: error }
+      return { result: { stdout, stderr, interrupted, ...(backgroundTaskId === undefined ? {} : { backgroundTaskId }) } }
+    }
     if (e.tool === 'TaskCreate') return { result: { task: { id: `t-${e.subject}`, subject: e.subject } } }
     if (e.tool === 'Edit') {
       return {

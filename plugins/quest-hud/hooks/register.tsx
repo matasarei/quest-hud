@@ -5,6 +5,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, Timer } from 'claude-code'
 
 import { AVATAR_SMALL, MAGE, rasterSize, toRasterCells, toSvg } from '../src/avatar'
+import { commandKinds, endFights, fightKinds, fightOutcome, fightText, forgeEvent, lootText, NO_FOES, startFights, stdoutOf } from '../src/bash'
 import { activeCompanions, sameCompanions } from '../src/companions'
 import { appendEntry, castText, scoutCounts, scoutText } from '../src/log'
 import { bandModel, fromMeasure, shortTokens, statusText, TONE_COLOR, ZONE_LABEL, zoneLine, type Bars } from '../src/meters'
@@ -12,7 +13,7 @@ import { afterPrompt, cleanTitle, fromSkill } from '../src/quest'
 import { road, roadScene } from '../src/road'
 import { applyTaskCall } from '../src/tasks'
 import { parseZones, zoneFor } from '../src/zones'
-import type { LogEntry } from '../types'
+import type { Allies, FightKind, Foes, LogEntry } from '../types'
 import type { RgbaSource } from '../src/avatar'
 import { drawRoad, PANE_ID, PANE_TITLE, SCENE_IMAGE_KEY, SCENE_KEY, sceneCells, sceneImage, type SceneMode } from './pane'
 
@@ -28,6 +29,10 @@ const companions = atom({ plugin: 'quest-hud', key: 'companions' } as const, [])
 const activity = atom({ plugin: 'quest-hud', key: 'activity' } as const, null)
 const isWorking = atom({ plugin: 'quest-hud', key: 'isWorking' } as const, false)
 const imagesWork = atom({ plugin: 'quest-hud', key: 'imagesWork' } as const, null)
+const foes = atom({ plugin: 'quest-hud', key: 'foes' } as const, NO_FOES)
+const loot = atom({ plugin: 'quest-hud', key: 'loot' } as const, 0)
+const NO_ALLIES: Allies = { octopus: false, fox: false }
+const allies = atom({ plugin: 'quest-hud', key: 'allies' } as const, NO_ALLIES)
 
 /** off, a status entry, the band, or the band and the Road pane opened at the start. */
 type Detail = 'off' | 'status' | 'band' | 'pane'
@@ -134,6 +139,9 @@ async function blitScene($: EngineInterface, frame: 0 | 1): Promise<void> {
     tasks: await read($, tasks),
     companions: await read($, companions),
     activity: await read($, activity),
+    foes: await read($, foes),
+    loot: await read($, loot),
+    allies: await read($, allies),
     columns: bob.columns,
     frame,
   })
@@ -201,6 +209,31 @@ async function addLog($: EngineInterface, entry: Omit<LogEntry, 'at'>): Promise<
   await update($, log, entries => appendEntry(entries, { ...entry, at }))
 }
 
+/**
+ * Ends the fights a Bash call started: the monsters go, stay standing, or go
+ * back to what they were when the run had no outcome; a fight with one is
+ * logged, led by the subagent that fought it.
+ */
+async function endFight($: EngineInterface, kinds: readonly FightKind[], before: Foes, ran: Parameters<typeof fightOutcome>[0], agentId: string | undefined): Promise<void> {
+  const outcome = fightOutcome(ran)
+  await update($, foes, now => endFights(now, kinds, outcome, before))
+  if (outcome.result === 'none') return
+
+  const who = agentId === undefined ? undefined : ((await read($, companions)).find(c => c.id === agentId)?.type ?? 'subagent')
+  await addLog($, { kind: 'fight', text: fightText(kinds, outcome, who) })
+}
+
+/** A Bash call's gh or glab part: brings its character, and logs what it did to a PR or MR. */
+async function forgeCall($: EngineInterface, command: string, ok: boolean, stdout: string): Promise<void> {
+  for (const kind of commandKinds(command)) {
+    if (kind !== 'gh' && kind !== 'glab') continue
+    const ally = kind === 'gh' ? 'octopus' : 'fox'
+    await update($, allies, now => (now[ally] ? now : { ...now, [ally]: true }))
+    const event = forgeEvent(kind, command, ok, stdout)
+    if (event !== undefined) await addLog($, { kind: 'ally', text: event })
+  }
+}
+
 /** Rereads the subagents at work and logs who joined and who left. */
 async function refreshCompanions($: EngineInterface): Promise<void> {
   const now = activeCompanions(await $.agent.list())
@@ -240,6 +273,9 @@ export const register: Register = (on, options) => {
       await update($, companions, () => [])
       await update($, activity, () => null)
       await update($, imagesWork, () => null)
+      await update($, foes, () => NO_FOES)
+      await update($, loot, () => 0)
+      await update($, allies, () => NO_ALLIES)
       resetProbe()
       await update($, sessionId, () => id)
     }
@@ -290,19 +326,42 @@ export const register: Register = (on, options) => {
 
   on('tool.call', async ($, e, next) => {
     const subagentSkill = e.tool === 'Skill' && e.agentId !== undefined ? e.skill : undefined
+    // A test or lint run is a fight, a subagent's too; one sent to the background has no outcome to show.
+    const fights = e.tool === 'Bash' && e.run_in_background !== true ? fightKinds(commandKinds(e.command)) : []
+    const before = fights.length > 0 ? await read($, foes) : NO_FOES
 
     if (subagentSkill !== undefined) subagentSkills.set(subagentSkill, (subagentSkills.get(subagentSkill) ?? 0) + 1)
+    if (fights.length > 0) await update($, foes, now => startFights(now, fights))
 
-    const ran = await next(e).finally(() => {
-      if (subagentSkill === undefined) return
-      const left = (subagentSkills.get(subagentSkill) ?? 1) - 1
-      if (left > 0) subagentSkills.set(subagentSkill, left)
-      else subagentSkills.delete(subagentSkill)
-    })
+    const ran = await next(e)
+      .catch(async (error: unknown) => {
+        if (fights.length > 0) await update($, foes, now => endFights(now, fights, { result: 'none' }, before))
+        throw error
+      })
+      .finally(() => {
+        if (subagentSkill === undefined) return
+        const left = (subagentSkills.get(subagentSkill) ?? 1) - 1
+        if (left > 0) subagentSkills.set(subagentSkill, left)
+        else subagentSkills.delete(subagentSkill)
+      })
+
+    if (fights.length > 0) await endFight($, fights, before, ran, e.agentId)
+
+    // gh brings the octopus and glab the fox, whatever the call; a change to a
+    // PR or MR is logged, and failed checks too, so this comes before the error return.
+    if (e.tool === 'Bash' && e.agentId === undefined && ran.deny === undefined) {
+      await forgeCall($, e.command, ran.isError !== true, stdoutOf(ran.result))
+    }
 
     // A subagent's own calls stay out of the session's task list and log.
     if (e.agentId !== undefined || ran.deny !== undefined || ran.isError === true) {
       return ran
+    }
+
+    // A commit the session made drops loot; a refused one (a hook said no) is an error, so none.
+    if (e.tool === 'Bash' && e.run_in_background !== true && commandKinds(e.command).includes('commit')) {
+      await update($, loot, count => count + 1)
+      await addLog($, { kind: 'loot', text: lootText(stdoutOf(ran.result)) })
     }
 
     if (TASK_TOOLS.has(e.tool)) {
@@ -486,6 +545,9 @@ export const register: Register = (on, options) => {
       log: await read($, log),
       companions: await read($, companions),
       activity: await read($, activity),
+      foes: await read($, foes),
+      loot: await read($, loot),
+      allies: await read($, allies),
       bars,
       columns: e.props.bodyColumns,
       rows: e.viewport?.rows ?? 30,
