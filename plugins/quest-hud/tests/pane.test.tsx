@@ -98,3 +98,72 @@ describe('opening the pane', () => {
     expect(world.opened).toEqual([])
   })
 })
+
+describe('the bob', () => {
+  const mainTurn = { text: 'go', turnId: 'turn-1' }
+  const turnDone = { turnId: 'turn-1', answer: '', durationMs: 1, isAborted: false, reason: 'answer' } as const
+
+  test('two frames a second while Claude works, then the figures at rest, then nothing', async ($, on) => {
+    const clock = engine(on)
+    world.panes = [{ id: 'quest-hud', isShown: true }]
+    await implementing($)
+    const ui = await $.ui.mount(pane('terminal'))
+    await $.turn.start(mainTurn)
+    await clock.advance(1000)
+    expect(world.blits).toHaveLength(2)
+    expect(world.blits[0] === world.blits[1]).toBe(false)
+    await $.turn.complete(turnDone)
+    expect(world.blits).toHaveLength(3)
+    expect(world.blits[2]).toBe(world.blits[1])
+    await clock.advance(2000)
+    expect(world.blits).toHaveLength(3)
+    await ui.unmount()
+  })
+
+  test('no bob while the pane is not shown', async ($, on) => {
+    const clock = engine(on)
+    world.panes = [{ id: 'quest-hud', isShown: false }]
+    await implementing($)
+    const ui = await $.ui.mount(pane('terminal'))
+    await $.turn.start(mainTurn)
+    await clock.advance(2000)
+    expect(world.blits).toHaveLength(0)
+    await ui.unmount()
+  })
+
+  test('no bob on the desktop, where the scene is an Svg', async ($, on) => {
+    const clock = engine(on)
+    world.panes = [{ id: 'quest-hud', isShown: true }]
+    await implementing($)
+    const ui = await $.ui.mount(pane('desktop'))
+    await $.turn.start(mainTurn)
+    await clock.advance(2000)
+    expect(world.blits).toHaveLength(0)
+    await ui.unmount()
+  })
+
+  test('hiding the pane mid-turn stops it at the next step', async ($, on) => {
+    const clock = engine(on)
+    world.panes = [{ id: 'quest-hud', isShown: true }]
+    await implementing($)
+    const ui = await $.ui.mount(pane('terminal'))
+    await $.turn.start(mainTurn)
+    await clock.advance(500)
+    expect(world.blits).toHaveLength(1)
+    world.panes = [{ id: 'quest-hud', isShown: false }]
+    await clock.advance(2000)
+    expect(world.blits).toHaveLength(1)
+    await ui.unmount()
+  })
+
+  test('a subagent\'s turn neither starts nor stops it', async ($, on) => {
+    const clock = engine(on)
+    world.panes = [{ id: 'quest-hud', isShown: true }]
+    await implementing($)
+    const ui = await $.ui.mount(pane('terminal'))
+    await $.turn.start({ text: 'explore', turnId: 'sub-1', agentId: 'a1' })
+    await clock.advance(1000)
+    expect(world.blits).toHaveLength(0)
+    await ui.unmount()
+  })
+})

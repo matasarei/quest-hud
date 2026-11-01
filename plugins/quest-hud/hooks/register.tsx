@@ -2,18 +2,18 @@
 // Every hook observes and passes the event on unchanged; nothing here calls a
 // model or adds to the context.
 import { atom, read, update } from 'claude-code'
-import type { EngineInterface, Register } from 'claude-code'
+import type { EngineInterface, Register, Timer } from 'claude-code'
 
 import { AVATAR_SMALL, MAGE, rasterSize, toRasterCells, toSvg } from '../src/avatar'
 import { activeCompanions, sameCompanions } from '../src/companions'
 import { appendEntry, castText, scoutCounts, scoutText } from '../src/log'
 import { bandModel, fromMeasure, shortTokens, statusText, TONE_COLOR, ZONE_LABEL, zoneLine, type Bars } from '../src/meters'
 import { afterPrompt, cleanTitle, fromSkill } from '../src/quest'
-import { road } from '../src/road'
+import { road, roadScene } from '../src/road'
 import { applyTaskCall } from '../src/tasks'
 import { parseZones, zoneFor } from '../src/zones'
 import type { LogEntry } from '../types'
-import { drawRoad, PANE_ID, PANE_TITLE } from './pane'
+import { drawRoad, PANE_ID, PANE_TITLE, SCENE_KEY, sceneCells } from './pane'
 
 // The values the HUD keeps for the session, each declared in types/index.d.ts.
 // The engine lists what a module reads and writes from atoms defined in the
@@ -65,6 +65,67 @@ async function showStatus($: EngineInterface, detail: Detail, bars: Bars): Promi
   if (detail === 'status') {
     $.ui.status(statusText(await read($, quest), await read($, tasks), await read($, meters), bars))
   }
+}
+
+/** Milliseconds between the bob's two frames. */
+export const FRAME_MS = 500
+
+// The scene's bob: one timer at most, running only while a main turn runs and
+// the pane is shown on a terminal. `columns` and `surface` are where the pane
+// was last drawn; a reload starts this over, and the engine drops its timers.
+const bob: { timer?: Timer; frame: 0 | 1; columns?: number; surface?: string } = { frame: 0 }
+
+const isPaneShown = async ($: EngineInterface): Promise<boolean> =>
+  (await $.ui.panes()).some(pane => pane.id === PANE_ID && pane.isShown)
+
+/** Repaints the scene's Raster with one frame, and stops the bob if nothing takes it. */
+async function blitScene($: EngineInterface, frame: 0 | 1): Promise<void> {
+  if (bob.columns === undefined) return
+
+  const grid = roadScene({
+    quest: await read($, quest),
+    tasks: await read($, tasks),
+    companions: await read($, companions),
+    activity: await read($, activity),
+    columns: bob.columns,
+    frame,
+  })
+  const blitted = await $.ui.blit({ requestId: PANE_ID, key: SCENE_KEY, cells: sceneCells(grid) })
+
+  if (blitted.deny !== undefined) stopTimer()
+}
+
+function stopTimer(): void {
+  bob.timer?.cancel()
+  bob.timer = undefined
+  bob.frame = 0
+}
+
+/** One step of the bob: the other frame, while the pane is still shown. */
+async function bobStep($: EngineInterface): Promise<void> {
+  if (!(await isPaneShown($))) {
+    stopTimer()
+    return
+  }
+
+  // A stop while the panes were being asked wins: it has drawn the frame at rest.
+  if (bob.timer === undefined) return
+
+  bob.frame = bob.frame === 0 ? 1 : 0
+  await blitScene($, bob.frame)
+}
+
+/** Starts the bob when the pane is shown on a terminal and none runs yet. */
+async function startBob($: EngineInterface): Promise<void> {
+  if (bob.timer !== undefined || bob.surface !== 'terminal' || !(await isPaneShown($))) return
+  bob.timer = $.clock.every(FRAME_MS, () => void bobStep($))
+}
+
+/** Stops the bob and leaves the figures standing at rest. */
+async function stopBob($: EngineInterface): Promise<void> {
+  const wasRunning = bob.timer !== undefined
+  stopTimer()
+  if (wasRunning) await blitScene($, 0)
 }
 
 /** One more line in the pane's log, stamped with the time now. */
@@ -215,6 +276,7 @@ export const register: Register = (on, options) => {
     if (e.agentId === undefined) {
       turn = e.turnId
       await update($, isWorking, () => true)
+      await startBob($)
     } else {
       await refreshCompanions($)
     }
@@ -227,6 +289,7 @@ export const register: Register = (on, options) => {
 
     if (e.agentId === undefined) {
       await update($, isWorking, () => false)
+      await stopBob($)
     }
 
     await refreshCompanions($)
@@ -320,7 +383,14 @@ export const register: Register = (on, options) => {
     )
   })
 
+  on('ui.close', async ($, e, next) => {
+    if (e.id === PANE_ID) stopTimer()
+    return next(e)
+  }).catch(($, e, next) => next(e))
+
   on('ui.render', { component: 'Pane', requestId: PANE_ID }, async ($, e) => {
+    bob.columns = e.props.bodyColumns
+    bob.surface = e.surface
     const view = road({
       quest: await read($, quest),
       tasks: await read($, tasks),
