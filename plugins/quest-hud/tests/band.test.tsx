@@ -2,10 +2,15 @@ import { describe, expect, mock, test } from 'claude-code/testing'
 import type { On } from 'claude-code'
 import type { Engine } from 'claude-code/testing'
 
+// The session id the engine answers; a test changes it to stand for /clear.
+const session = { id: 's1' }
+
 // Nothing sits beneath the plugin in a test: these hooks stand for the engine.
 const engine = (on: On, statuses: Array<string | undefined> = []) => {
+  session.id = 's1'
   mock.clock(on, { now: Date.parse('2026-11-01T10:00:00Z') })
   on('command.register', () => ({ value: { command: 'hud' } }))
+  on('session.id', () => ({ value: session.id }))
   on('session.usage', () => ({ value: { startedAt: 0, context: { window: 200_000 }, rateLimits: [] } }))
   on('session.start', (_, e) => ({ cwd: e.cwd }))
   on('skill.prompt', (_, e) => ({ text: e.text }))
@@ -231,4 +236,28 @@ describe('prompts', () => {
       await ui.unmount()
     })
   }
+})
+
+describe('session', () => {
+  test('a reload (same session id) keeps the quest and the tasks', async ($, on) => {
+    engine(on)
+    await implementWithTasks($)
+    await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+    const ui = await $.ui.mount(band('terminal'))
+    expect((await ui.find({ type: 'Text', text: /⚔/ }))?.text).toBe('⚔ gku:implement')
+    expect((await ui.find({ type: 'Text', text: /task \d/ }))?.text).toBe('  task 0/2')
+    await ui.unmount()
+  })
+
+  test('a new session id (/clear) starts the quest and the tasks over', async ($, on) => {
+    engine(on)
+    await implementWithTasks($)
+    session.id = 's2'
+    await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+    const ui = await $.ui.mount(band('terminal'))
+    expect(await ui.find({ type: 'Text', text: /⚔/ })).toBeFalsy()
+    expect(await ui.find({ type: 'Text', text: /task/ })).toBeFalsy()
+    expect((await ui.find({ type: 'Text', text: /Wilds/ }))?.text).toBe('Wilds')
+    await ui.unmount()
+  })
 })

@@ -10,6 +10,7 @@ import { afterPrompt, cleanTitle, fromSkill } from '../src/quest'
 import { applyTaskCall } from '../src/tasks'
 import { parseZones, zoneFor } from '../src/zones'
 
+const sessionId = atom({ plugin: 'quest-hud', key: 'sessionId' } as const, null)
 const quest = atom({ plugin: 'quest-hud', key: 'quest' } as const, null)
 const tasks = atom({ plugin: 'quest-hud', key: 'tasks' } as const, [])
 const meters = atom({ plugin: 'quest-hud', key: 'meters' } as const, null)
@@ -68,10 +69,19 @@ export const register: Register = (on, options) => {
   const bars = pick<Bars>(options.bars, ['hpmp', 'all'], 'hpmp')
   const overrides = parseZones(typeof options.zones === 'string' ? options.zones : '')
 
-  // State lives in $.state for the session and survives a reload, so a start
-  // does not reset it: a reload must not wipe the quest in progress.
+  // State survives a reload, which runs session.start again with the same
+  // session id: the quest in progress is kept. A new id (/clear, a resume of
+  // another session) starts the quest and the task list over.
   on('session.start', async ($, e, next) => {
     await $.command.register({ name: 'hud', description: 'Show the Quest HUD state; "/hud statusline" prints the fallback setup' })
+    const id = await $.session.id()
+
+    if ((await read($, sessionId)) !== id) {
+      await update($, quest, () => null)
+      await update($, tasks, () => [])
+      await update($, sessionId, () => id)
+    }
+
     const usage = await $.session.usage()
     await update($, meters, () => fromMeasure(usage))
     await showStatus($, detail, bars)

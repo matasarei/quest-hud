@@ -34,6 +34,8 @@ export type Meters = {
 declare module 'claude-code' {
   interface PluginState {
     'quest-hud': {
+      /** The session the values below belong to: a new id (/clear, resume) starts them over. */
+      sessionId: string | null
       quest: Quest | null
       tasks: Task[]
       meters: Meters | null
