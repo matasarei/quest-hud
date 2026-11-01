@@ -5,9 +5,9 @@ A Claude Code marketplace with one mod, `quest-hud` (`plugins/quest-hud/`): a ho
 (`src/`), a state contract (`types/index.d.ts`), and a status-line script
 (`scripts/hud-line.sh`). Tests are `plugins/quest-hud/tests/*.test.ts(x)`; `tests/kit.tsx`
 stands for the engine in the newer ones. TypeScript run by the Claude Code engine; there is no
-package.json, no build and no node_modules. Outside the plugin: `art/pixel-platformer/` (the
-sprites' original PNGs and their CC0 licence) and `tools/` (the Python 3 import that turns them
-into `src/art/sprites.ts`).
+package.json, no build and no node_modules. Outside the plugin: `art/1-bit-pack/` (Kenney's
+1-Bit Pack sheet and its CC0 licence) and `tools/` (the Python 3 import that cuts the sprites
+the scene uses from that sheet into `src/art/sprites.ts`).
 
 ## Commands
 
@@ -22,7 +22,7 @@ into `src/art/sprites.ts`).
 
 CI (`.github/workflows/checks.yml`) runs the same on every push and pull request, gated on
 Claude Code 2.1.316 and, as a warning only, on the latest release. Its bidi scan reads text
-files only (`git grep -I`): perl dies on binary input such as the art's PNGs.
+files only (`git grep -I`): perl dies on binary input such as the art's PNG sheet.
 
 ## This project specifically
 
@@ -50,9 +50,11 @@ files only (`git grep -I`): perl dies on binary input such as the art's PNGs.
   or a refused blit — and stopping blits the frame at rest. The only other timer is the image
   probe: one `$.clock.after` per session, after the first image draw in `auto`. Nothing else
   may run on a timer; an image scene never animates.
-- **Never edit `src/art/sprites.ts` by hand**: it is generated. Change `tools/import-art.py` or
-  the PNGs in `art/pixel-platformer/` (only files from the pack, unmodified), then re-import.
-  Ship only sprites the scene uses; `tests/art.test.ts` lists them.
+- **Never edit `src/art/sprites.ts` by hand**: it is generated. Change the tile list in
+  `tools/import-art.py` (sprites by tile number on `art/1-bit-pack/colored-transparent_packed.png`,
+  kept unmodified from the pack), then re-import. Ship only sprites the scene uses;
+  `tests/art.test.ts` lists them and fails on an unused one. The pack draws each sprite in one
+  colour: the scene repaints the wizard, the ghosts and the flags.
 - **`resolve()` lists every element on every surface**; one a surface lacks draws as an empty
   fragment. Choose by `e.surface`, not by `'X' in elements`.
 - **No `version`** in `plugin.json` or `marketplace.json`, so every commit is an update.

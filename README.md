@@ -34,9 +34,9 @@ inline above the prompt below that):
 
 ```
 ⚔ gku:implement · Forge — building and fixing        task 2/5
-[the zone's scene, 14 rows: its hills and sky over its ground, its props, a flag
- per task (green done, yellow in progress, grey to do), the astronaut beside the
- one in progress, subagents as small ghosts behind — it walks while Claude works]
+[the zone's scene, 14 rows: its scenery dim behind, its ground, its props, a flag
+ per task (green done, yellow in progress, grey to do), the purple wizard beside
+ the one in progress, a ghost behind for each subagent — it bobs while Claude works]
 with Explore
 ✓ Read the exporter
 ✓ Add the CSV writer
@@ -58,11 +58,11 @@ compaction. A new session (`/clear`) starts the Road over.
 (kitty, Ghostty, iTerm2 3.5+), and as half-block text cells everywhere else, from the same
 sprites. With `graphics = auto` (the default), the HUD finds out once a session: it draws the
 image, and if Claude Code could not show it there, it switches to cells. In cells the
-astronaut walks while Claude works; an image redraws only when something changes. On the
-desktop app the scene is an SVG.
+wizard bobs while Claude works; an image redraws only when something changes. On the desktop
+app the scene is an SVG.
 
-**Art:** sprites from [Kenney](https://kenney.nl)'s Pixel Platformer, CC0 (public domain; the
-credit is a courtesy). Its originals and licence are in `art/pixel-platformer/`.
+**Art:** sprites from [Kenney](https://kenney.nl)'s 1-Bit Pack, CC0 (public domain; the credit
+is a courtesy). Its sheet and licence are in `art/1-bit-pack/`.
 
 **It costs nothing.** No model calls, nothing added to the context, no network. Every hook
 only observes Claude Code's own events and passes them on unchanged, and nothing is written
@@ -133,10 +133,10 @@ shellcheck --severity=warning plugins/quest-hud/scripts/*.sh plugins/quest-hud/t
 
 Run it from disk: `claude --plugin-dir plugins/quest-hud`; saving a file reloads the mod.
 
-The sprites in `plugins/quest-hud/src/art/sprites.ts` are generated from the PNGs in
-`art/pixel-platformer/`: change the list in `tools/import-art.py`, copy any new PNG from the
-pack into that folder, and run `python3 -I tools/import-art.py` (Python 3, standard library).
-Installing the HUD needs none of this.
+The sprites in `plugins/quest-hud/src/art/sprites.ts` are generated from the pack's sheet in
+`art/1-bit-pack/`: add a sprite to the list in `tools/import-art.py` by its tile number on the
+sheet (`row × 49 + column`), and run `python3 -I tools/import-art.py` (Python 3, standard
+library). Installing the HUD needs none of this.
 
 ## License
 
