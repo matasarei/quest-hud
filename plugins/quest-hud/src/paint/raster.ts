@@ -15,9 +15,13 @@ const CENTRE: ReadonlyArray<readonly [number, number]> = [[0.5, 0.5]]
 /**
  * How to paint. `pixel`: hard edges, gradients in `bands` flat colours
  * dithered into each other, and see-through shapes as a dither of pixels
- * drawn or not — pixel art, never a blended colour.
+ * drawn or not — pixel art, never a blended colour. `ditherRows`: how many
+ * rows the dither pattern holds for, 1 by default. Text cells halve the
+ * art's rows, keeping every other one, and a pattern that changes every row
+ * leaves them vertical stripes; held for 2 — the pattern and the gradient's
+ * colour both read at the pair's top row — the halved art keeps the whole pattern.
  */
-export type RasterOptions = { pixel?: boolean; bands?: number }
+export type RasterOptions = { pixel?: boolean; bands?: number; ditherRows?: number }
 
 /** A fill's colour at pixel (x, y) in pixel art: a gradient's band, dithered. */
 const pixelColor = (fill: Fill, v: number, x: number, y: number, bands: number): number => {
@@ -34,6 +38,7 @@ const pixelColor = (fill: Fill, v: number, x: number, y: number, bands: number):
 export const rasterize = (picture: Picture, unitsWide: number, unitsHigh: number, scale: number, background = 0, options: RasterOptions = {}): Rgb => {
   const isPixel = options.pixel === true
   const bands = Math.max(2, options.bands ?? 6)
+  const ditherRows = Math.max(1, Math.floor(options.ditherRows ?? 1))
   const samples = isPixel ? CENTRE : SAMPLES
   const s = Math.max(1, Math.floor(scale))
   const width = Math.max(0, Math.floor(unitsWide * s))
@@ -55,9 +60,10 @@ export const rasterize = (picture: Picture, unitsWide: number, unitsHigh: number
         let hits = 0
         for (const [dx, dy] of samples) if (contains(shape, (x + dx) / s, (y + dy) / s)) hits++
         if (hits === 0) continue
-        if (isPixel && !ditherOn(opacity, x, y)) continue
+        const dy = Math.floor(y / ditherRows)
+        if (isPixel && !ditherOn(opacity, x, dy)) continue
         const a = isPixel ? 1 : (hits / samples.length) * opacity
-        const color = isPixel ? pixelColor(shape.fill, (y + 0.5) / s, x, y, bands) : colorAt(shape.fill, (y + 0.5) / s)
+        const color = isPixel ? pixelColor(shape.fill, (dy * ditherRows + 0.5) / s, x, dy, bands) : colorAt(shape.fill, (y + 0.5) / s)
         const i = y * width + x
         r[i] = (r[i] as number) + (((color >> 16) & 255) - (r[i] as number)) * a
         g[i] = (g[i] as number) + (((color >> 8) & 255) - (g[i] as number)) * a
