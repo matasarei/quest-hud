@@ -86,8 +86,18 @@ const bob: { timer?: Timer; isStarting: boolean; generation: number; frame: 0 | 
 /** Milliseconds after an image's first draw before the probe blits it back. */
 export const PROBE_MS = 100
 
-// The probe that learns whether images draw here: at most one waiting at a time.
-const probe = { isPending: false }
+// The probe that learns whether images draw here: at most one waiting at a
+// time. A new session cancels its timer and moves the generation on, so a
+// probe from the session before writes nothing, fired or not.
+const probe: { isPending: boolean; generation: number; timer?: Timer } = { isPending: false, generation: 0 }
+
+/** Forgets any probe of the session that is ending: its timer is cancelled, its answer ignored. */
+function resetProbe(): void {
+  probe.timer?.cancel()
+  probe.timer = undefined
+  probe.isPending = false
+  probe.generation += 1
+}
 
 /**
  * Blits the drawn image back, the same source: the engine takes it where the
@@ -95,7 +105,7 @@ const probe = { isPending: false }
  * Either answer is written for the session; a blit that throws counts as a
  * refusal, as an image the engine cannot place is no image either.
  */
-async function probeImages($: EngineInterface, source: RgbaSource): Promise<void> {
+async function probeImages($: EngineInterface, source: RgbaSource, generation: number): Promise<void> {
   let works = false
 
   try {
@@ -104,7 +114,11 @@ async function probeImages($: EngineInterface, source: RgbaSource): Promise<void
     works = false
   }
 
+  // A new session started while this probe was waiting: its answer is not that session's.
+  if (probe.generation !== generation) return
+
   probe.isPending = false
+  probe.timer = undefined
   await update($, imagesWork, () => works)
 }
 
@@ -226,7 +240,7 @@ export const register: Register = (on, options) => {
       await update($, companions, () => [])
       await update($, activity, () => null)
       await update($, imagesWork, () => null)
-      probe.isPending = false
+      resetProbe()
       await update($, sessionId, () => id)
     }
 
@@ -483,7 +497,8 @@ export const register: Register = (on, options) => {
     // learn whether the terminal shows it. Writes happen in the timer, not here.
     if (image && graphics === 'auto' && images === null && !probe.isPending) {
       probe.isPending = true
-      $.clock.after(PROBE_MS, () => void probeImages($, image))
+      const generation = probe.generation
+      probe.timer = $.clock.after(PROBE_MS, () => void probeImages($, image, generation))
     }
 
     return drawRoad($, e, view, mode, image)

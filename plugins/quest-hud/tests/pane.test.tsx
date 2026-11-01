@@ -296,3 +296,18 @@ describe('images or cells', () => {
     await ui.unmount()
   })
 })
+
+describe('the probe and a new session', () => {
+  test('a new session cancels the previous session\'s probe that has not fired yet', async ($, on) => {
+    const clock = engine(on)
+    world.refuseImages = true
+    await implementing($)
+    const first = await $.ui.mount(pane('terminal'))
+    world.id = 's2'
+    await start($)
+    await first.unmount()
+    await clock.advance(150)
+    expect(world.imageBlits).toBe(0)
+    expect(world.state.imagesWork).toBe(null)
+  })
+})
