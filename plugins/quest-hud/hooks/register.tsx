@@ -174,7 +174,9 @@ export const register: Register = (on, options) => {
       await update($, sessionId, () => id)
     }
 
+    // A start ends any turn the HUD thought was running, and its bob with it.
     await update($, isWorking, () => false)
+    stopTimer()
     const usage = await $.session.usage()
     await update($, meters, () => fromMeasure(usage))
     await showStatus($, detail, bars)

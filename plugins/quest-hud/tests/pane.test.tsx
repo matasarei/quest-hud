@@ -167,3 +167,20 @@ describe('the bob', () => {
     await ui.unmount()
   })
 })
+
+describe('the bob and a new session', () => {
+  test('a session start stops a bob that was running', async ($, on) => {
+    const clock = engine(on)
+    world.panes = [{ id: 'quest-hud', isShown: true }]
+    await implementing($)
+    const ui = await $.ui.mount(pane('terminal'))
+    await $.turn.start({ text: 'go', turnId: 'turn-1' })
+    await clock.advance(500)
+    expect(world.blits).toHaveLength(1)
+    world.id = 's2'
+    await start($)
+    await clock.advance(2000)
+    expect(world.blits).toHaveLength(1)
+    await ui.unmount()
+  })
+})
