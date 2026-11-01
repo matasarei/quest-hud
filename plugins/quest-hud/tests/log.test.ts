@@ -74,3 +74,28 @@ describe('the log', () => {
     expect(clockTime(new Date(2026, 10, 1, 9, 5).getTime())).toBe('09:05')
   })
 })
+
+describe('cast lines, the edges', () => {
+  test('a Write over an existing file counts its patch, like an Edit', () => {
+    const result = { type: 'update', filePath: '/repo/a.ts', content: 'x\ny\n', structuredPatch: [{ oldStart: 1, oldLines: 1, newStart: 1, newLines: 2, lines: ['-old', '+x', '+y'] }] }
+    expect(castText('Write', { file_path: '/repo/a.ts' }, result)).toBe('a.ts +2 -1')
+  })
+
+  test('a hunk\'s "no newline" marker is not a line added or removed', () => {
+    const result = { structuredPatch: [{ oldStart: 1, oldLines: 1, newStart: 1, newLines: 1, lines: ['-a', '\\ No newline at end of file', '+b', '\\ No newline at end of file'] }] }
+    expect(castText('Edit', { file_path: '/repo/a.ts' }, result)).toBe('a.ts +1 -1')
+  })
+
+  test('the path from the result when the input has none', () => {
+    expect(castText('Edit', {}, { filePath: '/repo/b.ts', structuredPatch: [] })).toBe('b.ts +0 -0')
+  })
+
+  test('a result with no patch and no new content counts nothing', () => {
+    expect(castText('Edit', { file_path: '/repo/c.ts' }, {})).toBe('c.ts +0 -0')
+    expect(castText('Write', { file_path: '/repo/c.ts' }, { type: 'update' })).toBe('c.ts +0 -0')
+  })
+
+  test('lines that are not strings are skipped', () => {
+    expect(castText('Edit', { file_path: '/repo/d.ts' }, { structuredPatch: [{ lines: ['+a', 7, null, '-b'] }, 'junk'] })).toBe('d.ts +1 -1')
+  })
+})
