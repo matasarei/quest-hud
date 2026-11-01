@@ -31,7 +31,7 @@ describe('cleanTitle', () => {
   })
 
   test('drops control characters and bidirectional overrides', () => {
-    expect(cleanTitle('ok\u0007 ‮drow‬⁦x⁩')).toBe('ok drow x')
+    expect(cleanTitle('ok\u0007 \u202edrow\u202c\u2066x\u2069')).toBe('ok drow x')
   })
 })
 

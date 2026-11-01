@@ -5,7 +5,7 @@ export const TITLE_MAX = 48
 
 // Control characters, and the bidirectional marks and overrides that can make
 // a title read differently from what it holds.
-const UNSAFE = /[\u0000-\u001f\u007f-\u009f‎‏‪-‮⁦-⁩]/g
+const UNSAFE = /[\u0000-\u001f\u007f-\u009f\u200e\u200f\u202a-\u202e\u2066-\u2069]/g
 
 /** One line, at most TITLE_MAX characters, cut with an ellipsis. */
 export const cleanTitle = (text: string): string => {
