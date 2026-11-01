@@ -10,7 +10,9 @@ import { activeCompanions, sameCompanions } from '../src/companions'
 import { appendEntry, castText, scoutCounts, scoutText } from '../src/log'
 import { bandModel, fromMeasure, shortTokens, statusText, TONE_COLOR, ZONE_LABEL, zoneLine, type Bars } from '../src/meters'
 import { afterPrompt, cleanTitle, fromSkill } from '../src/quest'
-import { road, roadScene, SCENE_MIN_COLUMNS, sceneZone } from '../src/road'
+import { downsample } from '../src/paint/pixels'
+import { road, roadArt, SCENE_MIN_COLUMNS, sceneZone } from '../src/road'
+import { ART_SCALE } from '../src/world/sprites'
 import { atRest, BAND, bandPortrait, nextMotion, REST, TRANSITION_STEPS, type Motion, type Transition } from '../src/scene'
 import { applyTaskCall } from '../src/tasks'
 import { parseZones, zoneFor } from '../src/zones'
@@ -153,7 +155,7 @@ const transition = (): { transition?: Transition } =>
 async function blitFrame($: EngineInterface): Promise<void> {
   if (anim.columns === undefined || (anim.mode !== 'raster' && anim.mode !== 'image')) return
 
-  const grid = roadScene({
+  const art = roadArt({
     quest: await read($, quest),
     tasks: await read($, tasks),
     companions: await read($, companions),
@@ -166,8 +168,8 @@ async function blitFrame($: EngineInterface): Promise<void> {
     ...transition(),
   })
   const blitted = anim.mode === 'image'
-    ? await $.ui.blit({ requestId: PANE_ID, key: SCENE_IMAGE_KEY, source: sceneImage(grid) })
-    : await $.ui.blit({ requestId: PANE_ID, key: SCENE_KEY, cells: sceneCells(grid) })
+    ? await $.ui.blit({ requestId: PANE_ID, key: SCENE_IMAGE_KEY, source: sceneImage(art) })
+    : await $.ui.blit({ requestId: PANE_ID, key: SCENE_KEY, cells: sceneCells(downsample(art, ART_SCALE)) })
 
   if (blitted.deny !== undefined) stopTimer()
 
@@ -623,7 +625,7 @@ export const register: Register = (on, options) => {
       motion: anim.motion,
       ...transition(),
     })
-    const image = mode === 'image' && hasScene ? sceneImage(view.scene) : undefined
+    const image = mode === 'image' && hasScene ? sceneImage(view.art) : undefined
 
     // The first image of a session in auto: once it is drawn, blit it back to
     // learn whether the terminal shows it. Writes happen in the timer, not here.

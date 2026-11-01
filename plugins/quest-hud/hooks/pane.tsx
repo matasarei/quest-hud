@@ -46,7 +46,7 @@ export function drawRoad($: EngineInterface, e: RenderInput<'Pane'>, road: Road,
     ? (
         <elements.Image
           key={SCENE_IMAGE_KEY}
-          source={image ?? sceneImage(road.scene)}
+          source={image ?? sceneImage(road.art)}
           columns={Math.min(IMAGE_CELLS, Math.max(1, columns))}
           rows={Math.min(IMAGE_CELLS, Math.max(1, rows))}
           alt="the road"

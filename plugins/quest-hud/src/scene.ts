@@ -297,10 +297,11 @@ export const slide = (from: Grid, to: Grid, progress: number): Canvas => {
 const standAt = (art: Canvas, grid: Grid, x: number): void => stamp(art, grid, x * ART_SCALE, GROUND_ROW * ART_SCALE - grid.length)
 
 /**
- * The scene as columns × SCENE_HEIGHT pixels, one a unit: the landscape
- * `motion.step` steps along, the wizard in his pose, the mascot hopping or not.
+ * The scene at the art's own resolution, ART_SCALE pixels a unit: what an
+ * Image shows, where the terminal draws pixels. The landscape `motion.step`
+ * steps along, the wizard in his pose, the mascot hopping or not.
  */
-export const scene = (args: SceneArgs): Grid => {
+export const sceneArt = (args: SceneArgs): Grid => {
   const { columns, zone, waypoints, companions, foes = NO_FOES, motion = REST, transition } = args
   const width = Math.max(0, Math.floor(columns))
   const backdrop = (z: Zone): Grid => rgbToGrid(rasterize(landscape(z, width, motion.step), width, SCENE_HEIGHT, ART_SCALE, 0, { pixel: true, bands: 5 }))
@@ -342,8 +343,14 @@ export const scene = (args: SceneArgs): Grid => {
 
   standAt(art, spriteGrid(WIZARD[motion.pose]), hero)
 
-  return downsample(art, ART_SCALE)
+  return art
 }
+
+/**
+ * The scene as columns × SCENE_HEIGHT pixels, one a unit: the art with each
+ * block reduced to its most common colour, for text cells and the desktop's Svg.
+ */
+export const scene = (args: SceneArgs): Grid => downsample(sceneArt(args), ART_SCALE)
 
 /** The band's portrait above the prompt, in cells: 8 columns by 3 rows. */
 export const BAND = { columns: 8, rows: 3 } as const

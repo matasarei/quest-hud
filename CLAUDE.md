@@ -61,7 +61,8 @@ files only (`git grep -I`): perl dies on binary input.
   over `PALETTE`, two art pixels a unit, outlined and shaded from the upper left; a figure
   keeps its size (`tests/world.test.ts`), and a row is single-quoted, so no palette key is a
   quote or a backslash. Landscapes are shapes painted with `rasterize`'s pixel mode (hard
-  edges, dithered gradients). The scene is reduced to one pixel a unit for every surface.
+  edges, dithered gradients). An Image shows the art's own resolution (`sceneArt`, two pixels a
+  unit); text cells and the desktop's Svg show it reduced to one pixel a unit (`scene`).
   GitHub's Octocat, GitLab's fox and Claude's mascot are our own drawings, never logo files.
 - **`resolve()` lists every element on every surface**; one a surface lacks draws as an empty
   fragment. Choose by `e.surface`, not by `'X' in elements`.

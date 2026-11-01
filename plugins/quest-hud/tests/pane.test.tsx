@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'claude-code/testing'
 import type { Engine } from 'claude-code/testing'
 
+import { imageScale } from '../src/avatar'
 import { engine, RUN, start, world } from './kit'
 
 // Tests about the cells scene (the Raster, its animation) ask for it: auto draws an image first.
@@ -477,5 +478,30 @@ describe('the band\'s wizard', () => {
     expect(world.bandBlits).toHaveLength(5)
     await portrait.unmount()
     await road.unmount()
+  })
+})
+
+describe('the image\'s detail', () => {
+  /** A PNG's width and height, read from its header in the base64. */
+  const pngSize = (base64: string): [number, number] => {
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+    const bits = [...base64.slice(0, 32)].map(c => alphabet.indexOf(c).toString(2).padStart(6, '0')).join('')
+    const byte = (i: number) => parseInt(bits.slice(i * 8, i * 8 + 8), 2)
+    const word = (i: number) => ((byte(i) << 24) | (byte(i + 1) << 16) | (byte(i + 2) << 8) | byte(i + 3)) >>> 0
+    return [word(16), word(20)]
+  }
+
+  test('an image shows the art\'s own pixels, twice the cells\' each way', { options: { graphics: 'images' } }, async ($, on) => {
+    engine(on)
+    await implementing($)
+    const ui = await $.ui.mount(pane('terminal', 60))
+    const image = await ui.find({ type: 'Image', key: 'scene-image' })
+    const source: unknown = image?.props.source
+    const png = typeof source === 'object' && source !== null && 'png' in source ? String(source.png) : ''
+    const [width, height] = pngSize(png)
+    // 60 columns and 28 pixel rows at the art's 2 a unit, 120 × 56, each art pixel a square of the image's scale.
+    const scale = imageScale(120, 56)
+    expect([width, height]).toEqual([120 * scale, 56 * scale])
+    await ui.unmount()
   })
 })

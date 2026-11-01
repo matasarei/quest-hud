@@ -89,10 +89,10 @@ his four walking poses, and the mascot hops. In a fight he stops and strikes. Wh
 changes, the old landscape slides out and the new one in, over six frames. When Claude is
 idle, nothing moves, and nothing is drawn. The wizard above the prompt steps with the Road.
 
-**Images or text cells.** The scene is the same pixel art everywhere, one pixel a column across
-and half a row down: as crisp squares in an image (sent as a small PNG, a few kilobytes a
-frame) where the terminal shows images (kitty, Ghostty, iTerm2 3.5+), and as half-block text
-cells everywhere else. With `graphics = auto` (the default), the HUD finds out once a session:
+**Images or text cells.** Where the terminal shows images (kitty, Ghostty, iTerm2 3.5+), the
+scene is the art's own pixels, two a column across and four a row down, sent as a small PNG
+(about 14 KB a frame at 120 columns). Everywhere else it is half-block text cells, one pixel a
+column and two a row: the same art, each 2 × 2 block of it one cell pixel. With `graphics = auto` (the default), the HUD finds out once a session:
 it draws the image, and if Claude Code could not show it there, it switches to cells. On the
 desktop app the scene is an SVG, still.
 
