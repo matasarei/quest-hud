@@ -9,7 +9,7 @@ const USED: readonly SpriteName[] = [
   'dirt', 'grassTexture', 'water',
   'pine', 'pineLayered', 'roundTree', 'twinPines', 'oak', 'grass', 'palm',
   'campfire', 'tent', 'tower', 'redWall', 'brickWall', 'cobweb', 'tombstone', 'skull', 'torch',
-  'axe', 'sword', 'shield', 'chest', 'key', 'scroll', 'scrollOpen', 'bench',
+  'axe', 'sword', 'shield', 'chest', 'key', 'bookshelf', 'bookcase', 'table', 'candelabra', 'potion',
 ]
 
 describe('the imported sprites', () => {

@@ -51,7 +51,7 @@ export const BACKDROPS: Readonly<Record<Zone, Backdrop>> = {
   dungeon: { background: 0x14121a, far: ['redWall', 'brickWall'], ground: 0x2c2833, texture: 'dirt', props: ['cobweb', ['tombstone', 0xbdb6a8], 'skull', 'torch'] },
   arena: { background: 0x2e2418, far: ['redWall'], ground: 0x5a4a38, texture: 'dirt', props: ['shield', 'sword'] },
   forge: { background: 0x2a1414, far: ['brickWall', 'redWall'], ground: 0x3a2a22, texture: 'dirt', props: [['axe', 0xc9ced6], 'campfire', 'redWall'] },
-  map: { background: 0x23201a, far: ['twinPines'], ground: 0x3a3022, texture: 'dirt', props: ['scroll', 'scrollOpen', 'bench'] },
+  map: { background: 0x23201a, far: ['bookshelf', 'bookcase'], ground: 0x3a3022, texture: 'dirt', props: ['candelabra', 'table', 'potion'] },
   camp: { background: 0x1d2240, far: ['pine', 'twinPines', 'pine', 'pineLayered'], ground: 0x3b2f24, texture: 'dirt', props: ['tent', 'campfire'] },
   wilds: { background: 0x13261d, far: ['oak', 'roundTree', 'twinPines'], ground: 0x2b3a22, texture: 'grassTexture', props: ['oak', 'grass', 'pine'] },
 }

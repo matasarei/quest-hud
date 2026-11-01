@@ -131,3 +131,13 @@ describe('scene', () => {
     }
   })
 })
+
+describe('the Map room', () => {
+  test('is indoors: no trees behind it, and none of the props that read as crates', () => {
+    const outdoors = ['pine', 'pineLayered', 'roundTree', 'twinPines', 'oak', 'grass', 'palm']
+    const crates = ['scroll', 'scrollOpen', 'bench']
+    const props = BACKDROPS.map.props.map(prop => (typeof prop === 'string' ? prop : prop[0]))
+    expect(BACKDROPS.map.far.filter(name => outdoors.includes(name))).toEqual([])
+    expect(props.filter(name => crates.includes(name) || outdoors.includes(name))).toEqual([])
+  })
+})
