@@ -63,7 +63,9 @@ files only (`git grep -I`): perl dies on binary input.
   quote or a backslash. Landscapes are shapes painted with `rasterize`'s pixel mode (hard
   edges, dithered gradients). An Image shows the art's own resolution (`sceneArt`, two pixels a
   unit); text cells show it with its rows halved, in quadrant characters, 2 × 2 pixels and two
-  colours a cell (`artCells`); the desktop's Svg shows it at one pixel a unit (`scene`). A
+  colours a cell (`artCells`), from art painted with `cells: true`, its dither held for each
+  pair of rows (`ditherRows: 2`) — halving the rows of a normal Bayer dither leaves vertical
+  stripes; the desktop's Svg shows it at one pixel a unit (`scene`). A
   Raster takes one printable width-1 BMP character a cell, so octants (U+1CD00) and
   sextants (U+1FB00) are out. The band's portrait is art the same way, each 2 × 2 block in at
   most two colours.
