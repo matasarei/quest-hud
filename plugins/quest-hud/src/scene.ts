@@ -345,5 +345,21 @@ export const scene = (args: SceneArgs): Grid => {
   return downsample(art, ART_SCALE)
 }
 
+/** The band's portrait above the prompt, in cells: 8 columns by 3 rows. */
+export const BAND = { columns: 8, rows: 3 } as const
+
+/** The art row the band's portrait starts at: below the hat's tip, so the brim, the face and the beard fit. */
+const PORTRAIT_TOP = 3
+
+/**
+ * The band's portrait: the wizard's hat, face and beard, 12 art rows of his
+ * sprite in the pose given, reduced like the scene to 8 × 6 pixels.
+ */
+export const bandPortrait = (pose: Pose = 'stand'): Grid =>
+  downsample(
+    spriteGrid(WIZARD[pose]).slice(PORTRAIT_TOP, PORTRAIT_TOP + BAND.rows * 2 * ART_SCALE).map(line => line.slice(8, 8 + BAND.columns * ART_SCALE)),
+    ART_SCALE,
+  )
+
 /** The colour a zone's scene starts with: its top-left pixel, the sky's or the wall's. */
 export const skyColor = (zone: Zone): number => scene({ columns: 4, zone, waypoints: [], companions: 0 })[0]?.[0] ?? 0

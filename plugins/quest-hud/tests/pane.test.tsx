@@ -457,3 +457,25 @@ describe('a zone change', () => {
     await ui.unmount()
   })
 })
+
+describe('the band\'s wizard', () => {
+  const band = { plugin: 'quest-hud', component: 'AbovePrompt', surface: 'terminal', props: { hasSurvey: false, isWorking: false, maxRows: 6, bodyColumns: 140, scroll: { offset: 0, bodyRows: 6 }, view: {} } } as const
+
+  test('steps with the Road\'s animation while Claude works, and comes to rest with it', CELLS, async ($, on) => {
+    const clock = engine(on)
+    world.panes = [{ id: 'quest-hud', isShown: true }]
+    await implementing($)
+    const road = await $.ui.mount(pane('terminal'))
+    const portrait = await $.ui.mount(band)
+    await $.turn.start({ text: 'go', turnId: 'turn-1' })
+    await clock.advance(1000)
+    expect(world.bandBlits).toHaveLength(4)
+    expect(new Set(world.bandBlits).size > 1).toBe(true)
+    await $.turn.complete({ turnId: 'turn-1', answer: '', durationMs: 1, isAborted: false, reason: 'answer' })
+    expect(world.bandBlits).toHaveLength(5)
+    await clock.advance(2000)
+    expect(world.bandBlits).toHaveLength(5)
+    await portrait.unmount()
+    await road.unmount()
+  })
+})

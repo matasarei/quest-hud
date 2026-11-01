@@ -72,11 +72,12 @@ describe('the band', () => {
     })
   }
 
-  test('draws the avatar as a Raster on the terminal and as Svg on the desktop', async ($, on) => {
+  test('draws the wizard\'s portrait: an 8 × 3 Raster on the terminal, an Svg on the desktop', async ($, on) => {
     engine(on)
     await implementWithTasks($)
     const terminal = await $.ui.mount(band('terminal'))
-    expect(await terminal.find({ type: 'Raster' })).toBeTruthy()
+    const raster = await terminal.find({ type: 'Raster' })
+    expect([raster?.props.columns, raster?.props.rows]).toEqual([8, 3])
     await terminal.unmount()
     const desktop = await $.ui.mount(band('desktop'))
     expect(await desktop.find({ type: 'Svg' })).toBeTruthy()

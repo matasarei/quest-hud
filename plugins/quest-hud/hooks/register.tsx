@@ -4,14 +4,14 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, Timer } from 'claude-code'
 
-import { AVATAR_SMALL, MAGE, rasterSize, toRasterCells, toSvg } from '../src/avatar'
+import { gridToRasterCells, gridToSvg } from '../src/avatar'
 import { commandKinds, endFights, fightKinds, fightOutcome, fightText, forgeEvent, lootText, NO_FOES, startFights, stdoutOf } from '../src/bash'
 import { activeCompanions, sameCompanions } from '../src/companions'
 import { appendEntry, castText, scoutCounts, scoutText } from '../src/log'
 import { bandModel, fromMeasure, shortTokens, statusText, TONE_COLOR, ZONE_LABEL, zoneLine, type Bars } from '../src/meters'
 import { afterPrompt, cleanTitle, fromSkill } from '../src/quest'
 import { road, roadScene, SCENE_MIN_COLUMNS, sceneZone } from '../src/road'
-import { atRest, nextMotion, REST, TRANSITION_STEPS, type Motion, type Transition } from '../src/scene'
+import { atRest, BAND, bandPortrait, nextMotion, REST, TRANSITION_STEPS, type Motion, type Transition } from '../src/scene'
 import { applyTaskCall } from '../src/tasks'
 import { parseZones, zoneFor } from '../src/zones'
 import type { Allies, FightKind, Foes, LogEntry, Zone } from '../types'
@@ -49,9 +49,8 @@ const PERSON_ORIGINS: ReadonlySet<string> = new Set(['composer', 'bridge', 'sdk'
 
 const TASK_TOOLS: ReadonlySet<string> = new Set(['TaskCreate', 'TaskUpdate', 'TodoWrite'])
 
-const AVATAR_CELLS = toRasterCells(AVATAR_SMALL, MAGE)
-const AVATAR_SVG = toSvg(AVATAR_SMALL, MAGE)
-const AVATAR_SIZE = rasterSize(AVATAR_SMALL)
+/** The band portrait's key, which $.ui.blit names to step it with the animation. */
+const BAND_KEY = 'avatar'
 
 /** A plugin's skill reads `plugin:name`, whichever way the engine passes it. */
 const skillName = (skill: string, pluginName: string | undefined): string =>
@@ -95,6 +94,8 @@ const anim: {
   mode?: SceneMode
   zone?: Zone
   slide?: { from: Zone; step: number }
+  /** The band's draw, when its portrait is a Raster the animation can step too. */
+  band?: string
 } = {
   isStarting: false,
   generation: 0,
@@ -169,6 +170,12 @@ async function blitFrame($: EngineInterface): Promise<void> {
     : await $.ui.blit({ requestId: PANE_ID, key: SCENE_KEY, cells: sceneCells(grid) })
 
   if (blitted.deny !== undefined) stopTimer()
+
+  // The band's wizard steps with the Road's; a band no longer drawn just stops taking frames.
+  if (anim.band !== undefined) {
+    const band = await $.ui.blit({ requestId: anim.band, key: BAND_KEY, cells: gridToRasterCells(bandPortrait(anim.motion.pose)) })
+    if (band.deny !== undefined) anim.band = undefined
+  }
 }
 
 /** Cancels the animation, and any start still waiting to make its timer; the figures come to rest where the walk got to. */
@@ -536,7 +543,7 @@ export const register: Register = (on, options) => {
     const band = bandModel(await read($, quest), await read($, tasks), await read($, meters), bars, await $.clock.now())
     const elements = $.ui.resolve(e)
     const { Box, Text } = elements
-    const hasRoom = e.props.maxRows >= AVATAR_SIZE.rows
+    const hasRoom = e.props.maxRows >= BAND.rows
     const row = (key: string, segments: typeof band.head) => (
       <Box key={key} flexDirection="row">
         {segments.map(segment => (
@@ -548,12 +555,14 @@ export const register: Register = (on, options) => {
     )
     // resolve() names every element on every surface, and one a surface lacks
     // draws as an empty fragment: the surface decides, not the table.
+    const isRaster = hasRoom && e.surface === 'terminal' && 'Raster' in elements
+    anim.band = isRaster ? e.requestId : undefined
     const avatar = !hasRoom
       ? null
-      : e.surface === 'terminal' && 'Raster' in elements
-        ? <elements.Raster key="avatar" columns={AVATAR_SIZE.columns} rows={AVATAR_SIZE.rows} cells={AVATAR_CELLS} />
+      : isRaster && 'Raster' in elements
+        ? <elements.Raster key={BAND_KEY} columns={BAND.columns} rows={BAND.rows} cells={gridToRasterCells(bandPortrait(anim.motion.pose))} />
         : 'Svg' in elements
-          ? <elements.Svg source={AVATAR_SVG} alt="avatar" width={24} height={24} />
+          ? <elements.Svg source={gridToSvg(bandPortrait())} alt="the wizard" width={BAND.columns * 4} height={BAND.rows * 8} />
           : null
 
     return (
