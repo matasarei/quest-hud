@@ -20,6 +20,16 @@ export const AVATAR: readonly string[] = [
   '...kk..kk...',
 ]
 
+/** The band's avatar: 6x6 pixels, three cell rows beside the two text rows. */
+export const AVATAR_SMALL: readonly string[] = [
+  '..HH..',
+  '.HHHH.',
+  'hhhhhh',
+  '.ESSE.',
+  '.RRRRs',
+  'RRBBRs',
+]
+
 export type Palette = Readonly<Record<string, number>>
 
 /** The mage, in the mocks' colours, as 0xRRGGBB. */
