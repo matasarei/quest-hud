@@ -52,9 +52,11 @@ SPRITES = {
     "shield": 184,
     "chest": 513,
     "key": 571,
-    "scroll": 768,
-    "scrollOpen": 769,
-    "bench": 345,
+    "bookshelf": 299,
+    "bookcase": 346,
+    "table": 394,
+    "candelabra": 740,
+    "potion": 669,
 }
 
 # One character per colour; '.' is an empty pixel.
