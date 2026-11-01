@@ -11,7 +11,7 @@ import type { Grid } from './avatar'
 import { downsample, mirrorGrid, spriteGrid, stamp, type Canvas, type Sprite } from './paint/pixels'
 import { rasterize, rgbToGrid } from './paint/raster'
 import { landscape } from './world/landscapes'
-import { ART_SCALE, CHEST, DRAGON, FLAG, FOX, GHOST, MASCOT, OCTOCAT, PROPS, SPIDER, WIZARD, type Pose, type PropName } from './world/sprites'
+import { ART_SCALE, CHEST, DRAGON, FLAG, FOX, GHOST, MASCOT, OCTOCAT, PROPS, SPIDER, WALK, WIZARD, type Pose, type PropName } from './world/sprites'
 
 /** Pixel rows: fourteen terminal rows of half blocks. */
 export const SCENE_HEIGHT = 28
@@ -138,8 +138,29 @@ export type SceneArgs = {
   loot?: number
   /** The Octocat and the fox; neither when left out. */
   allies?: Allies
-  frame: 0 | 1
+  /** How far along the road, and how the wizard and the mascot stand; at rest from the start when left out. */
+  motion?: Motion
 }
+
+/** A frame of the walk: how many steps along the road, the wizard's pose, and whether the mascot is mid-hop. */
+export type Motion = { step: number; pose: Pose; hop: boolean }
+
+/** Standing at the start of the road. */
+export const REST: Motion = { step: 0, pose: 'stand', hop: false }
+
+/**
+ * The next frame of the animation, its `tick`th: a step further along the
+ * road, the next of the walk's four poses, the mascot hopping every other
+ * frame. While a fight is on, the wizard stops and strikes and stands in
+ * turn, and the road stays where it is.
+ */
+export const nextMotion = (motion: Motion, tick: number, isFighting: boolean): Motion =>
+  isFighting
+    ? { step: motion.step, pose: tick % 2 === 0 ? 'strike' : 'stand', hop: false }
+    : { step: motion.step + 1, pose: WALK[tick % WALK.length] ?? 'stand', hop: tick % 2 === 1 }
+
+/** The figures at rest where the walk got to. */
+export const atRest = (motion: Motion): Motion => ({ step: motion.step, pose: 'stand', hop: false })
 
 /** The flags a road keeps room for, when there are that many tasks: the one in progress and one each side. */
 export const MIN_FLAGS = 3
@@ -258,13 +279,13 @@ const foeGrid = (kind: FightKind): Grid => (kind === 'test' ? mirrorGrid(spriteG
 const standAt = (art: Canvas, grid: Grid, x: number): void => stamp(art, grid, x * ART_SCALE, GROUND_ROW * ART_SCALE - grid.length)
 
 /**
- * The scene as columns × SCENE_HEIGHT pixels, one a unit. Frame 1 is the
- * bob: the wizard mid-step and the mascot mid-hop.
+ * The scene as columns × SCENE_HEIGHT pixels, one a unit: the landscape
+ * `motion.step` steps along, the wizard in his pose, the mascot hopping or not.
  */
 export const scene = (args: SceneArgs): Grid => {
-  const { columns, zone, waypoints, companions, foes = NO_FOES, frame } = args
+  const { columns, zone, waypoints, companions, foes = NO_FOES, motion = REST } = args
   const width = Math.max(0, Math.floor(columns))
-  const art: Canvas = rgbToGrid(rasterize(landscape(zone, width, 0), width, SCENE_HEIGHT, ART_SCALE, 0, { pixel: true, bands: 5 })).map(row => [...row])
+  const art: Canvas = rgbToGrid(rasterize(landscape(zone, width, motion.step), width, SCENE_HEIGHT, ART_SCALE, 0, { pixel: true, bands: 5 })).map(row => [...row])
   const kept = layout({ ...args, columns: width })
 
   let right = width - 2
@@ -280,7 +301,6 @@ export const scene = (args: SceneArgs): Grid => {
   const flags = fitWaypoints(waypoints, flagSlots(kept.flagRoad))
   const placed = figures(flags, kept)
   const hero = Math.max(placed.hero, FAMILIAR_BEHIND)
-  const pose: Pose = frame === 1 ? 'walk1' : 'stand'
 
   // Ghosts first, behind everything on the road; one with no room is not drawn: the pane's text names it.
   for (let k = Math.min(companions, MAX_GHOSTS); k >= 1; k--) {
@@ -290,7 +310,7 @@ export const scene = (args: SceneArgs): Grid => {
 
   flags.forEach((state, i) => standAt(art, spriteGrid(FLAG[state]), placed.flagXs[i] ?? 0))
 
-  standAt(art, spriteGrid(frame === 1 ? MASCOT.hop : MASCOT.still), hero - FAMILIAR_BEHIND)
+  standAt(art, spriteGrid(motion.hop ? MASCOT.hop : MASCOT.still), hero - FAMILIAR_BEHIND)
 
   // The monsters face the wizard from the right: the dragon nearest, the spider
   // behind it, drawn first so the dragon stands in front.
@@ -299,10 +319,10 @@ export const scene = (args: SceneArgs): Grid => {
     standAt(art, foeGrid(up[i] as FightKind), foeX(hero, kept.road, up.length, i, Math.max(placed.ahead, hero + SIZE.wizard)))
   }
 
-  standAt(art, spriteGrid(WIZARD[pose]), hero)
+  standAt(art, spriteGrid(WIZARD[motion.pose]), hero)
 
   return downsample(art, ART_SCALE)
 }
 
 /** The colour a zone's scene starts with: its top-left pixel, the sky's or the wall's. */
-export const skyColor = (zone: Zone): number => scene({ columns: 4, zone, waypoints: [], companions: 0, frame: 0 })[0]?.[0] ?? 0
+export const skyColor = (zone: Zone): number => scene({ columns: 4, zone, waypoints: [], companions: 0 })[0]?.[0] ?? 0

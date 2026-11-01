@@ -8,7 +8,7 @@ export const world: {
   id: string
   agents: AgentInfo[]
   blits: string[]
-  /** Blits that swap an Image (the probe), apart from the bob's cell blits. */
+  /** Blits that swap an Image (the probe, the animation's image frames), apart from the cell blits. */
   imageBlits: number
   /** When true, the engine answers an Image blit as where it drew the alt. */
   refuseImages: boolean

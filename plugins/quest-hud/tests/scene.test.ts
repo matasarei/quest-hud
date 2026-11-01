@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'claude-code/testing'
 
 import {
-  avatarX, figures, FLAG_SLOT, FLAG_WIDTH, fitWaypoints, flagSlots, foeX, GROUND_ROW, layout, MAX_FLAGS, MAX_GHOSTS, MIN_FLAGS, propsWidth,
-  roadWidth, scene, SCENE_HEIGHT, SIZE, skyColor, waypointsOf, waypointX, ZONE_PROPS, type Waypoint,
+  atRest, avatarX, figures, FLAG_SLOT, FLAG_WIDTH, fitWaypoints, flagSlots, foeX, GROUND_ROW, layout, MAX_FLAGS, MAX_GHOSTS, MIN_FLAGS, propsWidth,
+  nextMotion, REST, roadWidth, scene, SCENE_HEIGHT, SIZE, skyColor, waypointsOf, waypointX, ZONE_PROPS, type Waypoint,
 } from '../src/scene'
 import { PALETTE, PROPS } from '../src/world/sprites'
 import type { Task, Zone } from '../types'
@@ -73,27 +73,27 @@ describe('scene', () => {
 
   test('is columns × SCENE_HEIGHT pixels, every pixel filled, in every zone', () => {
     for (const zone of ZONES) {
-      const grid = scene({ columns: 90, zone, waypoints: three, companions: 1, frame: 0 })
+      const grid = scene({ columns: 90, zone, waypoints: three, companions: 1 })
       expect(grid).toHaveLength(SCENE_HEIGHT)
       expect(grid.every(line => line.length === 90 && line.every(c => c !== undefined))).toBe(true)
     }
   })
 
   test('every zone looks its own, and starts with its sky', () => {
-    const scenes = ZONES.map(zone => scene({ columns: 80, zone, waypoints: [], companions: 0, frame: 0 }))
+    const scenes = ZONES.map(zone => scene({ columns: 80, zone, waypoints: [], companions: 0 }))
     expect(new Set(scenes.map(grid => JSON.stringify(grid))).size).toBe(ZONES.length)
     ZONES.forEach((zone, i) => expect(scenes[i]?.[0]?.[0]).toBe(skyColor(zone)))
   })
 
   test('the ground starts at GROUND_ROW: below it, no sky shows', () => {
     for (const zone of ZONES) {
-      const grid = scene({ columns: 60, zone, waypoints: three, companions: 2, frame: 0 })
+      const grid = scene({ columns: 60, zone, waypoints: three, companions: 2 })
       expect(grid.slice(GROUND_ROW).flat().filter(c => c === skyColor(zone))).toEqual([])
     }
   })
 
   test('the wizard stands just right of the flag in progress, where his robe shows and nowhere else', () => {
-    const grid = scene({ columns: 120, zone: 'camp', waypoints: three, companions: 0, frame: 0 })
+    const grid = scene({ columns: 120, zone: 'camp', waypoints: three, companions: 0 })
     const laid = layout({ columns: 120, zone: 'camp', waypoints: three })
     const { hero } = figures(fitWaypoints(three, flagSlots(laid.flagRoad)), laid)
     const robe = columnsOf(grid, ROBE)
@@ -102,15 +102,15 @@ describe('scene', () => {
   })
 
   test('no tasks: the wizard near the left, Claude\'s mascot still at his heel', () => {
-    const grid = scene({ columns: 80, zone: 'wilds', waypoints: [], companions: 0, frame: 0 })
+    const grid = scene({ columns: 80, zone: 'wilds', waypoints: [], companions: 0 })
     const robe = columnsOf(grid, ROBE)
     expect(robe[0]! >= 6 && robe[robe.length - 1]! < 6 + SIZE.wizard).toBe(true)
     expect(columnsOf(grid, PALETTE.a as number).some(x => x < 6)).toBe(true)
   })
 
-  test('frame 1 is the bob: only the wizard and the mascot at his heel change', () => {
-    const still = scene({ columns: 120, zone: 'forge', waypoints: three, companions: 2, frame: 0 })
-    const lifted = scene({ columns: 120, zone: 'forge', waypoints: three, companions: 2, frame: 1 })
+  test('a pose and a hop change only the wizard and the mascot at his heel', () => {
+    const still = scene({ columns: 120, zone: 'forge', waypoints: three, companions: 2 })
+    const lifted = scene({ columns: 120, zone: 'forge', waypoints: three, companions: 2, motion: { step: 0, pose: 'walk1', hop: true } })
     const laid = layout({ columns: 120, zone: 'forge', waypoints: three })
     const { hero } = figures(fitWaypoints(three, flagSlots(laid.flagRoad)), laid)
     const xs = changed(still, lifted)
@@ -119,7 +119,7 @@ describe('scene', () => {
   })
 
   test('the flag in progress flies its gold pennant', () => {
-    const grid = scene({ columns: 120, zone: 'map', waypoints: ['now'], companions: 0, frame: 0 })
+    const grid = scene({ columns: 120, zone: 'map', waypoints: ['now'], companions: 0 })
     const laid = layout({ columns: 120, zone: 'map', waypoints: ['now'] })
     const x0 = waypointX(0, 1, laid.flagRoad)
     const pennant = grid.slice(GROUND_ROW - 14, GROUND_ROW).flatMap(line => line.slice(x0, x0 + FLAG_WIDTH))
@@ -129,16 +129,16 @@ describe('scene', () => {
   test('ghosts are drawn up to MAX_GHOSTS', () => {
     // The flag in progress far along the road, so all the ghosts have room behind the wizard.
     const road: Waypoint[] = ['done', 'done', 'done', 'done', 'now']
-    const none = scene({ columns: 160, zone: 'wilds', waypoints: road, companions: 0, frame: 0 })
-    const many = scene({ columns: 160, zone: 'wilds', waypoints: road, companions: MAX_GHOSTS + 3, frame: 0 })
-    const four = scene({ columns: 160, zone: 'wilds', waypoints: road, companions: MAX_GHOSTS, frame: 0 })
+    const none = scene({ columns: 160, zone: 'wilds', waypoints: road, companions: 0 })
+    const many = scene({ columns: 160, zone: 'wilds', waypoints: road, companions: MAX_GHOSTS + 3 })
+    const four = scene({ columns: 160, zone: 'wilds', waypoints: road, companions: MAX_GHOSTS })
     expect(changed(none, many).length > 0).toBe(true)
     expect(changed(four, many)).toEqual([])
   })
 
   test('narrow widths still give a full grid, clipped', () => {
     for (const columns of [24, 8, 0]) {
-      const grid = scene({ columns, zone: 'harbour', waypoints: three, companions: 3, frame: 1 })
+      const grid = scene({ columns, zone: 'harbour', waypoints: three, companions: 3, motion: { step: 3, pose: 'walk1', hop: true } })
       expect(grid).toHaveLength(SCENE_HEIGHT)
       expect(grid.every(line => line.length === columns)).toBe(true)
     }
@@ -148,7 +148,7 @@ describe('scene', () => {
 describe('the monsters', () => {
   const three: Waypoint[] = ['done', 'now', 'todo']
   const at = (foes: { test: 'none' | 'fighting' | 'standing'; lint: 'none' | 'fighting' | 'standing' }) =>
-    scene({ columns: 160, zone: 'arena', waypoints: three, companions: 0, foes, frame: 0 })
+    scene({ columns: 160, zone: 'arena', waypoints: three, companions: 0, foes })
 
   test('none up: neither is drawn', () => {
     const grid = at({ test: 'none', lint: 'none' })
@@ -188,7 +188,7 @@ describe('the monsters', () => {
 
   test('narrow widths still give a full grid with both up', () => {
     for (const columns of [40, 20, 0]) {
-      const grid = scene({ columns, zone: 'dungeon', waypoints: three, companions: 2, foes: { test: 'standing', lint: 'standing' }, frame: 1 })
+      const grid = scene({ columns, zone: 'dungeon', waypoints: three, companions: 2, foes: { test: 'standing', lint: 'standing' }, motion: { step: 3, pose: 'walk1', hop: true } })
       expect(grid).toHaveLength(SCENE_HEIGHT)
       expect(grid.every(line => line.length === columns && line.every(c => c !== undefined))).toBe(true)
     }
@@ -197,8 +197,8 @@ describe('the monsters', () => {
 
 describe('the chest', () => {
   test('stands left of the landmarks once there is loot, and the road gives it room', () => {
-    const none = scene({ columns: 120, zone: 'camp', waypoints: [], companions: 0, loot: 0, frame: 0 })
-    const some = scene({ columns: 120, zone: 'camp', waypoints: [], companions: 0, loot: 3, frame: 0 })
+    const none = scene({ columns: 120, zone: 'camp', waypoints: [], companions: 0, loot: 0 })
+    const some = scene({ columns: 120, zone: 'camp', waypoints: [], companions: 0, loot: 3 })
     const xs = changed(none, some)
     const propsStart = 120 - 2 - (propsWidth('camp') - 4)
     expect(xs.length > 0).toBe(true)
@@ -219,7 +219,7 @@ describe('the chest', () => {
 
 describe('the allies', () => {
   test('the Octocat and the fox stand left of the chest, the road giving them room', () => {
-    const grid = scene({ columns: 160, zone: 'wilds', waypoints: [], companions: 0, loot: 1, allies: { octopus: true, fox: true }, frame: 0 })
+    const grid = scene({ columns: 160, zone: 'wilds', waypoints: [], companions: 0, loot: 1, allies: { octopus: true, fox: true } })
     const octocat = columnsOf(grid, OCTOCAT)
     const fox = columnsOf(grid, FOX)
     const propsStart = 160 - 2 - (propsWidth('wilds') - 4)
@@ -231,7 +231,7 @@ describe('the allies', () => {
   })
 
   test('neither, until they came', () => {
-    const grid = scene({ columns: 160, zone: 'wilds', waypoints: [], companions: 0, allies: { octopus: false, fox: false }, frame: 0 })
+    const grid = scene({ columns: 160, zone: 'wilds', waypoints: [], companions: 0, allies: { octopus: false, fox: false } })
     expect(columnsOf(grid, OCTOCAT)).toEqual([])
     expect(columnsOf(grid, FOX)).toEqual([])
   })
@@ -302,8 +302,34 @@ describe('a narrow pane', () => {
   })
 
   test('a ghost with no room left of the wizard is not drawn, rather than cut at the edge', () => {
-    const none = scene({ columns: 50, zone: 'wilds', waypoints: [], companions: 0, frame: 0 })
-    const four = scene({ columns: 50, zone: 'wilds', waypoints: [], companions: 4, frame: 0 })
+    const none = scene({ columns: 50, zone: 'wilds', waypoints: [], companions: 0 })
+    const four = scene({ columns: 50, zone: 'wilds', waypoints: [], companions: 4 })
     expect(four).toEqual(none)
+  })
+})
+
+describe('the walk', () => {
+  test('each frame is a step further and the next of four poses, the mascot hopping every other frame', () => {
+    let motion = REST
+    const poses: string[] = []
+    for (let tick = 1; tick <= 8; tick++) {
+      motion = nextMotion(motion, tick, false)
+      poses.push(`${motion.pose}${motion.hop ? '^' : ''}`)
+    }
+    expect(motion.step).toBe(8)
+    expect(poses).toEqual(['walk1^', 'walk2', 'walk3^', 'walk0', 'walk1^', 'walk2', 'walk3^', 'walk0'])
+  })
+
+  test('in a fight the wizard stops, and strikes and stands in turn', () => {
+    const walked = { step: 5, pose: 'walk2', hop: false } as const
+    expect(nextMotion(walked, 6, true)).toEqual({ step: 5, pose: 'strike', hop: false })
+    expect(nextMotion(walked, 7, true)).toEqual({ step: 5, pose: 'stand', hop: false })
+    expect(atRest({ step: 9, pose: 'walk3', hop: true })).toEqual({ step: 9, pose: 'stand', hop: false })
+  })
+
+  test('a step moves the landscape behind everyone', () => {
+    const at = (step: number) => scene({ columns: 120, zone: 'wilds', waypoints: ['done', 'now'], companions: 0, motion: { step, pose: 'stand', hop: false } })
+    const xs = changed(at(0), at(1))
+    expect(xs.length > 60).toBe(true)
   })
 })
