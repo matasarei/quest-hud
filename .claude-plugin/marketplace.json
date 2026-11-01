@@ -1,0 +1,12 @@
+{
+  "name": "quest-hud",
+  "description": "A Claude Code mod that draws the session as a small game: HP and MP bars for the weekly limit and the context window, and the skill and tasks you are on.",
+  "owner": { "name": "Yevhen Matasar", "url": "https://github.com/matasarei" },
+  "plugins": [
+    {
+      "name": "quest-hud",
+      "source": "./plugins/quest-hud",
+      "description": "HP and MP bars for the weekly limit and the context window, and the skill, zone and tasks you are on, above the prompt. No model calls, nothing added to the context."
+    }
+  ]
+}

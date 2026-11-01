@@ -1,0 +1,42 @@
+// The HUD's own types, and the values it keeps for the session in $.state.
+
+/** Where a skill's work happens, in the game's terms. */
+export type Zone = 'watchtower' | 'harbour' | 'dungeon' | 'arena' | 'forge' | 'map' | 'camp' | 'wilds'
+
+/** The piece of work the session is on: a skill run, or a prompt. */
+export type Quest = {
+  title: string
+  skill?: string
+  zone: Zone
+  startedAt: number
+}
+
+/** One entry of Claude Code's own task list, as the task tools last left it. */
+export type Task = {
+  id: string
+  subject: string
+  status: 'pending' | 'in_progress' | 'completed'
+}
+
+/** The session's figures, as `session.measure` last pushed them. */
+export type Meters = {
+  /** Context used, 0–100; absent until the live window's first response. */
+  contextPercent?: number
+  contextTokens?: number
+  window: number
+  /** Percent used of the 7-day window; absent when the account reports none. */
+  weekUsed?: number
+  weekResetsAt?: string
+  fiveHourUsed?: number
+  costUsd?: number
+}
+
+declare module 'claude-code' {
+  interface PluginState {
+    'quest-hud': {
+      quest: Quest | null
+      tasks: Task[]
+      meters: Meters | null
+    }
+  }
+}
