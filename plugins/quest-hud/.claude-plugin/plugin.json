@@ -1,0 +1,31 @@
+{
+  "name": "quest-hud",
+  "description": "HP and MP bars for the weekly limit and the context window, and the skill, zone and tasks you are on, above the prompt. Works with any skills. No model calls, nothing added to the context.",
+  "author": { "name": "Yevhen Matasar", "url": "https://github.com/matasarei" },
+  "license": "MIT",
+  "repository": "https://github.com/matasarei/quest-hud",
+  "keywords": ["claude-code", "mod", "hud", "status-line", "context-window", "rate-limits", "game", "rpg"],
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "detail": {
+      "type": "string",
+      "title": "Detail",
+      "description": "What the HUD draws: nothing, one status-line entry, or the band above the prompt.",
+      "options": ["off", "status", "band"],
+      "default": "band"
+    },
+    "bars": {
+      "type": "string",
+      "title": "Bars",
+      "description": "HP and MP only, or also the 5-hour window and the session cost.",
+      "options": ["hpmp", "all"],
+      "default": "hpmp"
+    },
+    "zones": {
+      "type": "string",
+      "title": "Zone overrides",
+      "description": "Extra skill-to-zone rules, comma-separated: name=zone (zones: watchtower, harbour, dungeon, arena, forge, map, camp, wilds).",
+      "default": ""
+    }
+  }
+}

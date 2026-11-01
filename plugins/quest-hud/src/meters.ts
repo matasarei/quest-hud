@@ -1,0 +1,159 @@
+// The session's figures as bars and words: HP is what is left of the weekly
+// window, MP what is left of the context window. Pure: the numbers come in,
+// text comes out, and the render hook only lays it out.
+import type { Meters, Quest, Task, Zone } from '../types'
+import { cleanTitle } from './quest'
+import { progress } from './tasks'
+
+/** What `session.measure` pushes and `$.session.usage()` answers, as far as the HUD reads it. */
+export type UsageLike = {
+  context: { tokens?: number; window: number; percent?: number }
+  rateLimits: ReadonlyArray<{ kind: string; percentUsed: number; resetsAt?: string }>
+  cost?: { usd: number }
+}
+
+export type Bars = 'hpmp' | 'all'
+
+export const ZONE_LABEL: Readonly<Record<Zone, string>> = {
+  watchtower: 'Watchtower',
+  harbour: 'Harbour',
+  dungeon: 'Dungeon',
+  arena: 'Arena',
+  forge: 'Forge',
+  map: 'Map room',
+  camp: 'Camp',
+  wilds: 'Wilds',
+}
+
+const clamp = (value: number): number => Math.min(100, Math.max(0, value))
+
+export const fromMeasure = (usage: UsageLike): Meters => {
+  const week = usage.rateLimits.find(limit => limit.kind === 'seven_day')
+  const fiveHour = usage.rateLimits.find(limit => limit.kind === 'five_hour')
+  const meters: Meters = { window: usage.context.window }
+
+  if (usage.context.percent !== undefined) meters.contextPercent = usage.context.percent
+  if (usage.context.tokens !== undefined) meters.contextTokens = usage.context.tokens
+  if (week) meters.weekUsed = week.percentUsed
+  if (week?.resetsAt !== undefined) meters.weekResetsAt = week.resetsAt
+  if (fiveHour) meters.fiveHourUsed = fiveHour.percentUsed
+  if (usage.cost) meters.costUsd = usage.cost.usd
+
+  return meters
+}
+
+/** Percent of the context window left; undefined until a response has filled it. */
+export const mpLeft = (meters: Meters | null): number | undefined =>
+  meters?.contextPercent === undefined ? undefined : Math.round(clamp(100 - meters.contextPercent))
+
+/** Percent of the weekly window left; undefined where the account reports none. */
+export const hpLeft = (meters: Meters | null): number | undefined =>
+  meters?.weekUsed === undefined ? undefined : Math.round(clamp(100 - meters.weekUsed))
+
+/** A bar of `width` cells, `left` percent of them full. */
+export const bar = (left: number, width: number, full = '█', empty = '░'): string => {
+  const cells = Math.round((clamp(left) / 100) * width)
+
+  return full.repeat(cells) + empty.repeat(width - cells)
+}
+
+/** `2d 4h`, `3h 12m`, `45m`, `<1m`; undefined for a time that cannot be read. */
+export const healsIn = (resetsAt: string | undefined, now: number): string | undefined => {
+  const at = resetsAt === undefined ? Number.NaN : Date.parse(resetsAt)
+
+  if (Number.isNaN(at)) {
+    return undefined
+  }
+
+  const minutes = Math.floor(Math.max(0, at - now) / 60_000)
+  const days = Math.floor(minutes / 1440)
+  const hours = Math.floor((minutes % 1440) / 60)
+
+  if (days > 0) return `${days}d ${hours}h`
+  if (hours > 0) return `${hours}h ${minutes % 60}m`
+  return minutes > 0 ? `${minutes}m` : '<1m'
+}
+
+/** `82k`, `1.2M`, `950`. */
+export const shortTokens = (tokens: number): string => {
+  if (tokens >= 1_000_000) return `${Number((tokens / 1_000_000).toFixed(1))}M`
+  if (tokens >= 1_000) return `${Math.round(tokens / 1_000)}k`
+  return String(tokens)
+}
+
+export type Tone = 'accent' | 'plain' | 'dim' | 'hp' | 'mp' | 'five' | 'gold'
+export type Segment = { text: string; tone: Tone }
+export type Band = { head: Segment[]; meters: Segment[] }
+
+export const BAND_WIDTH = 14
+
+/** The band's two rows as text segments, each with the tone it is drawn in. */
+export const bandModel = (quest: Quest | null, tasks: readonly Task[], meters: Meters | null, bars: Bars, now: number): Band => {
+  // A skill's quest names the skill and its zone; with none running, the Wilds.
+  const head: Segment[] = quest
+    ? [{ text: `⚔ ${quest.title}`, tone: 'accent' }, { text: `  ${ZONE_LABEL[quest.zone]}`, tone: 'dim' }]
+    : [{ text: ZONE_LABEL.wilds, tone: 'dim' }]
+
+  const { done, total, current } = progress(tasks)
+
+  if (total > 0) {
+    head.push({ text: `  task ${done}/${total}`, tone: 'dim' })
+  }
+
+  if (current) {
+    head.push({ text: ` · ${cleanTitle(current.subject)}`, tone: 'plain' })
+  }
+
+  const row: Segment[] = []
+  const hp = hpLeft(meters)
+
+  if (hp !== undefined) {
+    const heals = healsIn(meters?.weekResetsAt, now)
+    row.push(
+      { text: '♥ HP ', tone: 'hp' },
+      { text: bar(hp, BAND_WIDTH), tone: 'hp' },
+      { text: ` ${hp}%`, tone: 'hp' },
+      { text: heals ? ` week · heals in ${heals}   ` : ' week   ', tone: 'dim' },
+    )
+  }
+
+  const mp = mpLeft(meters)
+  const tokens = meters?.contextTokens
+
+  row.push(
+    { text: '✦ MP ', tone: 'mp' },
+    { text: mp === undefined ? '—' : bar(mp, BAND_WIDTH), tone: 'mp' },
+    { text: mp === undefined ? '' : ` ${mp}%`, tone: 'mp' },
+    { text: tokens !== undefined && meters ? ` ctx · ${shortTokens(tokens)}/${shortTokens(meters.window)}` : ' ctx', tone: 'dim' },
+  )
+
+  if (bars === 'all' && meters?.fiveHourUsed !== undefined) {
+    row.push({ text: `   ⚡5h ${Math.round(meters.fiveHourUsed)}%`, tone: 'five' })
+  }
+
+  if (bars === 'all' && meters?.costUsd !== undefined) {
+    row.push({ text: `   ◉ $${meters.costUsd.toFixed(2)}`, tone: 'gold' })
+  }
+
+  return { head, meters: row }
+}
+
+/** The one-line form, for `$.ui.status`. */
+export const statusText = (quest: Quest | null, tasks: readonly Task[], meters: Meters | null, bars: Bars): string => {
+  const parts: string[] = []
+  const { done, total } = progress(tasks)
+
+  if (quest) parts.push(`⚔ ${quest.title}${total > 0 ? ` ${done}/${total}` : ''}`)
+  else if (total > 0) parts.push(`task ${done}/${total}`)
+
+  const hp = hpLeft(meters)
+  if (hp !== undefined) parts.push(`♥${bar(hp, 10, '▰', '▱')} ${hp}%`)
+
+  const mp = mpLeft(meters)
+  parts.push(mp === undefined ? '✦ —' : `✦${bar(mp, 10, '▰', '▱')} ${mp}%`)
+
+  if (bars === 'all' && meters?.fiveHourUsed !== undefined) parts.push(`⚡${Math.round(meters.fiveHourUsed)}%`)
+  if (bars === 'all' && meters?.costUsd !== undefined) parts.push(`◉$${meters.costUsd.toFixed(2)}`)
+
+  return parts.join(' ')
+}

@@ -2,3 +2,5 @@
 # local working notes of the developer's own tools, never part of the project
 .gku/
 .tasks/
+# the engine lays its API types here when it loads the mod
+plugins/quest-hud/.claude-plugin/types/
