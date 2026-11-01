@@ -2,6 +2,7 @@ import { describe, expect, test } from 'claude-code/testing'
 import type { Engine } from 'claude-code/testing'
 
 import { imageScale } from '../src/avatar'
+import { skyColor } from '../src/scene'
 import { engine, RUN, start, world } from './kit'
 
 // Tests about the cells scene (the Raster, its animation) ask for it: auto draws an image first.
@@ -503,5 +504,30 @@ describe('the image\'s detail', () => {
     const scale = imageScale(120, 56)
     expect([width, height]).toEqual([120 * scale, 56 * scale])
     await ui.unmount()
+  })
+})
+
+describe('a zone change while the pane is hidden', () => {
+  /** The colour of a Raster's top-left pixel: its first cell's foreground, read from the base64 words. */
+  const topLeft = (cells: string): number => {
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+    const bits = [...cells.slice(0, 16)].map(c => alphabet.indexOf(c).toString(2).padStart(6, '0')).join('')
+    const byte = (i: number) => parseInt(bits.slice(i * 8, i * 8 + 8), 2)
+    return byte(4) | (byte(5) << 8) | (byte(6) << 16)
+  }
+
+  test('shows the new zone when the pane is shown again, not a slide stuck at its start', CELLS, async ($, on) => {
+    engine(on)
+    world.panes = [{ id: 'quest-hud', isShown: true }]
+    await implementing($)
+    const before = await $.ui.mount(pane('terminal'))
+    await before.unmount()
+    world.panes = [{ id: 'quest-hud', isShown: false }]
+    await $.skill.prompt({ skill: 'review', pluginName: 'gku', text: 'x', frontmatter: { description: 'Review a change' } })
+    world.panes = [{ id: 'quest-hud', isShown: true }]
+    const after = await $.ui.mount(pane('terminal'))
+    const raster = await after.find({ type: 'Raster', key: 'scene' })
+    expect(topLeft(String(raster?.props.cells))).toBe(skyColor('arena'))
+    await after.unmount()
   })
 })

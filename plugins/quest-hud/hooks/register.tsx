@@ -227,6 +227,8 @@ async function noteZone($: EngineInterface): Promise<void> {
   if (before === undefined || before === zone || (anim.mode !== 'raster' && anim.mode !== 'image')) return
   anim.slide = { from: before, step: 0 }
   await startAnim($)
+  // No timer could start (the pane is hidden): no slide either, or the next draw would show it stuck at the old zone.
+  if (anim.timer === undefined) anim.slide = undefined
 }
 
 /**
