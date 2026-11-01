@@ -162,6 +162,15 @@ describe('/hud', () => {
     expect(result.text).toContain('"statusLine": { "type": "command", "command": "~/.claude/hud-line.sh" }')
   })
 
+  test('task subjects are printed as one clean line each', async ($, on) => {
+    engine(on)
+    await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+    await $.tool.call({ tool: 'TaskCreate', subject: 'two\nlines \u202eevil', description: '' })
+    const result = await $.command.run({ command: 'hud', args: '', ...RUN })
+    expect(result.text).toContain('· two lines evil')
+    expect(result.text.split('\n')).toHaveLength(2)
+  })
+
   test('with no argument prints the state and the task list', async ($, on) => {
     engine(on)
     await implementWithTasks($)
