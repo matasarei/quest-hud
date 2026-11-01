@@ -140,7 +140,15 @@ export type SceneArgs = {
   allies?: Allies
   /** How far along the road, and how the wizard and the mascot stand; at rest from the start when left out. */
   motion?: Motion
+  /** A zone change under way: the landscape of `from` sliding out to the left, `progress` from 0 to 1. */
+  transition?: Transition
 }
+
+/** A zone change under way: the old landscape slides out to the left as the new one comes in from the right. */
+export type Transition = { from: Zone; progress: number }
+
+/** How many frames a zone change takes: six, about a second and a half. */
+export const TRANSITION_STEPS = 6
 
 /** A frame of the walk: how many steps along the road, the wizard's pose, and whether the mascot is mid-hop. */
 export type Motion = { step: number; pose: Pose; hop: boolean }
@@ -275,6 +283,16 @@ export const foeX = (hero: number, width: number, count: number, index: number, 
 /** A monster facing left, towards the wizard: the dragon is drawn facing right. */
 const foeGrid = (kind: FightKind): Grid => (kind === 'test' ? mirrorGrid(spriteGrid(DRAGON)) : spriteGrid(SPIDER))
 
+/**
+ * Two landscapes side by side, `progress` of the way from the first to the
+ * second: the first slides out to the left as the second comes in from the right.
+ */
+export const slide = (from: Grid, to: Grid, progress: number): Canvas => {
+  const width = to[0]?.length ?? 0
+  const shift = Math.round(width * Math.max(0, Math.min(1, progress)))
+  return to.map((line, y) => line.map((color, x) => (x + shift < width ? from[y]?.[x + shift] : to[y]?.[x + shift - width]) ?? color))
+}
+
 /** Paints a sprite's grid with its feet on the ground, its left edge at `x` units. */
 const standAt = (art: Canvas, grid: Grid, x: number): void => stamp(art, grid, x * ART_SCALE, GROUND_ROW * ART_SCALE - grid.length)
 
@@ -283,9 +301,12 @@ const standAt = (art: Canvas, grid: Grid, x: number): void => stamp(art, grid, x
  * `motion.step` steps along, the wizard in his pose, the mascot hopping or not.
  */
 export const scene = (args: SceneArgs): Grid => {
-  const { columns, zone, waypoints, companions, foes = NO_FOES, motion = REST } = args
+  const { columns, zone, waypoints, companions, foes = NO_FOES, motion = REST, transition } = args
   const width = Math.max(0, Math.floor(columns))
-  const art: Canvas = rgbToGrid(rasterize(landscape(zone, width, motion.step), width, SCENE_HEIGHT, ART_SCALE, 0, { pixel: true, bands: 5 })).map(row => [...row])
+  const backdrop = (z: Zone): Grid => rgbToGrid(rasterize(landscape(z, width, motion.step), width, SCENE_HEIGHT, ART_SCALE, 0, { pixel: true, bands: 5 }))
+  const art: Canvas = transition !== undefined && transition.from !== zone && transition.progress < 1
+    ? slide(backdrop(transition.from), backdrop(zone), transition.progress)
+    : backdrop(zone).map(row => [...row])
   const kept = layout({ ...args, columns: width })
 
   let right = width - 2

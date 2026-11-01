@@ -10,11 +10,11 @@ import { activeCompanions, sameCompanions } from '../src/companions'
 import { appendEntry, castText, scoutCounts, scoutText } from '../src/log'
 import { bandModel, fromMeasure, shortTokens, statusText, TONE_COLOR, ZONE_LABEL, zoneLine, type Bars } from '../src/meters'
 import { afterPrompt, cleanTitle, fromSkill } from '../src/quest'
-import { road, roadScene, SCENE_MIN_COLUMNS } from '../src/road'
-import { atRest, nextMotion, REST, type Motion } from '../src/scene'
+import { road, roadScene, SCENE_MIN_COLUMNS, sceneZone } from '../src/road'
+import { atRest, nextMotion, REST, TRANSITION_STEPS, type Motion, type Transition } from '../src/scene'
 import { applyTaskCall } from '../src/tasks'
 import { parseZones, zoneFor } from '../src/zones'
-import type { Allies, FightKind, Foes, LogEntry } from '../types'
+import type { Allies, FightKind, Foes, LogEntry, Zone } from '../types'
 import { drawRoad, PANE_ID, PANE_TITLE, SCENE_IMAGE_KEY, SCENE_KEY, sceneCells, sceneImage, type PngSource, type SceneMode } from './pane'
 
 // The values the HUD keeps for the session, each declared in types/index.d.ts.
@@ -84,7 +84,18 @@ export const ANIM_MS = 250
 // `tick` counts its frames, `motion` is where the walk got to; `columns` and
 // `mode` are how the pane was last drawn. A reload starts this over, and the
 // engine drops its timers.
-const anim: { timer?: Timer; isStarting: boolean; generation: number; tick: number; motion: Motion; columns?: number; mode?: SceneMode } = {
+// `zone` is the zone last drawn, and `slide` a zone change under way, counted in frames.
+const anim: {
+  timer?: Timer
+  isStarting: boolean
+  generation: number
+  tick: number
+  motion: Motion
+  columns?: number
+  mode?: SceneMode
+  zone?: Zone
+  slide?: { from: Zone; step: number }
+} = {
   isStarting: false,
   generation: 0,
   tick: 0,
@@ -133,6 +144,10 @@ async function probeImages($: EngineInterface, source: PngSource, generation: nu
 const isPaneShown = async ($: EngineInterface): Promise<boolean> =>
   (await $.ui.panes()).some(pane => pane.id === PANE_ID && pane.isShown)
 
+/** The zone change under way, as the scene takes it: none, or the old zone and how far the slide has gone. */
+const transition = (): { transition?: Transition } =>
+  anim.slide === undefined ? {} : { transition: { from: anim.slide.from, progress: anim.slide.step / TRANSITION_STEPS } }
+
 /** Repaints the scene with the animation's frame — the Raster's cells, or the Image's picture — and stops it if nothing takes it. */
 async function blitFrame($: EngineInterface): Promise<void> {
   if (anim.columns === undefined || (anim.mode !== 'raster' && anim.mode !== 'image')) return
@@ -147,6 +162,7 @@ async function blitFrame($: EngineInterface): Promise<void> {
     allies: await read($, allies),
     columns: anim.columns,
     motion: anim.motion,
+    ...transition(),
   })
   const blitted = anim.mode === 'image'
     ? await $.ui.blit({ requestId: PANE_ID, key: SCENE_IMAGE_KEY, source: sceneImage(grid) })
@@ -161,6 +177,7 @@ function stopTimer(): void {
   anim.timer?.cancel()
   anim.timer = undefined
   anim.motion = atRest(anim.motion)
+  anim.slide = undefined
 }
 
 /** One frame of the animation, while the pane is still shown: a step of the walk, or a blow while a fight is on. */
@@ -173,10 +190,34 @@ async function animStep($: EngineInterface): Promise<void> {
   // A stop while the panes were being asked wins: it has drawn the frame at rest.
   if (anim.timer === undefined) return
 
-  const isFighting = Object.values(await read($, foes)).includes('fighting')
-  anim.tick += 1
-  anim.motion = nextMotion(anim.motion, anim.tick, isFighting)
+  // While Claude works the wizard walks; a zone change slides on whether he walks or not.
+  const isWalking = await read($, isWorking)
+  if (isWalking) {
+    const isFighting = Object.values(await read($, foes)).includes('fighting')
+    anim.tick += 1
+    anim.motion = nextMotion(anim.motion, anim.tick, isFighting)
+  }
+  if (anim.slide !== undefined) anim.slide = { ...anim.slide, step: anim.slide.step + 1 }
   await blitFrame($)
+
+  // The slide's last frame is the new zone: done, and with Claude idle, so is the timer.
+  if (anim.slide !== undefined && anim.slide.step >= TRANSITION_STEPS) {
+    anim.slide = undefined
+    if (!isWalking) stopTimer()
+  }
+}
+
+/**
+ * Starts the slide to a new zone when the scene's zone changed since it was
+ * last drawn, and the pane animates; the timer runs for it, idle or not.
+ */
+async function noteZone($: EngineInterface): Promise<void> {
+  const zone = sceneZone(await read($, quest), await read($, activity))
+  const before = anim.zone
+  anim.zone = zone
+  if (before === undefined || before === zone || (anim.mode !== 'raster' && anim.mode !== 'image')) return
+  anim.slide = { from: before, step: 0 }
+  await startAnim($)
 }
 
 /**
@@ -285,6 +326,7 @@ export const register: Register = (on, options) => {
       await update($, allies, () => NO_ALLIES)
       anim.tick = 0
       anim.motion = REST
+      anim.zone = undefined
       resetProbe()
       await update($, sessionId, () => id)
     }
@@ -308,6 +350,7 @@ export const register: Register = (on, options) => {
     if (e.isMeta !== true && PERSON_ORIGINS.has(e.origin.kind)) {
       const list = await read($, tasks)
       await update($, quest, current => afterPrompt(current, e.text, list))
+      await noteZone($)
       await showStatus($, detail, bars)
     }
 
@@ -327,6 +370,7 @@ export const register: Register = (on, options) => {
     const now = await $.clock.now()
     const started = fromSkill(name, zoneFor(name, description, overrides), now)
     await update($, quest, () => started)
+    await noteZone($)
     await addLog($, { kind: 'skill', text: `${started.title} · ${ZONE_LABEL[started.zone]}` })
     await showStatus($, detail, bars)
 
@@ -393,6 +437,7 @@ export const register: Register = (on, options) => {
     if (counts) {
       await addLog($, { kind: 'scout', text: scoutText(counts), counts, ...(turn === undefined ? {} : { turn }) })
       await update($, activity, () => 'map')
+      await noteZone($)
     }
 
     const cast = castText(e.tool, e, ran.result)
@@ -400,11 +445,13 @@ export const register: Register = (on, options) => {
     if (cast !== undefined) {
       await addLog($, { kind: 'cast', text: cast, ...(turn === undefined ? {} : { turn }) })
       await update($, activity, () => 'forge')
+      await noteZone($)
     }
 
     if (e.tool === 'EnterPlanMode') {
       await addLog($, { kind: 'plan', text: 'entered' })
       await update($, activity, () => 'map')
+      await noteZone($)
     }
 
     return ran
@@ -540,6 +587,8 @@ export const register: Register = (on, options) => {
     const hasScene = e.props.bodyColumns >= SCENE_MIN_COLUMNS
     anim.columns = e.props.bodyColumns
     anim.mode = hasScene ? mode : undefined
+    // The first draw learns the zone; a later change of it slides (noteZone).
+    anim.zone ??= sceneZone(await read($, quest), await read($, activity))
 
     // The desktop's Svg does not animate, nor a pane too narrow for a scene: one left running stops here.
     if ((mode === 'svg' || !hasScene) && anim.timer !== undefined) stopTimer()
@@ -563,6 +612,7 @@ export const register: Register = (on, options) => {
       columns: e.props.bodyColumns,
       rows: e.viewport?.rows ?? 30,
       motion: anim.motion,
+      ...transition(),
     })
     const image = mode === 'image' && hasScene ? sceneImage(view.scene) : undefined
 

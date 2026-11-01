@@ -416,3 +416,44 @@ describe('a pane too narrow for the scene', () => {
     await ui.unmount()
   })
 })
+
+describe('a zone change', () => {
+  const review = { skill: 'review', pluginName: 'gku', text: 'x', frontmatter: { description: 'Review a change' } }
+
+  test('a skill start while Claude is idle slides the new zone in over six frames, then stops', CELLS, async ($, on) => {
+    const clock = engine(on)
+    world.panes = [{ id: 'quest-hud', isShown: true }]
+    await implementing($)
+    const ui = await $.ui.mount(pane('terminal'))
+    await $.skill.prompt(review)
+    await clock.advance(2000)
+    expect(world.blits).toHaveLength(6)
+    expect(world.blits.every((frame, i) => i === 0 || frame !== world.blits[i - 1])).toBe(true)
+    await clock.advance(2000)
+    expect(world.blits).toHaveLength(6)
+    await ui.unmount()
+  })
+
+  test('the desktop never slides: its Svg is drawn still', async ($, on) => {
+    const clock = engine(on)
+    world.panes = [{ id: 'quest-hud', isShown: true }]
+    await implementing($)
+    const desktop = await $.ui.mount(pane('desktop'))
+    await $.skill.prompt(review)
+    await clock.advance(2000)
+    expect(world.blits).toHaveLength(0)
+    expect(world.imageBlits).toBe(0)
+    await desktop.unmount()
+  })
+
+  test('as an image too', { options: { graphics: 'images' } }, async ($, on) => {
+    const clock = engine(on)
+    world.panes = [{ id: 'quest-hud', isShown: true }]
+    await implementing($)
+    const ui = await $.ui.mount(pane('terminal'))
+    await $.skill.prompt(review)
+    await clock.advance(2000)
+    expect(world.imageBlits).toBe(6)
+    await ui.unmount()
+  })
+})

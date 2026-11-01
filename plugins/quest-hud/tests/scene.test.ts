@@ -2,7 +2,7 @@ import { describe, expect, test } from 'claude-code/testing'
 
 import {
   atRest, avatarX, figures, FLAG_SLOT, FLAG_WIDTH, fitWaypoints, flagSlots, foeX, GROUND_ROW, layout, MAX_FLAGS, MAX_GHOSTS, MIN_FLAGS, propsWidth,
-  nextMotion, REST, roadWidth, scene, SCENE_HEIGHT, SIZE, skyColor, waypointsOf, waypointX, ZONE_PROPS, type Waypoint,
+  nextMotion, REST, roadWidth, scene, SCENE_HEIGHT, SIZE, slide, skyColor, waypointsOf, waypointX, ZONE_PROPS, type Waypoint,
 } from '../src/scene'
 import { PALETTE, PROPS } from '../src/world/sprites'
 import type { Task, Zone } from '../types'
@@ -331,5 +331,26 @@ describe('the walk', () => {
     const at = (step: number) => scene({ columns: 120, zone: 'wilds', waypoints: ['done', 'now'], companions: 0, motion: { step, pose: 'stand', hop: false } })
     const xs = changed(at(0), at(1))
     expect(xs.length > 60).toBe(true)
+  })
+})
+
+describe('a zone change', () => {
+  test('slide: the old landscape goes out to the left as the new one comes in from the right', () => {
+    const from = [[1, 2, 3, 4]]
+    const to = [[5, 6, 7, 8]]
+    expect(slide(from, to, 0)).toEqual([[1, 2, 3, 4]])
+    expect(slide(from, to, 0.5)).toEqual([[3, 4, 5, 6]])
+    expect(slide(from, to, 1)).toEqual([[5, 6, 7, 8]])
+  })
+
+  test('the scene slides only its landscape: at the start the old zone\'s sky, at the end the new scene', () => {
+    const args = { columns: 100, zone: 'wilds', waypoints: ['done', 'now'], companions: 0 } as const
+    const plain = scene(args)
+    const start = scene({ ...args, transition: { from: 'camp', progress: 0 } })
+    const end = scene({ ...args, transition: { from: 'camp', progress: 1 } })
+    expect(start[0]).toEqual(scene({ ...args, zone: 'camp' })[0])
+    expect(end).toEqual(plain)
+    const half = scene({ ...args, transition: { from: 'camp', progress: 0.5 } })
+    expect(half[0]?.slice(0, 50)).toEqual(scene({ ...args, zone: 'camp' })[0]?.slice(50))
   })
 })

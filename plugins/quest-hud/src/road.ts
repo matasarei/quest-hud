@@ -6,7 +6,7 @@ import type { Grid } from './avatar'
 import { clockTime } from './log'
 import { bar, hpLeft, mpLeft, zoneLine, type Bars, type Segment } from './meters'
 import { cleanTitle } from './quest'
-import { MAX_GHOSTS, scene, SCENE_HEIGHT, waypointsOf, type Motion } from './scene'
+import { MAX_GHOSTS, scene, SCENE_HEIGHT, waypointsOf, type Motion, type Transition } from './scene'
 import { progress } from './tasks'
 
 /** Rows the scene takes: two pixel rows per terminal row. */
@@ -35,6 +35,8 @@ export type RoadArgs = {
   rows: number
   /** How far along the road the figures are, and how they stand; at rest when left out. */
   motion?: Motion
+  /** A zone change under way. */
+  transition?: Transition
 }
 
 export type Road = {
@@ -51,7 +53,7 @@ export type Road = {
 export const sceneZone = (quest: Quest | null, activity: Zone | null): Zone => quest?.zone ?? activity ?? 'wilds'
 
 /** The scene alone, for a redraw or a blit of one frame. */
-export const roadScene = (args: Pick<RoadArgs, 'quest' | 'tasks' | 'companions' | 'activity' | 'foes' | 'loot' | 'allies' | 'columns' | 'motion'>): Grid =>
+export const roadScene = (args: Pick<RoadArgs, 'quest' | 'tasks' | 'companions' | 'activity' | 'foes' | 'loot' | 'allies' | 'columns' | 'motion' | 'transition'>): Grid =>
   scene({
     columns: args.columns,
     zone: sceneZone(args.quest, args.activity),
@@ -61,6 +63,7 @@ export const roadScene = (args: Pick<RoadArgs, 'quest' | 'tasks' | 'companions' 
     loot: args.loot,
     allies: args.allies,
     ...(args.motion === undefined ? {} : { motion: args.motion }),
+    ...(args.transition === undefined ? {} : { transition: args.transition }),
   })
 
 const mark = (task: Task): string => (task.status === 'completed' ? '✓' : task.status === 'in_progress' ? '▸' : '·')
