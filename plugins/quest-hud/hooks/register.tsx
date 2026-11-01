@@ -68,6 +68,10 @@ export const register: Register = (on, options) => {
   const detail = pick<Detail>(options.detail, ['off', 'status', 'band'], 'band')
   const bars = pick<Bars>(options.bars, ['hpmp', 'all'], 'hpmp')
   const overrides = parseZones(typeof options.zones === 'string' ? options.zones : '')
+  // Skills a subagent's Skill call is running right now, counted (two
+  // subagents may run the same one): their skill.prompt fires inside that
+  // call, and must not become the session's quest.
+  const subagentSkills = new Map<string, number>()
 
   // State survives a reload, which runs session.start again with the same
   // session id: the quest in progress is kept. A new id (/clear, a resume of
@@ -102,6 +106,11 @@ export const register: Register = (on, options) => {
   on('skill.prompt', async ($, e, next) => {
     const result = await next(e)
     const name = skillName(e.skill, e.pluginName)
+
+    if (subagentSkills.has(e.skill) || subagentSkills.has(name)) {
+      return result
+    }
+
     const description = typeof e.frontmatter.description === 'string' ? e.frontmatter.description : ''
     const now = await $.clock.now()
     await update($, quest, () => fromSkill(name, zoneFor(name, description, overrides), now))
@@ -111,7 +120,16 @@ export const register: Register = (on, options) => {
   }).catch(($, e, next) => next(e))
 
   on('tool.call', async ($, e, next) => {
-    const ran = await next(e)
+    const subagentSkill = e.tool === 'Skill' && e.agentId !== undefined ? e.skill : undefined
+
+    if (subagentSkill !== undefined) subagentSkills.set(subagentSkill, (subagentSkills.get(subagentSkill) ?? 0) + 1)
+
+    const ran = await next(e).finally(() => {
+      if (subagentSkill === undefined) return
+      const left = (subagentSkills.get(subagentSkill) ?? 1) - 1
+      if (left > 0) subagentSkills.set(subagentSkill, left)
+      else subagentSkills.delete(subagentSkill)
+    })
 
     if (TASK_TOOLS.has(e.tool) && e.agentId === undefined && ran.deny === undefined && ran.isError !== true) {
       await update($, tasks, list => {

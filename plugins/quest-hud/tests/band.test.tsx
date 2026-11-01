@@ -261,3 +261,50 @@ describe('session', () => {
     await ui.unmount()
   })
 })
+
+describe('skills run by subagents', () => {
+  // The engine runs a Skill call by expanding the skill: its skill.prompt
+  // fires while the call is still open. The gate holds the call open in the
+  // engine's place, so the test can raise the skill.prompt inside it.
+  const heldSkillCall = (on: On) => {
+    let entered = () => {}
+    let release = () => {}
+    const reached = new Promise<void>(resolve => (entered = resolve))
+    const gate = new Promise<void>(resolve => (release = resolve))
+    on('tool.call', { tool: 'Skill' }, async () => {
+      entered()
+      await gate
+      return { result: { success: true } }
+    })
+    return { reached, release }
+  }
+
+  test('a subagent\'s skill does not become the quest', async ($, on) => {
+    const held = heldSkillCall(on)
+    engine(on)
+    await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+    await $.skill.prompt({ skill: 'implement', pluginName: 'gku', text: 'x', frontmatter: { description: 'Build a task' } })
+    const call = $.tool.call({ tool: 'Skill', skill: 'review', agentId: 'a1' })
+    await held.reached
+    await $.skill.prompt({ skill: 'review', text: 'expanded' })
+    held.release()
+    await call
+    const ui = await $.ui.mount(band('terminal'))
+    expect((await ui.find({ type: 'Text', text: /⚔/ }))?.text).toBe('⚔ gku:implement')
+    await ui.unmount()
+  })
+
+  test('once the subagent\'s call is over, the same skill run by the person sets the quest', async ($, on) => {
+    const held = heldSkillCall(on)
+    engine(on)
+    await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+    const call = $.tool.call({ tool: 'Skill', skill: 'review', agentId: 'a1' })
+    await held.reached
+    held.release()
+    await call
+    await $.skill.prompt({ skill: 'review', text: 'expanded' })
+    const ui = await $.ui.mount(band('terminal'))
+    expect((await ui.find({ type: 'Text', text: /⚔/ }))?.text).toBe('⚔ review')
+    await ui.unmount()
+  })
+})
