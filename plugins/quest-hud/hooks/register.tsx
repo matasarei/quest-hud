@@ -73,7 +73,11 @@ export const FRAME_MS = 500
 // The scene's bob: one timer at most, running only while a main turn runs and
 // the pane is shown on a terminal. `columns` and `surface` are where the pane
 // was last drawn; a reload starts this over, and the engine drops its timers.
-const bob: { timer?: Timer; isStarting: boolean; frame: 0 | 1; columns?: number; surface?: string } = { isStarting: false, frame: 0 }
+const bob: { timer?: Timer; isStarting: boolean; generation: number; frame: 0 | 1; columns?: number; surface?: string } = {
+  isStarting: false,
+  generation: 0,
+  frame: 0,
+}
 
 const isPaneShown = async ($: EngineInterface): Promise<boolean> =>
   (await $.ui.panes()).some(pane => pane.id === PANE_ID && pane.isShown)
@@ -95,7 +99,9 @@ async function blitScene($: EngineInterface, frame: 0 | 1): Promise<void> {
   if (blitted.deny !== undefined) stopTimer()
 }
 
+/** Cancels the bob, and any start still waiting to make its timer. */
 function stopTimer(): void {
+  bob.generation += 1
   bob.timer?.cancel()
   bob.timer = undefined
   bob.frame = 0
@@ -118,15 +124,19 @@ async function bobStep($: EngineInterface): Promise<void> {
 /**
  * Starts the bob when the pane is shown on a terminal and none runs yet.
  * Two paths call it (a main turn's start, and a draw while a turn runs), and
- * they can overlap across the await: the slot is claimed before it, and the
- * timer checked again after it, so a second timer is never made.
+ * either can meet a stop across the await. The slot is claimed before it, so
+ * a second start returns; and a stop during it (turn.complete, a session
+ * start, a close) moves the generation on, so this start makes no timer.
  */
 async function startBob($: EngineInterface): Promise<void> {
   if (bob.timer !== undefined || bob.isStarting || bob.surface !== 'terminal') return
   bob.isStarting = true
+  const generation = bob.generation
 
   try {
-    if ((await isPaneShown($)) && bob.timer === undefined) {
+    const isShown = await isPaneShown($)
+
+    if (isShown && bob.timer === undefined && bob.generation === generation) {
       bob.timer = $.clock.every(FRAME_MS, () => void bobStep($))
     }
   } finally {
