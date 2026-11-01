@@ -146,6 +146,12 @@ export type SceneArgs = {
   motion?: Motion
   /** A zone change under way: the landscape of `from` sliding out to the left, `progress` from 0 to 1. */
   transition?: Transition
+  /**
+   * Drawn as text cells, which halve the art's rows: the backdrop's dither then
+   * holds for each pair of rows, so the halved art keeps it whole rather than in
+   * vertical stripes. Images leave it out and keep their finer dither.
+   */
+  cells?: boolean
 }
 
 /** A zone change under way: the old landscape slides out to the left as the new one comes in from the right. */
@@ -306,9 +312,9 @@ const standAt = (art: Canvas, grid: Grid, x: number): void => stamp(art, grid, x
  * steps along, the wizard in his pose, the mascot hopping or not.
  */
 export const sceneArt = (args: SceneArgs): Grid => {
-  const { columns, zone, waypoints, companions, foes = NO_FOES, motion = REST, transition } = args
+  const { columns, zone, waypoints, companions, foes = NO_FOES, motion = REST, transition, cells = false } = args
   const width = Math.max(0, Math.floor(columns))
-  const backdrop = (z: Zone): Grid => rgbToGrid(rasterize(landscape(z, width, motion.step), width, SCENE_HEIGHT, ART_SCALE, 0, { pixel: true, bands: 5 }))
+  const backdrop = (z: Zone): Grid => rgbToGrid(rasterize(landscape(z, width, motion.step), width, SCENE_HEIGHT, ART_SCALE, 0, { pixel: true, bands: 5, ditherRows: cells ? 2 : 1 }))
   const art: Canvas = transition !== undefined && transition.from !== zone && transition.progress < 1
     ? slide(backdrop(transition.from), backdrop(zone), transition.progress)
     : backdrop(zone).map(row => [...row])

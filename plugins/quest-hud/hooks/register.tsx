@@ -166,6 +166,7 @@ async function blitFrame($: EngineInterface): Promise<void> {
     columns: anim.columns,
     motion: anim.motion,
     ...transition(),
+    cells: anim.mode === 'raster',
   })
   const blitted = anim.mode === 'image'
     ? await $.ui.blit({ requestId: PANE_ID, key: SCENE_IMAGE_KEY, source: sceneImage(art) })
@@ -626,6 +627,7 @@ export const register: Register = (on, options) => {
       rows: e.viewport?.rows ?? 30,
       motion: anim.motion,
       ...transition(),
+      cells: mode === 'raster',
     })
     const image = mode === 'image' && hasScene ? sceneImage(view.art) : undefined
 

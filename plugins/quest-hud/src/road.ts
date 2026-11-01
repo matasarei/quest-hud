@@ -39,6 +39,8 @@ export type RoadArgs = {
   motion?: Motion
   /** A zone change under way. */
   transition?: Transition
+  /** Drawn as text cells: the art's dither in row pairs (SceneArgs.cells). */
+  cells?: boolean
 }
 
 export type Road = {
@@ -57,7 +59,7 @@ export type Road = {
 /** The zone the scene shows: the skill's, or in the Wilds the last kind of work. */
 export const sceneZone = (quest: Quest | null, activity: Zone | null): Zone => quest?.zone ?? activity ?? 'wilds'
 
-type SceneInputs = Pick<RoadArgs, 'quest' | 'tasks' | 'companions' | 'activity' | 'foes' | 'loot' | 'allies' | 'columns' | 'motion' | 'transition'>
+type SceneInputs = Pick<RoadArgs, 'quest' | 'tasks' | 'companions' | 'activity' | 'foes' | 'loot' | 'allies' | 'columns' | 'motion' | 'transition' | 'cells'>
 
 /** The scene alone at the art's resolution, for an Image's redraw or a blit of one frame. */
 export const roadArt = (args: SceneInputs): Grid =>
@@ -71,6 +73,7 @@ export const roadArt = (args: SceneInputs): Grid =>
     allies: args.allies,
     ...(args.motion === undefined ? {} : { motion: args.motion }),
     ...(args.transition === undefined ? {} : { transition: args.transition }),
+    ...(args.cells === undefined ? {} : { cells: args.cells }),
   })
 
 /** The scene alone, one pixel a unit: for cells. */
