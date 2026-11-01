@@ -31,6 +31,22 @@ export type Meters = {
   costUsd?: number
 }
 
+/** What reading and searching came to in one turn, kept as numbers so lines merge. */
+export type ScoutCounts = { reads: number; searches: number; pages: number }
+
+/** One line of the pane's log: what Claude did, as Claude Code reported it. */
+export type LogEntry = {
+  at: number
+  kind: 'skill' | 'scout' | 'cast' | 'fork' | 'task' | 'plan' | 'camp'
+  text: string
+  /** The main turn it happened in: scout lines of one turn merge. */
+  turn?: string
+  counts?: ScoutCounts
+}
+
+/** A subagent at work, drawn as a ghost behind the avatar. */
+export type Companion = { id: string; type: string }
+
 declare module 'claude-code' {
   interface PluginState {
     'quest-hud': {
