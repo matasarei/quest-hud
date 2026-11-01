@@ -34,8 +34,9 @@ inline above the prompt below that):
 
 ```
 ⚔ gku:implement · Forge — building and fixing        task 2/5
-[the zone's scene: flags for your tasks, the avatar at the one in progress,
- subagents as ghosts behind it — it bobs while Claude works]
+[the zone's scene, 14 rows: its hills and sky over its ground, its props, a flag
+ per task (green done, yellow in progress, grey to do), the astronaut beside the
+ one in progress, subagents as small ghosts behind — it walks while Claude works]
 with Explore
 ✓ Read the exporter
 ✓ Add the CSV writer
@@ -51,8 +52,17 @@ with Explore
 
 The log is what Claude did, from what Claude Code reports: skills, reads and searches, edits
 with lines added and removed, tasks done, plan mode, subagents joining and leaving, and
-compaction. The scene moves only while Claude works and the pane is shown on a terminal; on the
-desktop it stays still. A new session (`/clear`) starts the Road over.
+compaction. A new session (`/clear`) starts the Road over.
+
+**Images or text cells.** The scene is drawn as true pixels where the terminal shows images
+(kitty, Ghostty, iTerm2 3.5+), and as half-block text cells everywhere else, from the same
+sprites. With `graphics = auto` (the default), the HUD finds out once a session: it draws the
+image, and if Claude Code could not show it there, it switches to cells. In cells the
+astronaut walks while Claude works; an image redraws only when something changes. On the
+desktop app the scene is an SVG.
+
+**Art:** sprites from [Kenney](https://kenney.nl)'s Pixel Platformer, CC0 (public domain; the
+credit is a courtesy). Its originals and licence are in `art/pixel-platformer/`.
 
 **It costs nothing.** No model calls, nothing added to the context, no network. Every hook
 only observes Claude Code's own events and passes them on unchanged, and nothing is written
@@ -84,6 +94,7 @@ Set them in `/config`; a change reloads the mod.
 | `detail` | `off`, `status`, `band`, `pane` | `band` | nothing, one status-line entry, the band above the prompt, or the band and the Road opened when the session starts (placed from 144 columns) |
 | `bars` | `hpmp`, `all` | `hpmp` | `all` adds the 5-hour window (⚡) and the session cost (◉) |
 | `zones` | `name=zone, …` | empty | extra skill-to-zone rules, e.g. `quest=forge, triage=map` |
+| `graphics` | `auto`, `cells`, `images` | `auto` | how the Road's scene is drawn in a terminal: found out once a session, or always text cells, or always images |
 
 Zones: `watchtower`, `harbour`, `dungeon`, `arena`, `forge`, `map`, `camp`, `wilds`. A name
 is a skill's full name (`gku:plan`) or the part after the plugin prefix (`plan`).
@@ -121,6 +132,11 @@ shellcheck --severity=warning plugins/quest-hud/scripts/*.sh plugins/quest-hud/t
 ```
 
 Run it from disk: `claude --plugin-dir plugins/quest-hud`; saving a file reloads the mod.
+
+The sprites in `plugins/quest-hud/src/art/sprites.ts` are generated from the PNGs in
+`art/pixel-platformer/`: change the list in `tools/import-art.py`, copy any new PNG from the
+pack into that folder, and run `python3 -I tools/import-art.py` (Python 3, standard library).
+Installing the HUD needs none of this.
 
 ## License
 
