@@ -11,7 +11,7 @@ import type { Grid } from './avatar'
 import { downsample, mirrorGrid, spriteGrid, stamp, type Canvas, type Sprite } from './paint/pixels'
 import { rasterize, rgbToGrid } from './paint/raster'
 import { landscape, PARALLAX } from './world/landscapes'
-import { ART_SCALE, BAND_ICON, CHEST, DRAGON, FLAG, FOX, GHOST, MASCOT, OCTOCAT, PROPS, SPIDER, WALK, WIZARD, type Pose, type PropName } from './world/sprites'
+import { ART_SCALE, BAND_CAST, BAND_ICON, CHEST, DRAGON, FLAG, FOX, GHOST, MASCOT, OCTOCAT, PROPS, SPIDER, WALK, WIZARD, type Pose, type PropName } from './world/sprites'
 
 /** Pixel rows: fourteen terminal rows of half blocks. */
 export const SCENE_HEIGHT = 28
@@ -378,14 +378,12 @@ export const scene = (args: SceneArgs): Grid => downsample(sceneArt(args), ART_S
 export const BAND = { columns: 10, rows: 3 } as const
 
 /**
- * The band's portrait: a small wizard drawn for the size (BAND_ICON). On the
- * walk's second and fourth steps it bobs down a pixel, as the Road's wizard steps.
+ * The band's portrait: a small wizard drawn for the size. While the Road
+ * walks he casts — the staff raised on every other frame (BAND_CAST), lowered
+ * between (BAND_ICON) — and in a fight, as the Road's wizard strikes.
  */
-export const bandPortrait = (pose: Pose = 'stand'): Grid => {
-  const icon = spriteGrid(BAND_ICON)
-  if (pose !== 'walk1' && pose !== 'walk3') return icon
-  return [Array<number | undefined>(BAND.columns).fill(undefined), ...icon.slice(0, -1)]
-}
+export const bandPortrait = (pose: Pose = 'stand'): Grid =>
+  spriteGrid(pose === 'walk1' || pose === 'walk3' || pose === 'strike' ? BAND_CAST : BAND_ICON)
 
 /** The colour a zone's scene starts with: its top-left pixel, the sky's or the wall's. */
 export const skyColor = (zone: Zone): number => scene({ columns: 4, zone, waypoints: [], companions: 0 })[0]?.[0] ?? 0

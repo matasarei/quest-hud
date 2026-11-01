@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'claude-code/testing'
 
 import {
-  atRest, avatarX, figures, FLAG_SLOT, FLAG_WIDTH, fitWaypoints, flagSlots, foeX, GROUND_ROW, layout, MAX_FLAGS, MAX_GHOSTS, MIN_FLAGS, propsWidth,
+  atRest, avatarX, bandPortrait, figures, FLAG_SLOT, FLAG_WIDTH, fitWaypoints, flagSlots, foeX, GROUND_ROW, layout, MAX_FLAGS, MAX_GHOSTS, MIN_FLAGS, propsWidth,
   nextMotion, REST, roadWidth, scene, SCENE_HEIGHT, SIZE, slide, skyColor, waypointsOf, waypointX, ZONE_PROPS, type Waypoint,
 } from '../src/scene'
 import { PALETTE, PROPS } from '../src/world/sprites'
@@ -380,5 +380,15 @@ describe('the landmarks on the walk', () => {
   test('GitHub\'s Octocat walks with the party: it keeps its place', () => {
     const party = (step: number) => scene({ columns: 160, zone: 'wilds', waypoints: [], companions: 0, loot: 1, allies: { octopus: true, fox: false }, motion: { step, pose: 'stand', hop: false } })
     expect(columnsOf(party(5), OCTOCAT)).toEqual(columnsOf(party(0), OCTOCAT))
+  })
+})
+
+describe('the band\'s wizard', () => {
+  test('casts while the Road walks: the staff raised on every other frame, and in a fight', () => {
+    const rest = JSON.stringify(bandPortrait('stand'))
+    expect(JSON.stringify(bandPortrait('walk0'))).toBe(rest)
+    expect(JSON.stringify(bandPortrait('walk1')) === rest).toBe(false)
+    expect(JSON.stringify(bandPortrait('walk3'))).toBe(JSON.stringify(bandPortrait('walk1')))
+    expect(JSON.stringify(bandPortrait('strike'))).toBe(JSON.stringify(bandPortrait('walk1')))
   })
 })

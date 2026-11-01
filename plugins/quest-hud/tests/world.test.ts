@@ -2,7 +2,7 @@ import { describe, expect, test } from 'claude-code/testing'
 
 import { bounds } from '../src/paint/picture'
 import type { Sprite } from '../src/paint/pixels'
-import { BAND_ICON, CHEST, DRAGON, FLAG, FOX, GHOST, MASCOT, OCTOCAT, PALETTE, POSES, SPIDER, WIZARD } from '../src/world/sprites'
+import { BAND_CAST, BAND_ICON, CHEST, DRAGON, FLAG, FOX, GHOST, MASCOT, OCTOCAT, PALETTE, POSES, SPIDER, WIZARD } from '../src/world/sprites'
 import { GROUND, HEIGHT, landscape } from '../src/world/landscapes'
 
 // Each sprite and the size it must be, in art pixels: two a unit, so a 16-unit figure is 32 × 32.
@@ -12,6 +12,7 @@ const CAST: ReadonlyArray<readonly [string, Sprite, number, number]> = [
   ['spider', SPIDER, 32, 32], ['octocat', OCTOCAT, 20, 20], ['fox', FOX, 20, 20], ['chest', CHEST, 32, 24],
   ['flag done', FLAG.done, 16, 32], ['flag now', FLAG.now, 16, 32], ['flag todo', FLAG.todo, 16, 32],
   ['band icon', BAND_ICON, 10, 6],
+  ['band cast', BAND_CAST, 10, 6],
 ]
 
 describe('the cast', () => {
@@ -23,7 +24,7 @@ describe('the cast', () => {
   })
 
   test('the figures stand on the bottom of their box', () => {
-    for (const [name, sprite] of CAST.filter(([n]) => !n.startsWith('mascot hop') && n !== 'ghost' && n !== 'band icon')) {
+    for (const [name, sprite] of CAST.filter(([n]) => !n.startsWith('mascot hop') && n !== 'ghost' && !n.startsWith('band'))) {
       expect([name, /[^.]/.test(sprite.rows[sprite.rows.length - 1] ?? '')]).toEqual([name, true])
     }
   })
