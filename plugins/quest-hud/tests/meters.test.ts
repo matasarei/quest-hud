@@ -112,8 +112,13 @@ describe('bandModel', () => {
     expect(text(bandModel(null, [], null, 'hpmp', NOW).meters)).toBe('✦ MP — ctx')
   })
 
-  test('no quest and no tasks: an empty head', () => {
-    expect(bandModel(null, [], null, 'hpmp', NOW).head).toEqual([])
+  test('no skill running: the Wilds, and the task list if Claude keeps one', () => {
+    expect(bandModel(null, [], null, 'hpmp', NOW).head).toEqual([{ text: 'Wilds', tone: 'dim' }])
+    expect(text(bandModel(null, tasks, null, 'hpmp', NOW).head)).toBe('Wilds  task 1/3 · Write the CSV writer tests')
+  })
+
+  test('the status line with no skill shows the task count alone', () => {
+    expect(statusText(null, tasks, null, 'hpmp')).toBe('task 1/3 ✦ —')
   })
 
   test('tasks with none in progress: the count and no subject', () => {

@@ -6,7 +6,7 @@ import type { EngineInterface, Register } from 'claude-code'
 
 import { AVATAR_SMALL, MAGE, rasterSize, toRasterCells, toSvg } from '../src/avatar'
 import { bandModel, fromMeasure, statusText, type Bars, type Tone } from '../src/meters'
-import { cleanTitle, fromPrompt, fromSkill } from '../src/quest'
+import { afterPrompt, cleanTitle, fromSkill } from '../src/quest'
 import { applyTaskCall } from '../src/tasks'
 import { parseZones, zoneFor } from '../src/zones'
 
@@ -21,7 +21,7 @@ const pick = <T extends string>(value: unknown, allowed: readonly T[], fallback:
 
 // Prompts a person sent: typed, through Remote Control, or as the SDK's own turn.
 // A background task's notification, a scheduled firing or another session's
-// message is not the person's next quest.
+// message never ends the quest.
 const PERSON_ORIGINS: ReadonlySet<string> = new Set(['composer', 'bridge', 'sdk'])
 
 const TASK_TOOLS: ReadonlySet<string> = new Set(['TaskCreate', 'TaskUpdate', 'TodoWrite'])
@@ -81,9 +81,8 @@ export const register: Register = (on, options) => {
 
   on('prompt.submit', async ($, e, next) => {
     if (e.isMeta !== true && PERSON_ORIGINS.has(e.origin.kind)) {
-      const now = await $.clock.now()
       const list = await read($, tasks)
-      await update($, quest, current => fromPrompt(current, e.text, list, now))
+      await update($, quest, current => afterPrompt(current, e.text, list))
       await showStatus($, detail, bars)
     }
 
@@ -139,13 +138,12 @@ export const register: Register = (on, options) => {
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     const below = await next(e)
-    const current = await read($, quest)
 
-    if (detail !== 'band' || e.props.hasSurvey || current === null) {
+    if (detail !== 'band' || e.props.hasSurvey) {
       return below
     }
 
-    const band = bandModel(current, await read($, tasks), await read($, meters), bars, await $.clock.now())
+    const band = bandModel(await read($, quest), await read($, tasks), await read($, meters), bars, await $.clock.now())
     const elements = $.ui.resolve(e)
     const { Box, Text } = elements
     const hasRoom = e.props.maxRows >= AVATAR_SIZE.rows

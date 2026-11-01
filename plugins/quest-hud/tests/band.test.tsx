@@ -87,17 +87,24 @@ describe('the band', () => {
     await ui.unmount()
   })
 
-  test('draws nothing of its own before any quest, or while a survey is up', async ($, on) => {
+  test('before any skill runs, the band shows the Wilds and the bars', async ($, on) => {
     engine(on)
     await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
     const early = await $.ui.mount(band('terminal'))
     expect(await early.find({ type: 'Text', text: /⚔/ })).toBeFalsy()
+    expect((await early.find({ type: 'Text', text: /Wilds/ }))?.text).toBe('Wilds')
+    expect(await early.find({ type: 'Text', text: /MP/ })).toBeTruthy()
     expect(await early.find({ type: 'Text', text: /engine below/ })).toBeTruthy()
     await early.unmount()
+  })
 
+  test('draws nothing of its own while a survey is up', async ($, on) => {
+    engine(on)
+    await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
     await $.skill.prompt({ skill: 'plan', text: 'x' })
     const survey = await $.ui.mount({ ...band('terminal'), props: { ...band('terminal').props, hasSurvey: true } })
-    expect(await survey.find({ type: 'Text', text: /⚔/ })).toBeFalsy()
+    expect(await survey.find({ type: 'Text', text: /⚔|Wilds|MP/ })).toBeFalsy()
+    expect(await survey.find({ type: 'Text', text: /engine below/ })).toBeTruthy()
     await survey.unmount()
   })
 
@@ -185,18 +192,35 @@ describe('prompts', () => {
   const prompt = (text: string, kind: 'composer' | 'task-notification' | 'peer' | 'scheduled-trigger') =>
     ({ text, wait: false, origin: { kind } }) as const
 
-  test('a prompt the person sent titles the quest', async ($, on) => {
+  test('a prompt is never shown in the band', async ($, on) => {
     engine(on)
     on('prompt.submit', (_, e) => ({ text: e.text }))
     await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
     await $.prompt.submit(prompt('make the export handle empty departments', 'composer'))
     const ui = await $.ui.mount(band('terminal'))
-    expect((await ui.find({ type: 'Text', text: /⚔/ }))?.text).toBe('⚔ make the export handle empty departments')
+    expect(await ui.find({ type: 'Text', text: /empty departments/ })).toBeFalsy()
+    expect((await ui.find({ type: 'Text', text: /Wilds/ }))?.text).toBe('Wilds')
     await ui.unmount()
   })
 
+  test('the person\'s next request ends a finished skill\'s quest', async ($, on) => {
+    engine(on)
+    on('prompt.submit', (_, e) => ({ text: e.text }))
+    await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+    await $.skill.prompt({ skill: 'plan', text: 'x' })
+    await $.prompt.submit(prompt('yes', 'composer'))
+    const kept = await $.ui.mount(band('terminal'))
+    expect((await kept.find({ type: 'Text', text: /⚔/ }))?.text).toBe('⚔ plan')
+    await kept.unmount()
+    await $.prompt.submit(prompt('now make the export handle empty departments', 'composer'))
+    const ended = await $.ui.mount(band('terminal'))
+    expect(await ended.find({ type: 'Text', text: /⚔/ })).toBeFalsy()
+    expect((await ended.find({ type: 'Text', text: /Wilds/ }))?.text).toBe('Wilds')
+    await ended.unmount()
+  })
+
   for (const kind of ['task-notification', 'peer', 'scheduled-trigger'] as const) {
-    test(`a ${kind} prompt never retitles the quest`, async ($, on) => {
+    test(`a ${kind} prompt never ends the quest`, async ($, on) => {
       engine(on)
       on('prompt.submit', (_, e) => ({ text: e.text }))
       await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })

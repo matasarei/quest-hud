@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { cleanTitle, fromPrompt, fromSkill, ownWords, TITLE_MAX } from '../src/quest'
+import { afterPrompt, cleanTitle, fromSkill, ownWords, TITLE_MAX } from '../src/quest'
 import type { Quest, Task } from '../types'
 
 const NOW = 1_000
@@ -80,45 +80,35 @@ describe('fromSkill', () => {
   })
 })
 
-describe('fromPrompt', () => {
-  test('the first prompt of a session titles a quest in the Wilds', () => {
-    expect(fromPrompt(null, 'yes', [], NOW)).toEqual({ title: 'yes', zone: 'wilds', startedAt: NOW })
+describe('afterPrompt', () => {
+  test('a prompt never starts a quest: with no skill running there is none', () => {
+    expect(afterPrompt(null, 'make the export handle empty departments', [])).toBe(null)
   })
 
-  test('a command never titles a quest', () => {
-    expect(fromPrompt(null, '/compact', [], NOW)).toBe(null)
-    expect(fromPrompt(skillQuest, '  /gku:pr', [], NOW)).toBe(skillQuest)
-  })
-
-  test('an empty prompt changes nothing', () => {
-    expect(fromPrompt(skillQuest, '   ', [], NOW)).toBe(skillQuest)
+  test('three words of the person\'s own with nothing open end a skill\'s quest', () => {
+    expect(afterPrompt(skillQuest, 'now fix the README', closed)).toBe(null)
+    expect(afterPrompt(skillQuest, 'now fix the README', [])).toBe(null)
   })
 
   test('a follow-up while a task is open keeps the quest', () => {
-    expect(fromPrompt(skillQuest, 'also handle empty departments please', open, NOW)).toBe(skillQuest)
+    expect(afterPrompt(skillQuest, 'also handle empty departments please', open)).toBe(skillQuest)
   })
 
-  test('a short follow-up keeps the quest even with no open task', () => {
-    expect(fromPrompt(skillQuest, 'go on', closed, NOW)).toBe(skillQuest)
+  test('a short reply keeps the quest even with nothing open', () => {
+    expect(afterPrompt(skillQuest, 'go on', closed)).toBe(skillQuest)
+    expect(afterPrompt(skillQuest, 'yes', [])).toBe(skillQuest)
   })
 
-  test('three words or more with nothing open start a new quest', () => {
-    expect(fromPrompt(skillQuest, 'now fix the README', closed, NOW)).toEqual({ title: 'now fix the README', zone: 'wilds', startedAt: NOW })
-    expect(fromPrompt(skillQuest, 'now fix the README', [], NOW)?.title).toBe('now fix the README')
+  test('a command or an empty prompt changes nothing', () => {
+    expect(afterPrompt(skillQuest, '/compact now please ok', [])).toBe(skillQuest)
+    expect(afterPrompt(skillQuest, '   ', [])).toBe(skillQuest)
   })
 
-  test('a bare paste never retitles the quest, nor starts the first one', () => {
-    const typed: Quest = { title: 'restarted once more with debug', zone: 'wilds', startedAt: 1 }
-    expect(fromPrompt(typed, PASTED_BAND, [], NOW)).toBe(typed)
-    expect(fromPrompt(null, PASTED_BAND, [], NOW)).toBe(null)
+  test('a bare paste never ends the quest', () => {
+    expect(afterPrompt(skillQuest, PASTED_BAND, [])).toBe(skillQuest)
   })
 
-  test('the title is the person\'s words, without the paste', () => {
-    const quest = fromPrompt(null, 'fix this crash please:\n```\nTypeError: x is undefined\n```', [], NOW)
-    expect(quest?.title).toBe('fix this crash please:')
-  })
-
-  test('the words counted are the person\'s own: two words and a paste stay a follow-up', () => {
-    expect(fromPrompt(skillQuest, 'see this\n<pasted_content id="3">one two three four</pasted_content id="3">', [], NOW)).toBe(skillQuest)
+  test('only the person\'s own words count: two words and a paste keep the quest', () => {
+    expect(afterPrompt(skillQuest, 'see this\n<pasted_content id="3">one two three four</pasted_content id="3">', [])).toBe(skillQuest)
   })
 })

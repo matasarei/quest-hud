@@ -89,11 +89,10 @@ export const BAND_WIDTH = 14
 
 /** The band's two rows as text segments, each with the tone it is drawn in. */
 export const bandModel = (quest: Quest | null, tasks: readonly Task[], meters: Meters | null, bars: Bars, now: number): Band => {
-  const head: Segment[] = []
-
-  if (quest) {
-    head.push({ text: `⚔ ${quest.title}`, tone: 'accent' }, { text: `  ${ZONE_LABEL[quest.zone]}`, tone: 'dim' })
-  }
+  // A skill's quest names the skill and its zone; with none running, the Wilds.
+  const head: Segment[] = quest
+    ? [{ text: `⚔ ${quest.title}`, tone: 'accent' }, { text: `  ${ZONE_LABEL[quest.zone]}`, tone: 'dim' }]
+    : [{ text: ZONE_LABEL.wilds, tone: 'dim' }]
 
   const { done, total, current } = progress(tasks)
 
@@ -145,6 +144,7 @@ export const statusText = (quest: Quest | null, tasks: readonly Task[], meters: 
   const { done, total } = progress(tasks)
 
   if (quest) parts.push(`⚔ ${quest.title}${total > 0 ? ` ${done}/${total}` : ''}`)
+  else if (total > 0) parts.push(`task ${done}/${total}`)
 
   const hp = hpLeft(meters)
   if (hp !== undefined) parts.push(`♥${bar(hp, 10, '▰', '▱')} ${hp}%`)

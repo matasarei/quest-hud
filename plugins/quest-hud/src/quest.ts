@@ -1,4 +1,5 @@
-// The quest the session is on: started by a skill run, or titled by a prompt.
+// The quest the session is on: a skill's run, from its start until a prompt
+// shows it is over. With no skill running there is no quest: the Wilds.
 import type { Quest, Task, Zone } from '../types'
 
 export const TITLE_MAX = 48
@@ -47,20 +48,18 @@ export const ownWords = (text: string): string =>
     .trim()
 
 /**
- * The quest after a plain prompt. A prompt titles a new quest when there is
- * none yet, or when the current one has no open task and the person's own
- * words in it number at least three, so "yes", "go on" or a bare paste never
- * retitle the work. A prompt that starts with `/` is a command, never a title.
+ * The quest after a person's prompt. A prompt is never shown: the person just
+ * typed it. It only ends a skill's quest that looks finished: no task open,
+ * and at least three words of the person's own, so "yes", "go on" or a bare
+ * paste never end it. A prompt that starts with `/` is a command and ends
+ * nothing; a skill it runs starts its own quest.
  */
-export const fromPrompt = (current: Quest | null, text: string, tasks: readonly Task[], now: number): Quest | null => {
+export const afterPrompt = (current: Quest | null, text: string, tasks: readonly Task[]): Quest | null => {
   const own = ownWords(text)
 
-  if (own === '' || text.trim().startsWith('/')) {
+  if (current === null || own === '' || text.trim().startsWith('/') || hasOpenTask(tasks)) {
     return current
   }
 
-  const words = own.split(/\s+/).length
-  const isNew = current === null || (!hasOpenTask(tasks) && words >= 3)
-
-  return isNew ? { title: cleanTitle(own), zone: 'wilds', startedAt: now } : current
+  return own.split(/\s+/).length >= 3 ? null : current
 }

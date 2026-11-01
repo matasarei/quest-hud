@@ -29,8 +29,11 @@ Claude Code 2.1.316 and, as a warning only, on the latest release.
   any pack's files.
 - **Logic lives in `src/`, pure and tested**; `register.tsx` is wiring and layout. A new rule
   is a new function with its test.
-- **Outside text is drawn as plain `Text`**: skill names, task subjects, prompts. Never
-  `Markdown` or `Link`. Titles go through `cleanTitle()`.
+- **Outside text is drawn as plain `Text`**: skill names and task subjects. Never
+  `Markdown` or `Link`. Titles go through `cleanTitle()`. Prompts are never drawn: they only
+  end a finished skill's quest (`afterPrompt()`).
+- **Never write `\u` escapes through a tool that may decode them**: check new source with the
+  CI step's bidi scan; a literal bidirectional control character is refused.
 - **A helper that takes `$` is a top-level function declaration**; the validator follows `$`
   statically and refuses one bound inside `register`.
 - **`resolve()` lists every element on every surface**; one a surface lacks draws as an empty

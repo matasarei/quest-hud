@@ -9,9 +9,10 @@ A Claude Code mod that draws your session as a small game, above the prompt:
 
 - **♥ HP (green)**: what is left of your weekly usage window.
 - **✦ MP (blue)**: what is left of the context window.
-- **⚔ the quest**: the skill that is running (any skill, from any plugin, or none), the **zone**
-  it works in, and Claude Code's own task list: how many tasks are done and which one is in
-  progress.
+- **⚔ the quest**: the skill that is running (any skill, from any plugin) and the **zone** it
+  works in, or the **Wilds** when none is; and Claude Code's own task list: how many tasks are
+  done and which one is in progress. Your prompts are never shown — you just typed them. A
+  skill's quest ends when you ask for something new (three words or more) with no task open.
 
 It works with whatever skills you use. A skill's zone comes from its name and description:
 plan → Map room, implement/fix → Forge, review/verify/test → Arena, pr/mr → Harbour,
