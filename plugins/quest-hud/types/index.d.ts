@@ -44,7 +44,7 @@ export type Foes = Readonly<Record<FightKind, Foe>>
 /** One line of the pane's log: what Claude did, as Claude Code reported it. */
 export type LogEntry = {
   at: number
-  kind: 'skill' | 'scout' | 'cast' | 'fork' | 'task' | 'plan' | 'camp' | 'fight'
+  kind: 'skill' | 'scout' | 'cast' | 'fork' | 'task' | 'plan' | 'camp' | 'fight' | 'loot'
   text: string
   /** The main turn it happened in: scout lines of one turn merge. */
   turn?: string
@@ -74,6 +74,8 @@ declare module 'claude-code' {
       imagesWork: boolean | null
       /** The monsters on the Road: one per kind of fight, standing after a lost run. */
       foes: Foes
+      /** The commits made this session: a chest on the Road once there is one. */
+      loot: number
     }
   }
 }

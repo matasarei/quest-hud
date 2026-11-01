@@ -2,7 +2,7 @@ import { describe, expect, test } from 'claude-code/testing'
 
 import { SPRITES } from '../src/art/sprites'
 import {
-  avatarX, BACKDROPS, FLAG_WIDTH, fitWaypoints, flagSlots, FOE_COLOR, foeX, GROUND_ROW, half, MAX_FLAGS, MAX_GHOSTS, roadWidth, scene,
+  avatarX, BACKDROPS, propsWidth, FLAG_WIDTH, fitWaypoints, flagSlots, FOE_COLOR, foeX, GROUND_ROW, half, MAX_FLAGS, MAX_GHOSTS, roadWidth, scene,
   SCENE_HEIGHT, skyColor, waypointsOf, waypointX, WIZARD_COLOR, type Waypoint,
 } from '../src/scene'
 import type { Task, Zone } from '../types'
@@ -199,5 +199,30 @@ describe('the monsters', () => {
       expect(grid).toHaveLength(SCENE_HEIGHT)
       expect(grid.every(line => line.length === columns && line.every(c => c !== undefined))).toBe(true)
     }
+  })
+})
+
+describe('the chest', () => {
+  const changed = (a: ReturnType<typeof scene>, b: ReturnType<typeof scene>): number[] =>
+    [...new Set(a.flatMap((line, y) => line.flatMap((c, x) => (b[y]?.[x] !== c ? [x] : []))))].sort((p, q) => p - q)
+
+  test('stands left of the props once there is loot, and the road gives it room', () => {
+    const none = scene({ columns: 120, zone: 'camp', waypoints: [], companions: 0, loot: 0, frame: 0 })
+    const some = scene({ columns: 120, zone: 'camp', waypoints: [], companions: 0, loot: 3, frame: 0 })
+    const xs = changed(none, some)
+    const propsStart = 120 - 2 - (propsWidth('camp') - 4)
+    expect(xs.length > 0).toBe(true)
+    expect(xs[0]! >= propsStart - SPRITES.chest.width - 2).toBe(true)
+    expect(xs[xs.length - 1]! < propsStart).toBe(true)
+    expect(roadWidth(120, 'camp', { loot: 1 })).toBe(roadWidth(120, 'camp') - SPRITES.chest.width - 2)
+    expect(roadWidth(120, 'camp', { loot: 0 })).toBe(roadWidth(120, 'camp'))
+  })
+
+  test('flags stay clear of it', () => {
+    const tasks: Waypoint[] = Array<Waypoint>(MAX_FLAGS).fill('todo')
+    const road = roadWidth(120, 'camp', { loot: 1 })
+    const flags = fitWaypoints(tasks, flagSlots(road))
+    const last = waypointX(flags.length - 1, flags.length, road)
+    expect(last + FLAG_WIDTH <= road).toBe(true)
   })
 })

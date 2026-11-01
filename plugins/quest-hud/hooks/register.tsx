@@ -5,7 +5,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, Timer } from 'claude-code'
 
 import { AVATAR_SMALL, MAGE, rasterSize, toRasterCells, toSvg } from '../src/avatar'
-import { commandKinds, endFights, fightKinds, fightOutcome, fightText, NO_FOES, startFights } from '../src/bash'
+import { commandKinds, endFights, fightKinds, fightOutcome, fightText, lootText, NO_FOES, startFights, stdoutOf } from '../src/bash'
 import { activeCompanions, sameCompanions } from '../src/companions'
 import { appendEntry, castText, scoutCounts, scoutText } from '../src/log'
 import { bandModel, fromMeasure, shortTokens, statusText, TONE_COLOR, ZONE_LABEL, zoneLine, type Bars } from '../src/meters'
@@ -30,6 +30,7 @@ const activity = atom({ plugin: 'quest-hud', key: 'activity' } as const, null)
 const isWorking = atom({ plugin: 'quest-hud', key: 'isWorking' } as const, false)
 const imagesWork = atom({ plugin: 'quest-hud', key: 'imagesWork' } as const, null)
 const foes = atom({ plugin: 'quest-hud', key: 'foes' } as const, NO_FOES)
+const loot = atom({ plugin: 'quest-hud', key: 'loot' } as const, 0)
 
 /** off, a status entry, the band, or the band and the Road pane opened at the start. */
 type Detail = 'off' | 'status' | 'band' | 'pane'
@@ -137,6 +138,7 @@ async function blitScene($: EngineInterface, frame: 0 | 1): Promise<void> {
     companions: await read($, companions),
     activity: await read($, activity),
     foes: await read($, foes),
+    loot: await read($, loot),
     columns: bob.columns,
     frame,
   })
@@ -258,6 +260,7 @@ export const register: Register = (on, options) => {
       await update($, activity, () => null)
       await update($, imagesWork, () => null)
       await update($, foes, () => NO_FOES)
+      await update($, loot, () => 0)
       resetProbe()
       await update($, sessionId, () => id)
     }
@@ -332,6 +335,12 @@ export const register: Register = (on, options) => {
     // A subagent's own calls stay out of the session's task list and log.
     if (e.agentId !== undefined || ran.deny !== undefined || ran.isError === true) {
       return ran
+    }
+
+    // A commit the session made drops loot; a refused one (a hook said no) is an error, so none.
+    if (e.tool === 'Bash' && e.run_in_background !== true && commandKinds(e.command).includes('commit')) {
+      await update($, loot, count => count + 1)
+      await addLog($, { kind: 'loot', text: lootText(stdoutOf(ran.result)) })
     }
 
     if (TASK_TOOLS.has(e.tool)) {
@@ -516,6 +525,7 @@ export const register: Register = (on, options) => {
       companions: await read($, companions),
       activity: await read($, activity),
       foes: await read($, foes),
+      loot: await read($, loot),
       bars,
       columns: e.props.bodyColumns,
       rows: e.viewport?.rows ?? 30,

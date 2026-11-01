@@ -24,6 +24,8 @@ export type RoadArgs = {
   activity: Zone | null
   /** The monsters on the road. */
   foes: Foes
+  /** The commits made this session. */
+  loot: number
   bars: Bars
   columns: number
   rows: number
@@ -44,13 +46,14 @@ export type Road = {
 export const sceneZone = (quest: Quest | null, activity: Zone | null): Zone => quest?.zone ?? activity ?? 'wilds'
 
 /** The scene alone, for a redraw or a blit of one frame. */
-export const roadScene = (args: Pick<RoadArgs, 'quest' | 'tasks' | 'companions' | 'activity' | 'foes' | 'columns' | 'frame'>): Grid =>
+export const roadScene = (args: Pick<RoadArgs, 'quest' | 'tasks' | 'companions' | 'activity' | 'foes' | 'loot' | 'columns' | 'frame'>): Grid =>
   scene({
     columns: args.columns,
     zone: sceneZone(args.quest, args.activity),
     waypoints: waypointsOf(args.tasks),
     companions: args.companions.length,
     foes: args.foes,
+    loot: args.loot,
     frame: args.frame,
   })
 
@@ -86,7 +89,7 @@ const meterSegments = (meters: Meters | null, bars: Bars): Segment[] => {
  * whatever room is left. The log goes first when room is short, then tasks.
  */
 export const road = (args: RoadArgs): Road => {
-  const { quest, tasks, meters, log, companions, bars, columns, rows } = args
+  const { quest, tasks, meters, log, companions, loot, bars, columns, rows } = args
   const { done, total } = progress(tasks)
   const header = quest ? `⚔ ${quest.title} · ${zoneLine(quest.zone)}` : zoneLine('wilds')
   const shown = companions.slice(0, MAX_GHOSTS).map(c => c.type)
@@ -103,7 +106,7 @@ export const road = (args: RoadArgs): Road => {
 
   return {
     header,
-    ...(total > 0 ? { count: `task ${done}/${total}` } : {}),
+    ...(total > 0 || loot > 0 ? { count: [total > 0 ? `task ${done}/${total}` : '', loot > 0 ? `loot ${loot}` : ''].filter(Boolean).join(' · ') } : {}),
     scene: roadScene({ ...args, columns }),
     ...(companionsLine ? { companions: companionsLine } : {}),
     tasks: taskRows,

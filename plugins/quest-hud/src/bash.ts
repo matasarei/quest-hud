@@ -3,6 +3,7 @@
 // only, and nothing here is ever drawn as it was typed: callers draw the kind,
 // a score, a commit subject or a PR number.
 import type { FightKind, Foe, Foes } from '../types'
+import { cleanTitle } from './quest'
 
 export type BashKind = 'test' | 'lint' | 'commit' | 'gh' | 'glab'
 
@@ -247,6 +248,25 @@ const kindOf = (words: readonly string[]): BashKind | undefined => {
     default:
       return undefined
   }
+}
+
+/**
+ * What `git commit` printed about the commit it made: `[main 2af33ea] Fix the
+ * probe` gives the short sha and the subject. A quiet commit prints nothing.
+ */
+export const commitLoot = (stdout: string): { sha?: string; subject?: string } => {
+  const made = /^\[[^\]\s]+(?: \([^)]*\))? ([0-9a-f]{7,40})\] (.*)$/m.exec(stdout)
+  return made ? { sha: made[1] as string, subject: made[2] as string } : {}
+}
+
+/** A Bash result's standard output, or nothing when it has none. */
+export const stdoutOf = (result: unknown): string =>
+  typeof result === 'object' && result !== null && typeof (result as { stdout?: unknown }).stdout === 'string' ? (result as { stdout: string }).stdout : ''
+
+/** The loot line: `2af33ea Fix the probe`, or `a commit` when git said nothing. */
+export const lootText = (stdout: string): string => {
+  const { sha, subject } = commitLoot(stdout)
+  return sha === undefined ? 'a commit' : cleanTitle(`${sha} ${subject ?? ''}`)
 }
 
 /** The kinds a command line holds, each once, in the order they first appear. */

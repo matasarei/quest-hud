@@ -123,8 +123,18 @@ const propName = (prop: Prop): SpriteName => (typeof prop === 'string' ? prop : 
 export const propsWidth = (zone: Zone): number =>
   BACKDROPS[zone].props.reduce((sum, prop) => sum + SPRITES[propName(prop)].width, 0) + 4
 
-/** The road's width: the span left of the props where flags and figures go. */
-export const roadWidth = (columns: number, zone: Zone): number => Math.max(0, Math.floor(columns) - propsWidth(zone))
+/** What the session gathered, standing left of the zone's props. */
+export type Extras = { loot?: number }
+
+/** The gathered things' sprites, right to left: the chest once there is loot. */
+const extraSprites = ({ loot = 0 }: Extras): SpriteName[] => (loot > 0 ? ['chest'] : [])
+
+/** Pixels between gathered things, and between them and the props. */
+const EXTRA_GAP = 2
+
+/** The road's width: the span left of the props, and of what the session gathered, where flags and figures go. */
+export const roadWidth = (columns: number, zone: Zone, extras: Extras = {}): number =>
+  Math.max(0, Math.floor(columns) - propsWidth(zone) - extraSprites(extras).reduce((sum, name) => sum + SPRITES[name].width + EXTRA_GAP, 0))
 
 /** How many flags fit across a road of `width` pixels. */
 export const flagSlots = (width: number): number => Math.max(0, Math.floor((width - 4) / FLAG_SLOT))
@@ -163,6 +173,8 @@ export type SceneArgs = {
   companions: number
   /** The monsters on the road; none when left out. */
   foes?: Foes
+  /** The commits made this session; none when left out. */
+  loot?: number
   frame: 0 | 1
 }
 
@@ -206,7 +218,7 @@ const foeGrid = (kind: FightKind): Grid =>
  * The scene as columns × SCENE_HEIGHT pixels: the waypoints are fitted to the
  * flags the road has room for. Frame 1 lifts the figures a pixel: the bob.
  */
-export const scene = ({ columns, zone, waypoints, companions, foes = NO_FOES, frame }: SceneArgs): Grid => {
+export const scene = ({ columns, zone, waypoints, companions, foes = NO_FOES, loot = 0, frame }: SceneArgs): Grid => {
   const width = Math.max(0, Math.floor(columns))
   const backdrop = BACKDROPS[zone]
   // Under everything: the background above the ground line, the ground below it.
@@ -231,7 +243,13 @@ export const scene = ({ columns, zone, waypoints, companions, foes = NO_FOES, fr
     stamp(canvas, grid, right, GROUND_ROW - grid.length)
   }
 
-  const road = roadWidth(width, zone)
+  for (const name of extraSprites({ loot })) {
+    const grid = spriteGrid(name)
+    right -= (grid[0]?.length ?? 0) + EXTRA_GAP
+    stamp(canvas, grid, right, GROUND_ROW - grid.length)
+  }
+
+  const road = roadWidth(width, zone, { loot })
   const flags = fitWaypoints(waypoints, flagSlots(road))
   const lift = frame === 1 ? -1 : 0
   const hero = avatarX(flags, road)

@@ -187,3 +187,39 @@ describe('fights, from Bash calls', () => {
     expect(await foes($)).toEqual({ test: 'none', lint: 'none' })
   })
 })
+
+describe('loot, from commits', () => {
+  test('a commit drops loot and logs its sha and subject; a quiet one logs "a commit"', async ($, on) => {
+    engine(on)
+    await start($)
+    world.bash = { stdout: '[main 2af33ea] Fix the probe\n 1 file changed' }
+    await $.tool.call({ tool: 'Bash', command: 'git add a.ts && git commit -m "Fix the probe"', description: '' })
+    world.bash = { stdout: '' }
+    await $.tool.call({ tool: 'Bash', command: "git commit -q -F - <<'EOF'\nRetitle\nEOF", description: '' })
+    expect(await stateOf($, 'loot')).toBe(2)
+    expect(await texts($)).toEqual(['2af33ea Fix the probe', 'a commit'])
+  })
+
+  test('a refused commit, a dry run and a subagent\'s commit drop nothing', async ($, on) => {
+    engine(on)
+    await start($)
+    world.bash = { error: 'Exit code 1\nhook refused' }
+    await $.tool.call({ tool: 'Bash', command: 'git commit -m x', description: '' })
+    world.bash = { stdout: '' }
+    await $.tool.call({ tool: 'Bash', command: 'git commit --dry-run', description: '' })
+    world.bash = { stdout: '[main 1234567] Theirs' }
+    await $.tool.call({ tool: 'Bash', command: 'git commit -m Theirs', description: '', agentId: 'a1' })
+    expect(await stateOf($, 'loot')).toBe(0)
+    expect(await texts($)).toEqual([])
+  })
+
+  test('a new session starts with no loot', async ($, on) => {
+    engine(on)
+    await start($)
+    world.bash = { stdout: '[main 2af33ea] x' }
+    await $.tool.call({ tool: 'Bash', command: 'git commit -m x', description: '' })
+    world.id = 's2'
+    await start($)
+    expect(await stateOf($, 'loot')).toBe(0)
+  })
+})

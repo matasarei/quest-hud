@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { type BashKind, commandKinds, endFights, fightKinds, fightOutcome, fightScore, fightText, NO_FOES, SCORE_TAIL, startFights } from '../src/bash'
+import { type BashKind, commandKinds, commitLoot, endFights, fightKinds, fightOutcome, fightScore, fightText, NO_FOES, lootText, SCORE_TAIL, startFights, stdoutOf } from '../src/bash'
 
 // Each command as Claude might run it, and the kinds it holds, in order.
 const COMMANDS: ReadonlyArray<readonly [string, readonly BashKind[]]> = [
@@ -193,5 +193,26 @@ describe('fights', () => {
     expect(fightText(['test'], { result: 'won', score })).toBe('tests won · 232 pass · 0 fail')
     expect(fightText(['test', 'lint'], { result: 'lost' })).toBe('tests + lint lost')
     expect(fightText(['lint'], { result: 'won' }, 'gku:runner')).toBe('gku:runner · lint won')
+  })
+})
+
+describe('loot', () => {
+  test('git commit\'s first line gives the short sha and the subject', () => {
+    expect(commitLoot('[main 2af33ea] Fix the probe\n 1 file changed, 2 insertions(+)')).toEqual({ sha: '2af33ea', subject: 'Fix the probe' })
+    expect(commitLoot('[main (root-commit) 1a2b3c4] Init')).toEqual({ sha: '1a2b3c4', subject: 'Init' })
+    expect(commitLoot('[feature/phase-4 a444818] Add the parser')).toEqual({ sha: 'a444818', subject: 'Add the parser' })
+    expect(commitLoot('')).toEqual({})
+    expect(commitLoot('nothing to commit, working tree clean')).toEqual({})
+  })
+
+  test('the loot line, and a quiet commit\'s', () => {
+    expect(lootText('[main 2af33ea] Fix the probe\n')).toBe('2af33ea Fix the probe')
+    expect(lootText('')).toBe('a commit')
+  })
+
+  test('stdoutOf reads a Bash result, and nothing else', () => {
+    expect(stdoutOf({ stdout: 'x', stderr: '' })).toBe('x')
+    expect(stdoutOf('Exit code 1')).toBe('')
+    expect(stdoutOf(undefined)).toBe('')
   })
 })
