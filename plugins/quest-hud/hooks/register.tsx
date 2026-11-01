@@ -4,20 +4,20 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, Timer } from 'claude-code'
 
-import { gridToRasterCells, gridToSvg } from '../src/avatar'
+import { gridToSvg } from '../src/avatar'
 import { commandKinds, endFights, fightKinds, fightOutcome, fightText, forgeEvent, lootText, NO_FOES, startFights, stdoutOf } from '../src/bash'
 import { activeCompanions, sameCompanions } from '../src/companions'
 import { appendEntry, castText, scoutCounts, scoutText } from '../src/log'
 import { bandModel, fromMeasure, shortTokens, statusText, TONE_COLOR, ZONE_LABEL, zoneLine, type Bars } from '../src/meters'
-import { afterPrompt, cleanTitle, fromSkill } from '../src/quest'
 import { downsample } from '../src/paint/pixels'
+import { afterPrompt, cleanTitle, fromSkill } from '../src/quest'
 import { road, roadArt, SCENE_MIN_COLUMNS, sceneZone } from '../src/road'
-import { ART_SCALE } from '../src/world/sprites'
 import { atRest, BAND, bandPortrait, nextMotion, REST, TRANSITION_STEPS, type Motion, type Transition } from '../src/scene'
 import { applyTaskCall } from '../src/tasks'
+import { ART_SCALE } from '../src/world/sprites'
 import { parseZones, zoneFor } from '../src/zones'
 import type { Allies, FightKind, Foes, LogEntry, Zone } from '../types'
-import { drawRoad, PANE_ID, PANE_TITLE, SCENE_IMAGE_KEY, SCENE_KEY, sceneCells, sceneImage, type PngSource, type SceneMode } from './pane'
+import { artCells, drawRoad, PANE_ID, PANE_TITLE, SCENE_IMAGE_KEY, SCENE_KEY, sceneImage, type PngSource, type SceneMode } from './pane'
 
 // The values the HUD keeps for the session, each declared in types/index.d.ts.
 // The engine lists what a module reads and writes from atoms defined in the
@@ -169,13 +169,13 @@ async function blitFrame($: EngineInterface): Promise<void> {
   })
   const blitted = anim.mode === 'image'
     ? await $.ui.blit({ requestId: PANE_ID, key: SCENE_IMAGE_KEY, source: sceneImage(art) })
-    : await $.ui.blit({ requestId: PANE_ID, key: SCENE_KEY, cells: sceneCells(downsample(art, ART_SCALE)) })
+    : await $.ui.blit({ requestId: PANE_ID, key: SCENE_KEY, cells: artCells(art) })
 
   if (blitted.deny !== undefined) stopTimer()
 
   // The band's wizard steps with the Road's; a band no longer drawn just stops taking frames.
   if (anim.band !== undefined) {
-    const band = await $.ui.blit({ requestId: anim.band, key: BAND_KEY, cells: gridToRasterCells(bandPortrait(anim.motion.pose)) })
+    const band = await $.ui.blit({ requestId: anim.band, key: BAND_KEY, cells: artCells(bandPortrait(anim.motion.pose)) })
     if (band.deny !== undefined) anim.band = undefined
   }
 }
@@ -564,9 +564,9 @@ export const register: Register = (on, options) => {
     const avatar = !hasRoom
       ? null
       : isRaster && 'Raster' in elements
-        ? <elements.Raster key={BAND_KEY} columns={BAND.columns} rows={BAND.rows} cells={gridToRasterCells(bandPortrait(anim.motion.pose))} />
+        ? <elements.Raster key={BAND_KEY} columns={BAND.columns} rows={BAND.rows} cells={artCells(bandPortrait(anim.motion.pose))} />
         : 'Svg' in elements
-          ? <elements.Svg source={gridToSvg(bandPortrait())} alt="the wizard" width={BAND.columns * 4} height={BAND.rows * 8} />
+          ? <elements.Svg source={gridToSvg(downsample(bandPortrait(), ART_SCALE))} alt="the wizard" width={BAND.columns * 4} height={BAND.rows * 8} />
           : null
 
     return (

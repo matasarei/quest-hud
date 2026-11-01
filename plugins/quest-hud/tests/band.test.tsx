@@ -2,6 +2,11 @@ import { describe, expect, mock, test } from 'claude-code/testing'
 import type { On } from 'claude-code'
 import type { Engine } from 'claude-code/testing'
 
+import { artCells } from '../hooks/pane'
+import { QUADRANT, quadrantWords } from '../src/avatar'
+import { downsample } from '../src/paint/pixels'
+import { bandPortrait } from '../src/scene'
+
 // The session id the engine answers; a test changes it to stand for /clear.
 const session = { id: 's1' }
 
@@ -78,6 +83,11 @@ describe('the band', () => {
     const terminal = await $.ui.mount(band('terminal'))
     const raster = await terminal.find({ type: 'Raster' })
     expect([raster?.props.columns, raster?.props.rows]).toEqual([10, 3])
+    // In quadrants, from the 20 × 12 art, at rest or casting.
+    expect([artCells(bandPortrait('stand')), artCells(bandPortrait('walk1'))]).toContain(String(raster?.props.cells))
+    const points = quadrantWords(downsample(bandPortrait(), 1, 2)).filter((_, i) => i % 3 === 0)
+    expect(points).toHaveLength(10 * 3)
+    expect(points.every(cp => QUADRANT.includes(cp))).toBe(true)
     await terminal.unmount()
     const desktop = await $.ui.mount(band('desktop'))
     expect(await desktop.find({ type: 'Svg' })).toBeTruthy()

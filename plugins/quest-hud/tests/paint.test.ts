@@ -261,6 +261,8 @@ describe('pixel art', () => {
     expect(downsample([[1, 1], [1, 2]], 2)).toEqual([[1]])
     expect(downsample([[1, 2], [2, 1]], 2)).toEqual([[1]])
     expect(downsample([[1, 2, 3, 3], [2, 2, 3, 4]], 2)).toEqual([[2, 3]])
+    // Rows only: columns kept, each pair of rows one row, the first seen of equals.
+    expect(downsample([[1, 2], [1, 3], [4, 5], [6, 5]], 1, 2)).toEqual([[1, 2], [4, 5]])
     const rgb = gridToRgb([[0xff0000, 0x00ff00]], 2)
     expect([rgb.width, rgb.height]).toEqual([4, 2])
     expect([...rgb.data.slice(0, 12)]).toEqual([255, 0, 0, 255, 0, 0, 0, 255, 0, 0, 255, 0])

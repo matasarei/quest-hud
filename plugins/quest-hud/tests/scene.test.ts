@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'claude-code/testing'
 
 import {
-  atRest, avatarX, bandPortrait, figures, FLAG_SLOT, FLAG_WIDTH, fitWaypoints, flagSlots, foeX, GROUND_ROW, layout, MAX_FLAGS, MAX_GHOSTS, MIN_FLAGS, propsWidth,
+  atRest, avatarX, BAND, bandPortrait, figures, FLAG_SLOT, FLAG_WIDTH, fitWaypoints, flagSlots, foeX, GROUND_ROW, layout, MAX_FLAGS, MAX_GHOSTS, MIN_FLAGS, propsWidth,
   nextMotion, REST, roadWidth, scene, SCENE_HEIGHT, SIZE, slide, skyColor, waypointsOf, waypointX, ZONE_PROPS, type Waypoint,
 } from '../src/scene'
 import { PALETTE, PROPS } from '../src/world/sprites'
@@ -384,11 +384,16 @@ describe('the landmarks on the walk', () => {
 })
 
 describe('the band\'s wizard', () => {
-  test('casts while the Road walks: the staff raised on every other frame, and in a fight', () => {
+  test('casts while the Road walks: the orb flaring on every other frame, and in a fight', () => {
     const rest = JSON.stringify(bandPortrait('stand'))
     expect(JSON.stringify(bandPortrait('walk0'))).toBe(rest)
     expect(JSON.stringify(bandPortrait('walk1')) === rest).toBe(false)
     expect(JSON.stringify(bandPortrait('walk3'))).toBe(JSON.stringify(bandPortrait('walk1')))
     expect(JSON.stringify(bandPortrait('strike'))).toBe(JSON.stringify(bandPortrait('walk1')))
+  })
+
+  test('is art: 20 × 12, two pixels a column and four a row, for 10 × 3 cells', () => {
+    const portrait = bandPortrait()
+    expect([portrait[0]?.length, portrait.length]).toEqual([BAND.columns * 2, BAND.rows * 4])
   })
 })

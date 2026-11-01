@@ -88,6 +88,73 @@ export const gridToRasterCells = (grid: Grid): string => {
   return toBase64(new Uint8Array(view.buffer))
 }
 
+/**
+ * The sixteen 2 × 2 block characters, by pattern: top-left 1, top-right 2,
+ * bottom-left 4, bottom-right 8. All in the BMP, as a Raster needs: the
+ * octants (2 × 4) are not.
+ */
+export const QUADRANT: readonly number[] = [
+  0x20, 0x2598, 0x259d, 0x2580, 0x2596, 0x258c, 0x259e, 0x259b,
+  0x2597, 0x259a, 0x2590, 0x259c, 0x2584, 0x2599, 0x259f, 0x2588,
+]
+
+const FULL = 0x2588
+
+/** How far apart two colours are; the terminal's own background is far from every colour. */
+const distance = (a: number, b: number): number => {
+  if (a === DEFAULT_COLOR || b === DEFAULT_COLOR) return a === b ? 0 : Infinity
+  return Math.hypot(((a >> 16) & 255) - ((b >> 16) & 255), ((a >> 8) & 255) - ((b >> 8) & 255), (a & 255) - (b & 255))
+}
+
+/**
+ * Each cell, two pixels across and two down, as [code point, foreground,
+ * background]. A cell shows two colours: its two most common (the first seen
+ * of equals), every other pixel taking the nearer of them. The ink is the
+ * top-left pixel's colour, or the other one when that pixel is empty; an
+ * empty pixel is the terminal's own background. One colour is a full block;
+ * nothing at all, a space on the default colours.
+ */
+export const quadrantWords = (grid: Grid): number[] => {
+  const columns = Math.ceil(width(grid) / 2)
+  const rows = Math.ceil(grid.length / 2)
+  const words: number[] = []
+
+  for (let row = 0; row < rows; row++) {
+    for (let column = 0; column < columns; column++) {
+      const corners: ReadonlyArray<readonly [number, number]> = [[0, 0], [1, 0], [0, 1], [1, 1]]
+      const pixels = corners.map(([dx, dy]) => grid[row * 2 + dy]?.[column * 2 + dx] ?? DEFAULT_COLOR)
+      // A Map keeps the order colours were first seen in, so equals go to the first.
+      const counts = new Map<number, number>()
+      for (const color of pixels) counts.set(color, (counts.get(color) ?? 0) + 1)
+      const ranked = [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([color]) => color)
+      const first = ranked[0] ?? DEFAULT_COLOR
+      const second = ranked[1]
+
+      if (second === undefined) {
+        words.push(...(first === DEFAULT_COLOR ? [SPACE, DEFAULT_COLOR, DEFAULT_COLOR] : [FULL, first, first]))
+        continue
+      }
+
+      const kept = pixels.map(color => (color === first || color === second ? color : distance(color, first) <= distance(color, second) ? first : second))
+      const topLeft = kept[0] ?? DEFAULT_COLOR
+      const ink = topLeft === DEFAULT_COLOR ? (first === DEFAULT_COLOR ? second : first) : topLeft
+      const other = ink === first ? second : first
+      const pattern = kept.reduce((bits, color, i) => (color === ink ? bits | (1 << i) : bits), 0)
+      words.push(QUADRANT[pattern] ?? SPACE, ink, other)
+    }
+  }
+
+  return words
+}
+
+/** `RasterProps.cells` in quadrants: the words of `quadrantWords`, little-endian, base64. */
+export const gridToQuadrantCells = (grid: Grid): string => {
+  const words = quadrantWords(grid)
+  const view = new DataView(new ArrayBuffer(words.length * 4))
+  words.forEach((word, i) => view.setUint32(i * 4, word, true))
+  return toBase64(new Uint8Array(view.buffer))
+}
+
 export const toRasterCells = (map: readonly string[], palette: Palette): string => gridToRasterCells(mapToGrid(map, palette))
 
 /** An Image's base64 pixels may decode to at most this many bytes. */

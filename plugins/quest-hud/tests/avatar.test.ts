@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'claude-code/testing'
 
 import {
-  DEFAULT_COLOR, gridSize, gridToRasterCells, gridToRgba, gridToSvg, gridWords, IMAGE_BYTES, imageScale,
+  DEFAULT_COLOR, gridSize, gridToQuadrantCells, gridToRasterCells, gridToRgba, gridToSvg, gridWords, IMAGE_BYTES, imageScale, QUADRANT, quadrantWords,
   mapToGrid, rasterSize, rasterWords, toBase64, toRasterCells, toSvg, type Grid, type Palette,
 } from '../src/avatar'
 
@@ -188,5 +188,55 @@ describe('the image output', () => {
       expect(w * s * h * s * 4 <= IMAGE_BYTES || s === 1).toBe(true)
       expect(w * s <= 2048 || s === 1).toBe(true)
     }
+  })
+})
+
+describe('quadrantWords: two by two pixels a cell, in two colours', () => {
+  const A = 0x112233
+  const B = 0x445566
+
+  test('the sixteen characters, by the pattern of top-left 1, top-right 2, bottom-left 4, bottom-right 8', () => {
+    expect(QUADRANT).toEqual([
+      0x20, 0x2598, 0x259d, 0x2580, 0x2596, 0x258c, 0x259e, 0x259b,
+      0x2597, 0x259a, 0x2590, 0x259c, 0x2584, 0x2599, 0x259f, 0x2588,
+    ])
+  })
+
+  test('every pattern of two colours: the ink is the top-left pixel\'s colour, the pattern its pixels', () => {
+    for (let p = 1; p < 15; p++) {
+      const at = (bit: number) => (p & bit ? A : B)
+      const words = quadrantWords([[at(1), at(2)], [at(4), at(8)]])
+      // A block whose top-left is B draws B as the ink, with the other pixels as its pattern.
+      const expected = p & 1 ? [QUADRANT[p], A, B] : [QUADRANT[~p & 15], B, A]
+      expect(words).toEqual(expected)
+    }
+  })
+
+  test('a block of one colour is a full block; an empty block is a space on the default colours', () => {
+    expect(quadrantWords([[A, A], [A, A]])).toEqual([0x2588, A, A])
+    expect(quadrantWords([[undefined, undefined], [undefined, undefined]])).toEqual([0x20, DEFAULT_COLOR, DEFAULT_COLOR])
+  })
+
+  test('an empty pixel is the terminal\'s own background, never the ink', () => {
+    expect(quadrantWords([[A, undefined], [undefined, undefined]])).toEqual([0x2598, A, DEFAULT_COLOR])
+    expect(quadrantWords([[undefined, A], [A, A]])).toEqual([0x259f, A, DEFAULT_COLOR])
+  })
+
+  test('more than two colours: the two most common stay, every other folds into the nearer', () => {
+    const nearB = 0x445567
+    const nearA = 0x112234
+    // A at top-left and bottom-right, B top-right, a colour near B bottom-left: that one becomes B.
+    expect(quadrantWords([[A, B], [nearB, A]])).toEqual([0x259a, A, B])
+    // A twice, B once, a colour near A once: three pixels of A.
+    expect(quadrantWords([[A, A], [B, nearA]])).toEqual([0x259c, A, B])
+  })
+
+  test('cells across and down, every code point in the BMP; an odd edge counts as empty', () => {
+    const grid = Array.from({ length: 5 }, (_, y) => Array.from({ length: 6 }, (_, x) => ((x * 7 + y * 13) % 4) * 0x333333))
+    const words = quadrantWords(grid)
+    expect(words).toHaveLength(3 * 3 * 3)
+    expect(words.filter((_, i) => i % 3 === 0).every(cp => QUADRANT.includes(cp) && cp <= 0xffff)).toBe(true)
+    expect(gridToQuadrantCells([[A, A], [A, A]])).toBe(gridToQuadrantCells([[A, A], [A, A]]))
+    expect(gridToQuadrantCells([[A, A], [A, A]])).toHaveLength(16)
   })
 })

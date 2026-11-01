@@ -478,8 +478,8 @@ export const OCTOCAT = sprite([
   '....llllllllllll....',
   '....ll..llll..ll....',
   '....ll..llll..ll....',
-  '""ll""""llll""""ll""',
-  '==ll====llll====ll==',
+  '."ll".."llll".."ll".',
+  '."ll".."llll".."ll".',
 ])
 
 /**
@@ -1165,26 +1165,45 @@ export const PROPS: Readonly<Record<PropName, Sprite>> = {
 }
 
 /**
- * The band's portrait above the prompt, drawn for its size rather than shrunk
- * from the wizard's sprite: his pointed hat with the gold star, his face and
- * white beard, his staff with its blue orb held low. 10 × 6 pixels, 10
- * columns by 3 rows.
+ * The band's portrait above the prompt, the Road's wizard drawn small: his
+ * pointed hat, his face under the brim, his white beard over the purple robe,
+ * and his hand on the staff, its blue orb on a wooden head. 20 × 12 art
+ * pixels — 10 columns by 3 rows of quadrant cells, 2 × 2 pixels a cell —
+ * each row doubled, as a cell row is two art rows deep, and each 2 × 2 block
+ * in at most two colours, as a quadrant cell shows no more.
  */
 export const BAND_ICON = sprite([
-  '...[(.....',
-  '..[({(...`',
-  '.[)))))[`~',
-  '..]s1s..sw',
-  '..]]]]^..w',
-  '...]]^...w',
+  '.......((...........',
+  '.......((...........',
+  '......((((....~~....',
+  '......((((....~~....',
+  '..))))))))))..ww....',
+  '..))))))))))..ww....',
+  '..]]ssssss]]..w.....',
+  '..]]ssssss]]..w.....',
+  '..]]]]]]]]]]ssw.....',
+  '..]]]]]]]]]]ssw.....',
+  '..((]]]]]]((..w.....',
+  '..((]]]]]]((..w.....',
 ])
 
-/** The band's portrait casting: his hand up, the staff raised, the orb flaring with gold sparks. */
+/**
+ * The band's portrait casting: his hand raises the staff a row, whole — orb,
+ * head and foot together, as long as at rest — with gold sparks by the orb.
+ * The head is two pixels wide so the orb can sit on it in one cell: a
+ * one-pixel staff under the orb would be a third colour there.
+ */
 export const BAND_CAST = sprite([
-  "...[(..{`{",
-  '..[({(..~`',
-  '.[)))))[sw',
-  '..]s1s...w',
-  '..]]]]^..w',
-  '...]]^....',
+  '.......((.....~~{...',
+  '.......((.....~~{...',
+  '......((((....ww.{..',
+  '......((((....ww.{..',
+  '..))))))))))..w.....',
+  '..))))))))))..w.....',
+  '..]]ssssss]]ssw.....',
+  '..]]ssssss]]ssw.....',
+  '..]]]]]]]]]]..w.....',
+  '..]]]]]]]]]]..w.....',
+  '..((]]]]]]((........',
+  '..((]]]]]]((........',
 ])

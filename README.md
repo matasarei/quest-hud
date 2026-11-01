@@ -87,12 +87,14 @@ columns the pane draws no scene and gives its rows to the tasks and the log.
 terminal animates. The landscape steps past in layers at different speeds, the wizard takes
 his four walking poses, and the mascot hops. In a fight he stops and strikes. When the zone
 changes, the old landscape slides out and the new one in, over six frames. When Claude is
-idle, nothing moves, and nothing is drawn. The wizard above the prompt steps with the Road.
+idle, nothing moves, and nothing is drawn. The wizard above the prompt casts while the Road walks.
 
 **Images or text cells.** Where the terminal shows images (kitty, Ghostty, iTerm2 3.5+), the
 scene is the art's own pixels, two a column across and four a row down, sent as a small PNG
-(about 14 KB a frame at 120 columns). Everywhere else it is half-block text cells, one pixel a
-column and two a row: the same art, each 2 × 2 block of it one cell pixel. With `graphics = auto` (the default), the HUD finds out once a session:
+(about 14 KB a frame at 120 columns). Everywhere else it is quadrant text cells (`▖▝▞` and
+friends), each cell 2 × 2 pixels in two colours: the same art with its rows halved, so a cell
+is as sharp across as an image's column. The wizard above the prompt is drawn the same way.
+With `graphics = auto` (the default), the HUD finds out once a session:
 it draws the image, and if Claude Code could not show it there, it switches to cells. On the
 desktop app the scene is an SVG, still.
 
