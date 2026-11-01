@@ -1173,3 +1173,17 @@ export const PROPS: Readonly<Record<PropName, Sprite>> = {
     '.ooo........ooo.',
   ]),
 }
+
+/**
+ * The band's portrait above the prompt, drawn for its size rather than shrunk
+ * from the wizard's sprite: his pointed hat with the gold star, his face and
+ * white beard, the staff's blue orb. 10 × 6 pixels, 10 columns by 3 rows.
+ */
+export const BAND_ICON = sprite([
+  '...[(....`',
+  '..[({(..`~',
+  '.[)))))[.w',
+  '..]s1s..sw',
+  '..]]]]^..w',
+  '...]]^...w',
+])

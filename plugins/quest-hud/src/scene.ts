@@ -11,7 +11,7 @@ import type { Grid } from './avatar'
 import { downsample, mirrorGrid, spriteGrid, stamp, type Canvas, type Sprite } from './paint/pixels'
 import { rasterize, rgbToGrid } from './paint/raster'
 import { landscape } from './world/landscapes'
-import { ART_SCALE, CHEST, DRAGON, FLAG, FOX, GHOST, MASCOT, OCTOCAT, PROPS, SPIDER, WALK, WIZARD, type Pose, type PropName } from './world/sprites'
+import { ART_SCALE, BAND_ICON, CHEST, DRAGON, FLAG, FOX, GHOST, MASCOT, OCTOCAT, PROPS, SPIDER, WALK, WIZARD, type Pose, type PropName } from './world/sprites'
 
 /** Pixel rows: fourteen terminal rows of half blocks. */
 export const SCENE_HEIGHT = 28
@@ -352,21 +352,18 @@ export const sceneArt = (args: SceneArgs): Grid => {
  */
 export const scene = (args: SceneArgs): Grid => downsample(sceneArt(args), ART_SCALE)
 
-/** The band's portrait above the prompt, in cells: 8 columns by 3 rows. */
-export const BAND = { columns: 8, rows: 3 } as const
-
-/** The art row the band's portrait starts at: below the hat's tip, so the brim, the face and the beard fit. */
-const PORTRAIT_TOP = 3
+/** The band's portrait above the prompt, in cells: 10 columns by 3 rows. */
+export const BAND = { columns: 10, rows: 3 } as const
 
 /**
- * The band's portrait: the wizard's hat, face and beard, 12 art rows of his
- * sprite in the pose given, reduced like the scene to 8 × 6 pixels.
+ * The band's portrait: a small wizard drawn for the size (BAND_ICON). On the
+ * walk's second and fourth steps it bobs down a pixel, as the Road's wizard steps.
  */
-export const bandPortrait = (pose: Pose = 'stand'): Grid =>
-  downsample(
-    spriteGrid(WIZARD[pose]).slice(PORTRAIT_TOP, PORTRAIT_TOP + BAND.rows * 2 * ART_SCALE).map(line => line.slice(8, 8 + BAND.columns * ART_SCALE)),
-    ART_SCALE,
-  )
+export const bandPortrait = (pose: Pose = 'stand'): Grid => {
+  const icon = spriteGrid(BAND_ICON)
+  if (pose !== 'walk1' && pose !== 'walk3') return icon
+  return [Array<number | undefined>(BAND.columns).fill(undefined), ...icon.slice(0, -1)]
+}
 
 /** The colour a zone's scene starts with: its top-left pixel, the sky's or the wall's. */
 export const skyColor = (zone: Zone): number => scene({ columns: 4, zone, waypoints: [], companions: 0 })[0]?.[0] ?? 0
