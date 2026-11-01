@@ -77,6 +77,12 @@ pytest`). A subagent's test and lint runs are fights, led by its name in the log
 and gh calls are not. A run sent to the background, or interrupted, has no outcome and
 changes nothing.
 
+**On a narrow pane** the road keeps room for the wizard, three task flags (the one in progress
+and one each side) and any monster. To make that room, things give way in turn: the zone's
+props from the left, keeping its last one, then the fox, the octopus and the chest, then that
+last prop. The header still counts the loot, and the log still names the allies. Below 32
+columns the pane draws no scene and gives its rows to the tasks and the log.
+
 **Images or text cells.** The scene is drawn as true pixels where the terminal shows images
 (kitty, Ghostty, iTerm2 3.5+), and as half-block text cells everywhere else, from the same
 sprites. With `graphics = auto` (the default), the HUD finds out once a session: it draws the

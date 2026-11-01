@@ -10,7 +10,7 @@ import { activeCompanions, sameCompanions } from '../src/companions'
 import { appendEntry, castText, scoutCounts, scoutText } from '../src/log'
 import { bandModel, fromMeasure, shortTokens, statusText, TONE_COLOR, ZONE_LABEL, zoneLine, type Bars } from '../src/meters'
 import { afterPrompt, cleanTitle, fromSkill } from '../src/quest'
-import { road, roadScene } from '../src/road'
+import { road, roadScene, SCENE_MIN_COLUMNS } from '../src/road'
 import { applyTaskCall } from '../src/tasks'
 import { parseZones, zoneFor } from '../src/zones'
 import type { Allies, FightKind, Foes, LogEntry } from '../types'
@@ -527,11 +527,13 @@ export const register: Register = (on, options) => {
       ? 'svg'
       : graphics === 'images' || (graphics === 'auto' && images !== false) ? 'image' : 'raster'
 
+    // A pane too narrow for a scene draws none, so nothing bobs there.
+    const hasScene = e.props.bodyColumns >= SCENE_MIN_COLUMNS
     bob.columns = e.props.bodyColumns
-    bob.mode = mode
+    bob.mode = hasScene ? mode : undefined
 
     // An image scene does not bob: one left from a cells draw stops here.
-    if (mode !== 'raster' && bob.timer !== undefined) stopTimer()
+    if ((mode !== 'raster' || !hasScene) && bob.timer !== undefined) stopTimer()
 
     // A turn that began before the pane's first draw had no surface to bob on:
     // the draw starts it. startBob does nothing if a bob already runs.
@@ -553,7 +555,7 @@ export const register: Register = (on, options) => {
       rows: e.viewport?.rows ?? 30,
       frame: 0,
     })
-    const image = mode === 'image' ? sceneImage(view.scene) : undefined
+    const image = mode === 'image' && hasScene ? sceneImage(view.scene) : undefined
 
     // The first image of a session in auto: once it is drawn, blit it back to
     // learn whether the terminal shows it. Writes happen in the timer, not here.

@@ -29,7 +29,7 @@ const FAR_FADE = 0.72
 export type Waypoint = 'done' | 'now' | 'todo'
 
 /** A prop: a sprite in the pack's own colour, or in one given here. */
-type Prop = SpriteName | readonly [SpriteName, number]
+export type Prop = SpriteName | readonly [SpriteName, number]
 
 type Backdrop = {
   /** The dark colour behind everything; every zone has its own. */
@@ -190,17 +190,113 @@ export type SceneArgs = {
   frame: 0 | 1
 }
 
+/** The flags a road keeps room for, when there are that many tasks: the one in progress and one each side. */
+export const MIN_FLAGS = 3
+
+/**
+ * What a scene keeps on a pane of its width: the zone's props, what the
+ * session gathered, the road left, and the span at its start the flags
+ * spread over — the whole road, or MIN_FLAGS packed at the left when short.
+ */
+export type Layout = { props: readonly Prop[]; extras: Extras; road: number; flagRoad: number; isPacked: boolean }
+
+/** Where the flags, the wizard and the first monster go on a road laid out so. */
+export type Figures = { flagXs: number[]; hero: number; ahead: number }
+
+/**
+ * The flags' x, the wizard's, and where the monsters may start. Spread: the
+ * flags share the road and the wizard stands just right of the one in
+ * progress. Packed: the flags up to the one in progress stand at the left,
+ * the wizard beside it, and the flags still to do right after the wizard, so
+ * none is hidden; the monsters stand beyond them.
+ */
+export const figures = (flags: readonly Waypoint[], { flagRoad, isPacked }: Pick<Layout, 'flagRoad' | 'isPacked'>): Figures => {
+  const hero = avatarX(flags, flagRoad)
+  if (!isPacked || flags.length === 0) {
+    return { flagXs: flags.map((_, i) => waypointX(i, flags.length, flagRoad)), hero, ahead: hero + SPRITES.wizard.width }
+  }
+  const now = flags.indexOf('now')
+  const at = now >= 0 ? now : flags.indexOf('todo') >= 0 ? flags.indexOf('todo') : flags.length - 1
+  const packedHero = 2 + at * FLAG_SLOT + FLAG_WIDTH
+  const flagXs = flags.map((_, i) => (i <= at ? 2 + i * FLAG_SLOT : packedHero + SPRITES.wizard.width + 1 + (i - at - 1) * FLAG_SLOT))
+  const last = flagXs[flagXs.length - 1] ?? 0
+  return { flagXs, hero: packedHero, ahead: Math.max(packedHero + SPRITES.wizard.width, at < flags.length - 1 ? last + FLAG_WIDTH + 1 : 0) }
+}
+
+/** The road left of these props and gathered things. */
+const roadLeft = (columns: number, props: readonly Prop[], extras: Extras): number =>
+  Math.max(0, Math.floor(columns) - props.reduce((sum, prop) => sum + SPRITES[propName(prop)].width, 0) - 4
+    - extraGrids(extras).reduce((sum, grid) => sum + (grid[0]?.length ?? 0) + EXTRA_GAP, 0))
+
+/** The span MIN_FLAGS flags take packed at the left: as few as there are tasks. */
+const packedFlagRoad = (waypoints: readonly Waypoint[]): number => 4 + Math.min(waypoints.length, MIN_FLAGS) * FLAG_SLOT
+
+/**
+ * Whether a road `width` pixels wide, its flags spread over `flagRoad`, has
+ * room for what it must show: the flags up to MIN_FLAGS, and the wizard with
+ * every monster that is up beside it, each at full width.
+ */
+export const roadFits = (width: number, laid: Pick<Layout, 'flagRoad' | 'isPacked'>, waypoints: readonly Waypoint[], foes: Foes): boolean => {
+  const flags = fitWaypoints(waypoints, flagSlots(laid.flagRoad))
+  if (flags.length < Math.min(waypoints.length, MIN_FLAGS)) return false
+  const up = (['test', 'lint'] as const).filter(kind => foes[kind] !== 'none').length
+  const { ahead } = figures(flags, laid)
+  return ahead + up * (FOE_GAP + SPRITES.dragon.width) <= width
+}
+
+/**
+ * What the scene keeps: everything when the road has room, else things give
+ * way one at a time until it does — the zone's props from the left, keeping
+ * its last; then the fox, the octopus and the chest; then that last prop.
+ * A thing gives way only when even the flags packed at the left leave no room.
+ */
+export const layout = ({ columns, zone, waypoints, foes = NO_FOES, loot = 0, allies }: Pick<SceneArgs, 'columns' | 'zone' | 'waypoints' | 'foes' | 'loot' | 'allies'>): Layout => {
+  let props: readonly Prop[] = BACKDROPS[zone].props
+  let extras: Extras = allies === undefined ? { loot } : { loot, allies }
+  const candidates: Array<Pick<Layout, 'props' | 'extras'>> = [{ props, extras }]
+
+  while (props.length > 1) {
+    props = props.slice(1)
+    candidates.push({ props, extras })
+  }
+  for (const ally of ['fox', 'octopus'] as const) {
+    if (extras.allies?.[ally]) {
+      extras = { ...extras, allies: { ...extras.allies, [ally]: false } }
+      candidates.push({ props, extras })
+    }
+  }
+  if ((extras.loot ?? 0) > 0) {
+    extras = { ...extras, loot: 0 }
+    candidates.push({ props, extras })
+  }
+  if (props.length > 0) candidates.push({ props: [], extras })
+
+  // What gives way is decided on the packed flags, the least room the road
+  // needs, so it only ever grows as the pane narrows; the flags then spread
+  // over the whole road whenever they fit there.
+  const laid = candidates.map(kept => {
+    const road = roadLeft(columns, kept.props, kept.extras)
+    return {
+      spread: { ...kept, road, flagRoad: road, isPacked: false },
+      packed: { ...kept, road, flagRoad: Math.min(road, packedFlagRoad(waypoints)), isPacked: true },
+    }
+  })
+  const chosen = laid.find(({ packed }) => roadFits(packed.road, packed, waypoints, foes)) ?? laid[laid.length - 1]
+  if (chosen === undefined) throw new Error('layout: no candidates')
+  return roadFits(chosen.spread.road, chosen.spread, waypoints, foes) ? chosen.spread : chosen.packed
+}
+
 /**
  * Where the monster in place `index` of `count` starts: right of the wizard,
  * the first nearest. On a short road the ones behind close up, down to
  * FOE_PEEK pixels apart, and all of them move left as far as the wizard to
  * stay off the zone's props; past that they stand in front of the props.
  */
-export const foeX = (hero: number, width: number, count: number, index: number): number => {
+export const foeX = (hero: number, width: number, count: number, index: number, ahead = hero + SPRITES.wizard.width): number => {
   const size = SPRITES.dragon.width
-  const start = hero + SPRITES.wizard.width + FOE_GAP
+  const start = ahead + FOE_GAP
   const pitch = count <= 1 ? size + FOE_GAP : Math.max(FOE_PEEK, Math.min(size + FOE_GAP, Math.floor((width - start - size) / (count - 1))))
-  const first = Math.max(hero + SPRITES.wizard.width, Math.min(start, width - (count - 1) * pitch - size))
+  const first = Math.max(ahead, Math.min(start, width - (count - 1) * pitch - size))
   return first + index * pitch
 }
 
@@ -248,34 +344,36 @@ export const scene = ({ columns, zone, waypoints, companions, foes = NO_FOES, lo
   const texture = spriteGrid(backdrop.texture, color => mix(color, backdrop.ground, 0.4)).slice(0, SCENE_HEIGHT - GROUND_ROW)
   for (let x = 0; x < width; x += texture[0]?.length ?? width) stamp(canvas, texture, x, GROUND_ROW)
 
+  const kept = layout({ columns: width, zone, waypoints, foes, loot, ...(allies === undefined ? {} : { allies }) })
+
   let right = width - 2
-  for (const prop of [...backdrop.props].reverse()) {
+  for (const prop of [...kept.props].reverse()) {
     const grid = typeof prop === 'string' ? spriteGrid(prop) : spriteGrid(prop[0], () => prop[1])
     right -= grid[0]?.length ?? 0
     stamp(canvas, grid, right, GROUND_ROW - grid.length)
   }
 
-  const extras: Extras = allies === undefined ? { loot } : { loot, allies }
-  for (const grid of extraGrids(extras)) {
+  for (const grid of extraGrids(kept.extras)) {
     right -= (grid[0]?.length ?? 0) + EXTRA_GAP
     stamp(canvas, grid, right, GROUND_ROW - grid.length)
   }
 
-  const road = roadWidth(width, zone, extras)
-  const flags = fitWaypoints(waypoints, flagSlots(road))
+  const road = kept.road
+  const flags = fitWaypoints(waypoints, flagSlots(kept.flagRoad))
   const lift = frame === 1 ? -1 : 0
-  const hero = avatarX(flags, road)
+  const { flagXs, hero, ahead } = figures(flags, kept)
   const wizard = spriteGrid('wizard', () => WIZARD_COLOR)
   const ghost = spriteGrid('ghost', () => mix(GHOST, backdrop.background, 0.55))
 
   // Ghosts first, so the flags in front of them stay visible; the wizard last.
+  // One with no room left of the wizard is not drawn: the pane's text names it.
   for (let k = Math.min(companions, MAX_GHOSTS); k >= 1; k--) {
-    stamp(canvas, ghost, hero - GHOST_STEP * k, GROUND_ROW - ghost.length + lift)
+    if (hero - GHOST_STEP * k >= 0) stamp(canvas, ghost, hero - GHOST_STEP * k, GROUND_ROW - ghost.length + lift)
   }
 
   flags.forEach((state, i) => {
     const flag = flagGrid(state)
-    stamp(canvas, flag, waypointX(i, flags.length, road), GROUND_ROW - flag.length)
+    stamp(canvas, flag, flagXs[i] ?? 0, GROUND_ROW - flag.length)
   })
 
   // The monsters face the wizard from the right: the dragon nearest, the spider
@@ -283,7 +381,7 @@ export const scene = ({ columns, zone, waypoints, companions, foes = NO_FOES, lo
   const up = (['test', 'lint'] as const).filter(kind => foes[kind] !== 'none')
   for (let i = up.length - 1; i >= 0; i--) {
     const foe = foeGrid(up[i] as FightKind)
-    const x = foeX(hero, road, up.length, i)
+    const x = foeX(hero, road, up.length, i, ahead)
     const y = GROUND_ROW - foe.length + lift
     outline(canvas, foe, x, y, backdrop.background)
     stamp(canvas, foe, x, y)

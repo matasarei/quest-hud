@@ -11,6 +11,8 @@ import { progress } from './tasks'
 
 /** Rows the scene takes: two pixel rows per terminal row. */
 export const SCENE_ROWS = SCENE_HEIGHT / 2
+/** Below this many columns the pane draws no scene: its rows go to the tasks and the log. */
+export const SCENE_MIN_COLUMNS = 32
 /** At most this many tasks are listed; the one in progress is always among them. */
 export const MAX_TASK_ROWS = 8
 const BAR_WIDTH = 10
@@ -99,7 +101,8 @@ export const road = (args: RoadArgs): Road => {
   const extra = companions.length - shown.length
   const companionsLine = companions.length > 0 ? `with ${shown.join(', ')}${extra > 0 ? ` (+${extra})` : ''}` : undefined
 
-  let room = rows - 1 - SCENE_ROWS - (companionsLine ? 1 : 0) - 1
+  const hasScene = columns >= SCENE_MIN_COLUMNS
+  let room = rows - 1 - (hasScene ? SCENE_ROWS : 0) - (companionsLine ? 1 : 0) - 1
   const taskRows = taskWindow(tasks, Math.min(MAX_TASK_ROWS, Math.max(0, room)))
   room -= taskRows.length
   const logRoom = room >= 2 ? room - 1 : 0
@@ -110,7 +113,7 @@ export const road = (args: RoadArgs): Road => {
   return {
     header,
     ...(total > 0 || loot > 0 ? { count: [total > 0 ? `task ${done}/${total}` : '', loot > 0 ? `loot ${loot}` : ''].filter(Boolean).join(' · ') } : {}),
-    scene: roadScene({ ...args, columns }),
+    scene: hasScene ? roadScene({ ...args, columns }) : [],
     ...(companionsLine ? { companions: companionsLine } : {}),
     tasks: taskRows,
     meters: meterSegments(meters, bars),
