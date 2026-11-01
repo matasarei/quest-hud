@@ -1,6 +1,23 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { AVATAR, AVATAR_SMALL, DEFAULT_COLOR, MAGE, rasterSize, rasterWords, toBase64, toRasterCells, toSvg } from '../src/avatar'
+import {
+  AVATAR, AVATAR_SMALL, DEFAULT_COLOR, gridSize, gridToRasterCells, gridToSvg, gridWords, MAGE, mapToGrid,
+  rasterSize, rasterWords, toBase64, toRasterCells, toSvg, type Grid,
+} from '../src/avatar'
+
+/** Paints an SVG's rectangles back onto a grid of its size, to compare pixel for pixel. */
+const paint = (svg: string, columns: number, rows: number): Grid => {
+  const grid: Array<Array<number | undefined>> = Array.from({ length: rows }, () => Array<number | undefined>(columns).fill(undefined))
+  for (const [, x, y, w, h, fill] of svg.matchAll(/<rect x="(\d+)" y="(\d+)" width="(\d+)" height="(\d+)" fill="#([0-9a-f]{6})"\/>/g)) {
+    for (let dy = 0; dy < Number(h); dy++) {
+      for (let dx = 0; dx < Number(w); dx++) {
+        const row = grid[Number(y) + dy]
+        if (row) row[Number(x) + dx] = parseInt(fill ?? '0', 16)
+      }
+    }
+  }
+  return grid
+}
 
 describe('the avatar map', () => {
   test('every row is as wide as the first', () => {
@@ -63,15 +80,58 @@ describe('toRasterCells', () => {
 })
 
 describe('toSvg', () => {
-  test('one rectangle per filled pixel and nothing that runs', () => {
+  test('its rectangles paint back exactly the avatar\'s pixels, and nothing runs', () => {
     const svg = toSvg(AVATAR, MAGE)
-    const filled = AVATAR.join('').split('').filter(c => c !== '.').length
-    expect(svg.split('<rect ').length - 1).toBe(filled)
+    expect(paint(svg, 12, 16)).toEqual(mapToGrid(AVATAR, MAGE))
+    expect(svg.replace(/<rect [^>]*\/>/g, '')).toBe('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 16" shape-rendering="crispEdges"></svg>')
     expect(svg.includes('<script')).toBe(false)
     expect(svg.startsWith('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 16"')).toBe(true)
   })
 
   test('colours are six hex digits', () => {
     expect(toSvg(['a'], { a: 0x0000ff })).toContain('fill="#0000ff"')
+  })
+})
+
+describe('the grid', () => {
+  const grid: Grid = [
+    [0x111111, 0x111111, undefined],
+    [0x222222, undefined, 0x333333],
+    [undefined, undefined, 0x444444],
+  ]
+
+  test('a map becomes a grid through its palette; unknown characters are empty', () => {
+    expect(mapToGrid(['ab.', 'x'], { a: 1, b: 2 })).toEqual([[1, 2, undefined], [undefined]])
+  })
+
+  test('size: one column per pixel, two pixel rows per cell row, an odd last row rounded up', () => {
+    expect(gridSize(grid)).toEqual({ columns: 3, rows: 2 })
+    expect(gridSize([])).toEqual({ columns: 0, rows: 0 })
+  })
+
+  test('gridWords halves the rows and keeps empty halves on the default colour', () => {
+    expect(gridWords(grid)).toEqual([
+      0x2580, 0x111111, 0x222222,
+      0x2580, 0x111111, DEFAULT_COLOR,
+      0x2584, 0x333333, DEFAULT_COLOR,
+      0x20, DEFAULT_COLOR, DEFAULT_COLOR,
+      0x20, DEFAULT_COLOR, DEFAULT_COLOR,
+      0x2580, 0x444444, DEFAULT_COLOR,
+    ])
+  })
+
+  test('the map-based functions give exactly what the grid ones give', () => {
+    const avatar = mapToGrid(AVATAR, MAGE)
+    expect(rasterWords(AVATAR, MAGE)).toEqual(gridWords(avatar))
+    expect(toRasterCells(AVATAR, MAGE)).toBe(gridToRasterCells(avatar))
+    expect(toSvg(AVATAR, MAGE)).toBe(gridToSvg(avatar))
+  })
+
+  test('a run of one colour is one rectangle, and paints back the same pixels', () => {
+    const wide: Grid = [Array<number | undefined>(200).fill(0x123456), Array<number | undefined>(200).fill(undefined)]
+    const svg = gridToSvg(wide)
+    expect(svg.split('<rect ').length - 1).toBe(1)
+    expect(paint(svg, 200, 2)).toEqual(wide)
+    expect(paint(gridToSvg(grid), 3, 3)).toEqual(grid)
   })
 })
