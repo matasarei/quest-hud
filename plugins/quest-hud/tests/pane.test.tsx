@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'claude-code/testing'
 import type { Engine } from 'claude-code/testing'
 
-import { imageScale } from '../src/avatar'
-import { skyColor } from '../src/scene'
+import { imageScale, QUADRANT } from '../src/avatar'
+import { sceneArt } from '../src/scene'
 import { engine, RUN, start, world } from './kit'
 
 // Tests about the cells scene (the Raster, its animation) ask for it: auto draws an image first.
@@ -527,7 +527,34 @@ describe('a zone change while the pane is hidden', () => {
     world.panes = [{ id: 'quest-hud', isShown: true }]
     const after = await $.ui.mount(pane('terminal'))
     const raster = await after.find({ type: 'Raster', key: 'scene' })
-    expect(topLeft(String(raster?.props.cells))).toBe(skyColor('arena'))
+    // A quadrant cell's ink is its top-left pixel at the art's resolution: the zone's sky there.
+    const sky = (zone: 'arena' | 'forge') => sceneArt({ columns: 4, zone, waypoints: [], companions: 0 })[0]?.[0]
+    expect(topLeft(String(raster?.props.cells))).toBe(sky('arena'))
+    expect(topLeft(String(raster?.props.cells)) === sky('forge')).toBe(false)
     await after.unmount()
+  })
+})
+
+describe('the Road\'s text cells', () => {
+  /** Every cell's code point, read from the base64 words. */
+  const codePoints = (cells: string): number[] => {
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+    const clean = cells.replace(/=+$/, '')
+    const bits = [...clean].map(c => alphabet.indexOf(c).toString(2).padStart(6, '0')).join('')
+    const bytes = Array.from({ length: Math.floor(bits.length / 8) }, (_, i) => parseInt(bits.slice(i * 8, i * 8 + 8), 2))
+    return Array.from({ length: Math.floor(bytes.length / 12) }, (_, i) => bytes[i * 12]! | (bytes[i * 12 + 1]! << 8) | (bytes[i * 12 + 2]! << 16))
+  }
+
+  test('are quadrants, two by two pixels a cell, every one a BMP character', CELLS, async ($, on) => {
+    engine(on)
+    await implementing($)
+    const ui = await $.ui.mount(pane('terminal', 60))
+    const raster = await ui.find({ type: 'Raster', key: 'scene' })
+    const points = codePoints(String(raster?.props.cells))
+    expect(points).toHaveLength(60 * 14)
+    expect(points.every(cp => QUADRANT.includes(cp))).toBe(true)
+    // Not all half blocks: the art's finer columns show.
+    expect(points.some(cp => cp !== 0x2580 && cp !== 0x2584 && cp !== 0x20 && cp !== 0x2588)).toBe(true)
+    await ui.unmount()
   })
 })

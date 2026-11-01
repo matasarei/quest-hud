@@ -10,9 +10,7 @@ import { activeCompanions, sameCompanions } from '../src/companions'
 import { appendEntry, castText, scoutCounts, scoutText } from '../src/log'
 import { bandModel, fromMeasure, shortTokens, statusText, TONE_COLOR, ZONE_LABEL, zoneLine, type Bars } from '../src/meters'
 import { afterPrompt, cleanTitle, fromSkill } from '../src/quest'
-import { downsample } from '../src/paint/pixels'
 import { road, roadArt, SCENE_MIN_COLUMNS, sceneZone } from '../src/road'
-import { ART_SCALE } from '../src/world/sprites'
 import { atRest, BAND, bandPortrait, nextMotion, REST, TRANSITION_STEPS, type Motion, type Transition } from '../src/scene'
 import { applyTaskCall } from '../src/tasks'
 import { parseZones, zoneFor } from '../src/zones'
@@ -169,7 +167,7 @@ async function blitFrame($: EngineInterface): Promise<void> {
   })
   const blitted = anim.mode === 'image'
     ? await $.ui.blit({ requestId: PANE_ID, key: SCENE_IMAGE_KEY, source: sceneImage(art) })
-    : await $.ui.blit({ requestId: PANE_ID, key: SCENE_KEY, cells: sceneCells(downsample(art, ART_SCALE)) })
+    : await $.ui.blit({ requestId: PANE_ID, key: SCENE_KEY, cells: sceneCells(art) })
 
   if (blitted.deny !== undefined) stopTimer()
 
