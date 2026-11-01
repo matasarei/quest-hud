@@ -180,7 +180,7 @@ describe('/hud', () => {
     await $.tool.call({ tool: 'TaskCreate', subject: 'two\nlines \u202eevil', description: '' })
     const result = await $.command.run({ command: 'hud', args: '', ...RUN })
     expect(result.text).toContain('· two lines evil')
-    expect((result.text ?? '').split('\n')).toHaveLength(2)
+    expect((result.text ?? '').split('\n')).toHaveLength(3)
   })
 
   test('with no argument prints the state and the task list', async ($, on) => {
@@ -306,5 +306,22 @@ describe('skills run by subagents', () => {
     const ui = await $.ui.mount(band('terminal'))
     expect((await ui.find({ type: 'Text', text: /⚔/ }))?.text).toBe('⚔ review')
     await ui.unmount()
+  })
+})
+
+describe('/hud says what the zone means', () => {
+  test('a planning skill is the Map room, planning and research', async ($, on) => {
+    engine(on)
+    await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+    await $.skill.prompt({ skill: 'plan', pluginName: 'gku', text: 'x', frontmatter: { description: 'Turn a request into a plan' } })
+    const result = await $.command.run({ command: 'hud', args: '', ...RUN })
+    expect(result.text).toContain('  Map room — planning and research')
+  })
+
+  test('with no skill running, the Wilds', async ($, on) => {
+    engine(on)
+    await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+    const result = await $.command.run({ command: 'hud', args: '', ...RUN })
+    expect(result.text).toContain('  Wilds — no skill running')
   })
 })

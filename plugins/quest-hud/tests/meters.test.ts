@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { bandModel, bar, fromMeasure, healsIn, hpLeft, mpLeft, shortTokens, statusText } from '../src/meters'
+import { bandModel, bar, fromMeasure, healsIn, hpLeft, mpLeft, shortTokens, statusText, ZONE_MEANING, zoneLine } from '../src/meters'
 import type { Meters, Quest, Task } from '../types'
 
 const NOW = Date.parse('2026-11-01T10:00:00Z')
@@ -151,5 +151,15 @@ describe('statusText', () => {
   test('bars = all adds the 5-hour window and the cost', () => {
     const meters: Meters = { window: 1, contextPercent: 0, fiveHourUsed: 9.6, costUsd: 0.5 }
     expect(statusText(null, [], meters, 'all')).toBe('✦▰▰▰▰▰▰▰▰▰▰ 100% ⚡10% ◉$0.50')
+  })
+})
+
+describe('zone meanings', () => {
+  test('every zone says what it stands for', () => {
+    for (const zone of ['watchtower', 'harbour', 'dungeon', 'arena', 'forge', 'map', 'camp', 'wilds'] as const) {
+      expect(ZONE_MEANING[zone].length > 0).toBe(true)
+    }
+    expect(zoneLine('map')).toBe('Map room — planning and research')
+    expect(zoneLine('wilds')).toBe('Wilds — no skill running')
   })
 })

@@ -5,7 +5,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import { AVATAR_SMALL, MAGE, rasterSize, toRasterCells, toSvg } from '../src/avatar'
-import { bandModel, fromMeasure, statusText, type Bars, type Tone } from '../src/meters'
+import { bandModel, fromMeasure, statusText, zoneLine, type Bars, type Tone } from '../src/meters'
 import { afterPrompt, cleanTitle, fromSkill } from '../src/quest'
 import { applyTaskCall } from '../src/tasks'
 import { parseZones, zoneFor } from '../src/zones'
@@ -158,6 +158,7 @@ export const register: Register = (on, options) => {
     const list = await read($, tasks)
     const lines = [
       statusText(current, list, await read($, meters), 'all'),
+      `  ${zoneLine(current?.zone ?? 'wilds')}`,
       ...list.map(task => `  ${task.status === 'completed' ? '✓' : task.status === 'in_progress' ? '▸' : '·'} ${cleanTitle(task.subject)}`),
     ]
 
