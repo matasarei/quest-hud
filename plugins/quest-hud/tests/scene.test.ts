@@ -1,10 +1,9 @@
 import { describe, expect, test } from 'claude-code/testing'
 
 import { SPRITES } from '../src/art/sprites'
-import { mapToGrid } from '../src/avatar'
 import {
   avatarX, BACKDROPS, FLAG_WIDTH, fitWaypoints, flagSlots, GROUND_ROW, half, MAX_FLAGS, MAX_GHOSTS, roadWidth, scene,
-  SCENE_HEIGHT, skyColor, waypointsOf, waypointX, type Waypoint,
+  SCENE_HEIGHT, skyColor, waypointsOf, waypointX, WIZARD_COLOR, type Waypoint,
 } from '../src/scene'
 import type { Task, Zone } from '../types'
 
@@ -12,13 +11,11 @@ const ZONES: readonly Zone[] = ['watchtower', 'harbour', 'dungeon', 'arena', 'fo
 
 const task = (id: string, status: Task['status']): Task => ({ id, subject: id, status })
 
-/** Whether a sprite, placed at (x, y), shows in the grid: every filled pixel of it that falls inside. */
-const spriteAt = (grid: ReturnType<typeof scene>, name: 'astronaut' | 'astronautStep', x: number, y: number): boolean => {
-  const sprite = mapToGrid(SPRITES[name].map, SPRITES[name].palette)
-  return sprite.every((line, dy) =>
-    line.every((color, dx) => color === undefined || y + dy < 0 || y + dy >= grid.length || x + dx >= (grid[0]?.length ?? 0) || grid[y + dy]?.[x + dx] === color),
+/** Whether the purple wizard shows in the grid at (x, y): every pixel of its sprite that falls inside. */
+const wizardAt = (grid: ReturnType<typeof scene>, x: number, y: number): boolean =>
+  SPRITES.wizard.map.every((line, dy) =>
+    [...line].every((c, dx) => c === '.' || y + dy < 0 || y + dy >= grid.length || x + dx >= (grid[0]?.length ?? 0) || grid[y + dy]?.[x + dx] === WIZARD_COLOR),
   )
-}
 
 const red = (c: number | undefined) => c !== undefined && ((c >> 16) & 255) > ((c >> 8) & 255) + 60 && ((c >> 16) & 255) > (c & 255) + 60
 
@@ -45,12 +42,12 @@ describe('waypointsOf and fitWaypoints', () => {
 
 describe('the road', () => {
   test('the props keep their space at the right; flags fit what is left', () => {
-    expect(roadWidth(120, 'map')).toBe(120 - (SPRITES.sign.width + SPRITES.arrow.width + 4))
-    expect(flagSlots(roadWidth(120, 'map')) > 0).toBe(true)
+    expect(roadWidth(120, 'camp')).toBe(120 - (SPRITES.tent.width + SPRITES.campfire.width + 4))
+    expect(flagSlots(roadWidth(120, 'camp')) > 0).toBe(true)
     expect(flagSlots(4)).toBe(0)
   })
 
-  test('the avatar starts just right of the flag in progress, else the first to do, else the last', () => {
+  test('the wizard starts just right of the flag in progress, else the first to do, else the last', () => {
     expect(avatarX(['done', 'now', 'todo'], 80)).toBe(waypointX(1, 3, 80) + FLAG_WIDTH)
     expect(avatarX(['done', 'todo', 'todo'], 80)).toBe(waypointX(1, 3, 80) + FLAG_WIDTH)
     expect(avatarX(['done', 'done'], 80)).toBe(waypointX(1, 2, 80) + FLAG_WIDTH)
@@ -69,55 +66,54 @@ describe('scene', () => {
     }
   })
 
-  test('each zone has its own sky, and the scene starts with it', () => {
+  test('each zone has its own background, and the scene starts with it', () => {
     expect(new Set(ZONES.map(skyColor)).size).toBe(ZONES.length)
     for (const zone of ZONES) {
       expect(scene({ columns: 40, zone, waypoints: [], companions: 0, frame: 0 })[0]?.[0]).toBe(skyColor(zone))
     }
   })
 
-  test('the ground starts at GROUND_ROW, from the top of the zone\'s ground tile', () => {
+  test('the ground band starts at GROUND_ROW: below it, no background shows', () => {
     for (const zone of ZONES) {
-      const ground = BACKDROPS[zone].ground
-      const top = mapToGrid(SPRITES[ground].map, SPRITES[ground].palette)[0] ?? []
-      const x = top.findIndex(color => color !== undefined)
-      expect(x >= 0).toBe(true)
-      expect(scene({ columns: 40, zone, waypoints: [], companions: 0, frame: 0 })[GROUND_ROW]?.[x]).toBe(top[x])
+      const grid = scene({ columns: 60, zone, waypoints: three, companions: 2, frame: 0 })
+      const below = grid.slice(GROUND_ROW).flat()
+      expect(below.filter(c => c === BACKDROPS[zone].background)).toEqual([])
+      expect(grid[GROUND_ROW]?.some(c => c === BACKDROPS[zone].ground)).toBe(true)
     }
   })
 
-  test('the astronaut stands on the ground, just right of the flag in progress', () => {
-    const grid = scene({ columns: 120, zone: 'map', waypoints: three, companions: 0, frame: 0 })
-    const road = roadWidth(120, 'map')
+  test('the wizard stands on the ground, just right of the flag in progress', () => {
+    const grid = scene({ columns: 120, zone: 'camp', waypoints: three, companions: 0, frame: 0 })
+    const road = roadWidth(120, 'camp')
     const flags = fitWaypoints(three, flagSlots(road))
-    expect(spriteAt(grid, 'astronaut', avatarX(flags, road), GROUND_ROW - SPRITES.astronaut.height)).toBe(true)
+    expect(wizardAt(grid, avatarX(flags, road), GROUND_ROW - SPRITES.wizard.height)).toBe(true)
   })
 
-  test('no tasks: the astronaut at the left margin', () => {
+  test('no tasks: the wizard at the left margin', () => {
     const grid = scene({ columns: 80, zone: 'wilds', waypoints: [], companions: 0, frame: 0 })
-    expect(spriteAt(grid, 'astronaut', 2, GROUND_ROW - SPRITES.astronaut.height)).toBe(true)
+    expect(wizardAt(grid, 2, GROUND_ROW - SPRITES.wizard.height)).toBe(true)
   })
 
-  test('frame 1 is the astronaut\'s step, in the same place; only the figures change', () => {
-    const still = scene({ columns: 120, zone: 'arena', waypoints: three, companions: 2, frame: 0 })
-    const step = scene({ columns: 120, zone: 'arena', waypoints: three, companions: 2, frame: 1 })
-    const road = roadWidth(120, 'arena')
+  test('frame 1 lifts the wizard a pixel; only the figures change', () => {
+    const still = scene({ columns: 120, zone: 'forge', waypoints: three, companions: 2, frame: 0 })
+    const lifted = scene({ columns: 120, zone: 'forge', waypoints: three, companions: 2, frame: 1 })
+    const road = roadWidth(120, 'forge')
     const hero = avatarX(fitWaypoints(three, flagSlots(road)), road)
-    expect(spriteAt(step, 'astronautStep', hero, GROUND_ROW - SPRITES.astronautStep.height)).toBe(true)
+    expect(wizardAt(lifted, hero, GROUND_ROW - SPRITES.wizard.height - 1)).toBe(true)
     still.forEach((line, y) => line.forEach((color, x) => {
-      if (step[y]?.[x] !== color) expect(x >= hero - 11 * 2 && x < hero + SPRITES.astronaut.width).toBe(true)
+      if (lifted[y]?.[x] !== color) expect(x >= hero - 10 * 2 && x < hero + SPRITES.wizard.width).toBe(true)
     }))
   })
 
-  test('the flags are recoloured: no red left, and the one in progress is yellow', () => {
+  test('the flags are recoloured: the pack\'s red is gone, and the one in progress is yellow', () => {
     const grid = scene({ columns: 120, zone: 'map', waypoints: ['now'], companions: 0, frame: 0 })
     const x0 = waypointX(0, 1, roadWidth(120, 'map'))
-    const flagPixels = grid.slice(GROUND_ROW - 9, GROUND_ROW).flatMap(line => line.slice(x0, x0 + FLAG_WIDTH))
+    const flagPixels = grid.slice(GROUND_ROW - 8, GROUND_ROW).flatMap(line => line.slice(x0, x0 + FLAG_WIDTH))
     expect(flagPixels.filter(red)).toEqual([])
-    expect(flagPixels.some(c => c !== undefined && ((c >> 16) & 255) > 150 && ((c >> 8) & 255) > 150 && (c & 255) < 120)).toBe(true)
+    expect(flagPixels.some(c => c === 0xf2d15b)).toBe(true)
   })
 
-  test('ghosts are drawn up to MAX_GHOSTS, at half size', () => {
+  test('ghosts are drawn up to MAX_GHOSTS', () => {
     const none = scene({ columns: 160, zone: 'wilds', waypoints: ['now'], companions: 0, frame: 0 })
     const many = scene({ columns: 160, zone: 'wilds', waypoints: ['now'], companions: MAX_GHOSTS + 3, frame: 0 })
     const four = scene({ columns: 160, zone: 'wilds', waypoints: ['now'], companions: MAX_GHOSTS, frame: 0 })

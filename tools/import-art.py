@@ -1,9 +1,9 @@
-"""Imports the sprites the HUD draws from the pack in art/pixel-platformer/ into
+"""Imports the sprites the HUD draws from Kenney's 1-Bit Pack in art/1-bit-pack/ into
 plugins/quest-hud/src/art/sprites.ts, as pixel maps with their palettes.
 
 Run from the repository root:  python3 -I tools/import-art.py
 The output is deterministic: running it twice gives the same file byte for byte.
-Only the files named in SPRITES are read; nothing in them is executed.
+Only the one sheet in art/1-bit-pack/ is read; nothing in it is executed.
 """
 import os
 import sys
@@ -12,77 +12,93 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pngread import read_png  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PACK = os.path.join(ROOT, "art", "pixel-platformer")
+PACK = os.path.join(ROOT, "art", "1-bit-pack")
+SHEET = os.path.join(PACK, "colored-transparent_packed.png")
 OUT = os.path.join(ROOT, "plugins", "quest-hud", "src", "art", "sprites.ts")
 
-# name: the pack file it comes from (every one of these is copied into art/pixel-platformer/)
+# The sheet: 49 x 22 tiles of 16 px, packed with no spacing (Tilesheet.txt).
+TILE, COLUMNS, ROWS = 16, 49, 22
+
+# name: the tile's number on the sheet, row * 49 + column
 SPRITES = {
-    # the avatar, and its second frame (the walk), the pink one-eyed astronaut
-    "astronaut": "Tiles/Characters/tile_0004.png",
-    "astronautStep": "Tiles/Characters/tile_0005.png",
+    # figures
+    "wizard": 467,
+    "ghost": 419,
     # waypoints
-    "flag": "Tiles/tile_0111.png",
-    # backdrops: hills and sky, 24 px tall, two of each biome
-    "winterA": "Tiles/Backgrounds/tile_0008.png",
-    "winterB": "Tiles/Backgrounds/tile_0009.png",
-    "winterC": "Tiles/Backgrounds/tile_0010.png",
-    "desertA": "Tiles/Backgrounds/tile_0012.png",
-    "desertB": "Tiles/Backgrounds/tile_0013.png",
-    "forestA": "Tiles/Backgrounds/tile_0014.png",
-    "forestB": "Tiles/Backgrounds/tile_0015.png",
-    # ground: the top rows of these are the ground line
-    "grass": "Tiles/tile_0002.png",
-    "sand": "Tiles/tile_0042.png",
-    "snow": "Tiles/tile_0082.png",
-    "dirt": "Tiles/tile_0122.png",
-    "water": "Tiles/tile_0033.png",
-    # zone props
-    "brick": "Tiles/tile_0006.png",
-    "crate": "Tiles/tile_0026.png",
-    "lever": "Tiles/tile_0064.png",
-    "spikes": "Tiles/tile_0068.png",
-    "bridgeLeft": "Tiles/tile_0048.png",
-    "bridgeMid": "Tiles/tile_0049.png",
-    "bridgeRight": "Tiles/tile_0050.png",
-    "sign": "Tiles/tile_0086.png",
-    "arrow": "Tiles/tile_0088.png",
-    "door": "Tiles/tile_0130.png",
-    "key": "Tiles/tile_0027.png",
-    "brickCross": "Tiles/tile_0047.png",
-    "mushroom": "Tiles/tile_0128.png",
-    "sprout": "Tiles/tile_0125.png",
-    "pine": "Tiles/tile_0126.png",
-    "ladder": "Tiles/tile_0071.png",
-    "bush": "Tiles/tile_0016.png",
+    "flag": 409,
+    # ground textures: their top rows lie on the ground band
+    "dirt": 1,
+    "grassTexture": 5,
+    "water": 254,
+    # scenery and props
+    "pine": 49,
+    "pineLayered": 50,
+    "roundTree": 53,
+    "twinPines": 101,
+    "oak": 102,
+    "grass": 99,
+    "palm": 105,
+    "campfire": 504,
+    "tent": 931,
+    "tower": 1023,
+    "redWall": 544,
+    "brickWall": 594,
+    "cobweb": 737,
+    "tombstone": 686,
+    "skull": 735,
+    "torch": 739,
+    "axe": 381,
+    "sword": 376,
+    "shield": 184,
+    "chest": 513,
+    "key": 571,
+    "scroll": 768,
+    "scrollOpen": 769,
+    "bench": 345,
 }
 
 # One character per colour; '.' is an empty pixel.
 SYMBOLS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
 
+_sheet = None
 
-def sprite(name, path):
-    width, height, rows = read_png(os.path.join(PACK, path))
+
+def sheet():
+    global _sheet
+    if _sheet is None:
+        width, height, rows = read_png(SHEET)
+        if (width, height) != (TILE * COLUMNS, TILE * ROWS):
+            raise SystemExit(f"{SHEET}: {width}x{height}, expected {TILE * COLUMNS}x{TILE * ROWS}")
+        _sheet = rows
+    return _sheet
+
+
+def sprite(name, index):
+    if not 0 <= index < COLUMNS * ROWS:
+        raise SystemExit(f"{name}: tile {index} is not on the sheet")
+    column, row = index % COLUMNS, index // COLUMNS
+    rows = [line[column * TILE:(column + 1) * TILE] for line in sheet()[row * TILE:(row + 1) * TILE]]
     palette, lines = {}, []
-    for row in rows:
+    for pixels in rows:
         line = ""
-        for r, g, b, a in row:
+        for r, g, b, a in pixels:
             if a < 128:
                 line += "."
                 continue
             colour = (r << 16) | (g << 8) | b
             if colour not in palette:
                 if len(palette) == len(SYMBOLS):
-                    raise SystemExit(f"{path}: more than {len(SYMBOLS)} colours")
+                    raise SystemExit(f"{name}: more than {len(SYMBOLS)} colours")
                 palette[colour] = SYMBOLS[len(palette)]
             line += palette[colour]
         lines.append(line)
-    return width, height, palette, lines
+    return TILE, TILE, palette, lines
 
 
 def render():
     out = [
-        "// Generated by tools/import-art.py from art/pixel-platformer/ (Kenney, CC0).",
-        "// Do not edit by hand: change the script or the pack, then run",
+        "// Generated by tools/import-art.py from art/1-bit-pack/ (Kenney's 1-Bit Pack, CC0).",
+        "// Do not edit by hand: change the script, then run",
         "//   python3 -I tools/import-art.py",
         "",
         "export type Sprite = {",
@@ -94,10 +110,10 @@ def render():
         "",
         "export const SPRITES = {",
     ]
-    for name, path in SPRITES.items():
-        width, height, palette, lines = sprite(name, path)
+    for name, index in SPRITES.items():
+        width, height, palette, lines = sprite(name, index)
         colours = ", ".join(f"{symbol}: 0x{colour:06x}" for colour, symbol in palette.items())
-        out.append(f"  // {path}")
+        out.append(f"  // tile {index} (row {index // COLUMNS}, column {index % COLUMNS})")
         out.append(f"  {name}: {{")
         out.append(f"    width: {width},")
         out.append(f"    height: {height},")

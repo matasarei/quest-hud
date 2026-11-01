@@ -1,14 +1,15 @@
 import { describe, expect, test } from 'claude-code/testing'
 
 import { SPRITES, type SpriteName } from '../src/art/sprites'
+import { BACKDROPS } from '../src/scene'
 
 // Every sprite the scene draws: the import must keep producing these.
 const USED: readonly SpriteName[] = [
-  'astronaut', 'astronautStep', 'flag',
-  'winterA', 'winterB', 'winterC', 'desertA', 'desertB', 'forestA', 'forestB',
-  'grass', 'sand', 'snow', 'dirt', 'water',
-  'brick', 'crate', 'lever', 'spikes', 'bridgeLeft', 'bridgeMid', 'bridgeRight',
-  'sign', 'arrow', 'door', 'key', 'brickCross', 'mushroom', 'sprout', 'pine', 'ladder', 'bush',
+  'wizard', 'ghost', 'flag',
+  'dirt', 'grassTexture', 'water',
+  'pine', 'pineLayered', 'roundTree', 'twinPines', 'oak', 'grass', 'palm',
+  'campfire', 'tent', 'tower', 'redWall', 'brickWall', 'cobweb', 'tombstone', 'skull', 'torch',
+  'axe', 'sword', 'shield', 'chest', 'key', 'scroll', 'scrollOpen', 'bench',
 ]
 
 describe('the imported sprites', () => {
@@ -16,22 +17,25 @@ describe('the imported sprites', () => {
     expect(USED.filter(name => !(name in SPRITES))).toEqual([])
   })
 
+  test('nothing is imported that the scene does not use', () => {
+    expect(Object.keys(SPRITES).filter(name => !USED.includes(name as SpriteName))).toEqual([])
+  })
+
+  test('every sprite a backdrop names is imported', () => {
+    for (const backdrop of Object.values(BACKDROPS)) {
+      const names = [...backdrop.far, backdrop.texture, ...backdrop.props.map(prop => (typeof prop === 'string' ? prop : prop[0]))]
+      expect(names.filter(name => !(name in SPRITES))).toEqual([])
+    }
+  })
+
   for (const [name, sprite] of Object.entries(SPRITES)) {
-    test(`${name}: its map is as large as it says, and every pixel has a colour`, () => {
-      expect(sprite.map).toHaveLength(sprite.height)
-      expect(sprite.map.every(line => line.length === sprite.width)).toBe(true)
+    test(`${name}: 16 × 16, one colour (the pack is 1-bit), every pixel in its palette`, () => {
+      expect([sprite.width, sprite.height]).toEqual([16, 16])
+      expect(sprite.map).toHaveLength(16)
+      expect(sprite.map.every(line => line.length === 16)).toBe(true)
+      expect(Object.keys(sprite.palette)).toHaveLength(1)
       const missing = sprite.map.join('').split('').filter(c => c !== '.' && !(c in sprite.palette))
       expect(missing).toEqual([])
     })
   }
-
-  test('the astronaut and its step are the same size, so the bob does not jump', () => {
-    expect([SPRITES.astronautStep.width, SPRITES.astronautStep.height]).toEqual([SPRITES.astronaut.width, SPRITES.astronaut.height])
-  })
-
-  test('backdrops are 24 px tall, the band the scene puts above the ground', () => {
-    for (const name of ['winterA', 'winterB', 'winterC', 'desertA', 'desertB', 'forestA', 'forestB'] as const) {
-      expect(SPRITES[name].height).toBe(24)
-    }
-  })
 })

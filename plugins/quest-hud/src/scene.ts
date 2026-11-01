@@ -1,62 +1,78 @@
-// The Road pane's scene, drawn from the pack's sprites (src/art/sprites.ts):
-// the zone's hills and sky over its ground, the zone's props, the task list as
-// flags, the pink astronaut beside the flag in progress, and subagents as
-// tinted astronauts behind it. Pure: it returns a Grid, which the pane draws
-// as a Raster, an Image or an Svg.
+// The Road pane's scene, drawn from Kenney's 1-Bit Pack (src/art/sprites.ts):
+// the zone's dark background with its scenery dim behind, its ground, its
+// props, the task list as flags, the wizard beside the flag in progress, and
+// ghosts behind it for the subagents at work. Pure: it returns a Grid, which
+// the pane draws as a Raster, an Image or an Svg.
 import type { Task, Zone } from '../types'
 import { SPRITES, type SpriteName } from './art/sprites'
 import { mapToGrid, type Grid } from './avatar'
 
 /** Pixel rows: fourteen terminal rows of half blocks. */
 export const SCENE_HEIGHT = 28
-/** Where the ground starts: the hills fill the 24 rows above it. */
+/** Where the ground starts: 16 px figures stand on it, with the background above. */
 export const GROUND_ROW = 24
 /** More tasks than this share flags. */
 export const MAX_FLAGS = 12
 /** More subagents than this are counted in the pane's text, not drawn. */
 export const MAX_GHOSTS = 4
-/** Flags and ghosts are drawn at half the pack's size, so the astronaut stands out among them. */
+/** Flags are drawn at half the pack's size, so they line the road without crowding the figures. */
 export const FLAG_WIDTH = Math.ceil(SPRITES.flag.width / 2)
 /** Pixels a flag takes, with the gap to the next one. */
 export const FLAG_SLOT = FLAG_WIDTH + 3
-/** Pixels between ghosts trailing the astronaut. */
-const GHOST_STEP = 11
+/** Pixels between ghosts trailing the wizard. */
+const GHOST_STEP = 10
+/** How far the scenery behind stands above the ground line. */
+const FAR_RISE = 4
+/** How much the scenery behind fades into the background. */
+const FAR_FADE = 0.72
 
 export type Waypoint = 'done' | 'now' | 'todo'
 
-type Shade = readonly [number, number, number]
+/** A prop: a sprite in the pack's own colour, or in one given here. */
+type Prop = SpriteName | readonly [SpriteName, number]
+
 type Backdrop = {
-  /** The hills-and-sky tiles, repeated across in turn. */
-  hills: readonly SpriteName[]
-  /** Each channel of the hills is multiplied by these: three biomes make eight zones. */
-  shade: Shade
-  /** The tile whose top rows are the ground line. */
-  ground: SpriteName
+  /** The dark colour behind everything; every zone has its own. */
+  background: number
+  /** Scenery far behind, faded toward the background, repeated across in turn. */
+  far: readonly SpriteName[]
+  /** The ground band's colour. */
+  ground: number
+  /** A tile whose top rows lie on the ground band, lightly. */
+  texture: SpriteName
   /** Standing on the ground at the right, left to right. */
-  props: readonly SpriteName[]
+  props: readonly Prop[]
 }
 
-/** Each zone's backdrop: the pack has three biomes, shaded apart so every sky differs. */
+/** Each zone's scene. */
 export const BACKDROPS: Readonly<Record<Zone, Backdrop>> = {
-  watchtower: { hills: ['winterA', 'winterB'], shade: [1, 1, 1], ground: 'snow', props: ['pine', 'ladder'] },
-  harbour: { hills: ['winterC'], shade: [0.82, 0.92, 1], ground: 'water', props: ['bridgeLeft', 'bridgeMid', 'bridgeRight'] },
-  dungeon: { hills: ['forestA', 'forestB'], shade: [0.34, 0.32, 0.42], ground: 'dirt', props: ['brickCross', 'door', 'key'] },
-  arena: { hills: ['desertA', 'desertB'], shade: [1, 1, 1], ground: 'sand', props: ['spikes', 'brick', 'spikes'] },
-  forge: { hills: ['desertB', 'desertA'], shade: [0.9, 0.62, 0.5], ground: 'dirt', props: ['crate', 'brick', 'lever'] },
-  map: { hills: ['forestA', 'forestB'], shade: [1, 1, 1], ground: 'grass', props: ['sign', 'arrow'] },
-  camp: { hills: ['forestB', 'forestA'], shade: [1, 0.82, 0.62], ground: 'grass', props: ['mushroom', 'sprout', 'mushroom'] },
-  wilds: { hills: ['forestB'], shade: [0.88, 1, 0.88], ground: 'grass', props: ['bush', 'pine', 'sprout'] },
+  watchtower: { background: 0x1b2733, far: ['pine', 'roundTree', 'pine'], ground: 0x2b3a2a, texture: 'grassTexture', props: ['pine', ['tower', 0xd8d0c0]] },
+  harbour: { background: 0x10243a, far: ['palm'], ground: 0x1f4a6e, texture: 'water', props: ['chest', 'key'] },
+  dungeon: { background: 0x14121a, far: ['redWall', 'brickWall'], ground: 0x2c2833, texture: 'dirt', props: ['cobweb', ['tombstone', 0xbdb6a8], 'skull', 'torch'] },
+  arena: { background: 0x2e2418, far: ['redWall'], ground: 0x5a4a38, texture: 'dirt', props: ['shield', 'sword'] },
+  forge: { background: 0x2a1414, far: ['brickWall', 'redWall'], ground: 0x3a2a22, texture: 'dirt', props: [['axe', 0xc9ced6], 'campfire', 'redWall'] },
+  map: { background: 0x23201a, far: ['twinPines'], ground: 0x3a3022, texture: 'dirt', props: ['scroll', 'scrollOpen', 'bench'] },
+  camp: { background: 0x1d2240, far: ['pine', 'twinPines', 'pine', 'pineLayered'], ground: 0x3b2f24, texture: 'dirt', props: ['tent', 'campfire'] },
+  wilds: { background: 0x13261d, far: ['oak', 'roundTree', 'twinPines'], ground: 0x2b3a22, texture: 'grassTexture', props: ['oak', 'grass', 'pine'] },
 }
 
-/** The flag's cloth in each state; the pack's flag is red, recoloured by its red shades. */
+/** The flag's colour in each state. */
 const CLOTH: Readonly<Record<Waypoint, number>> = { done: 0x4fd37a, now: 0xf2d15b, todo: 0x8a8fa3 }
-const GHOST_TINT = 0x9fd8ff
+/** The wizard's colour: the pack draws its figures in one beige; ours is purple. */
+export const WIZARD_COLOR = 0xb18cff
+const GHOST = 0xbfe3ff
 
 const channel = (color: number, shift: number): number => (color >> shift) & 0xff
 const rgb = (r: number, g: number, b: number): number =>
   (Math.min(255, Math.round(r)) << 16) | (Math.min(255, Math.round(g)) << 8) | Math.min(255, Math.round(b))
 
-const shaded = (color: number, [r, g, b]: Shade): number => rgb(channel(color, 16) * r, channel(color, 8) * g, channel(color, 0) * b)
+/** `a` moved `amount` of the way toward `b`. */
+const mix = (a: number, b: number, amount: number): number =>
+  rgb(
+    channel(a, 16) + (channel(b, 16) - channel(a, 16)) * amount,
+    channel(a, 8) + (channel(b, 8) - channel(a, 8)) * amount,
+    channel(a, 0) + (channel(b, 0) - channel(a, 0)) * amount,
+  )
 
 /** A sprite's pixels, each colour passed through `paint`. */
 const spriteGrid = (name: SpriteName, paint: (color: number) => number = color => color): Grid =>
@@ -65,24 +81,11 @@ const spriteGrid = (name: SpriteName, paint: (color: number) => number = color =
 /** Half the size: every other pixel of every other row. */
 export const half = (grid: Grid): Grid => grid.filter((_, y) => y % 2 === 0).map(line => line.filter((_, x) => x % 2 === 0))
 
-const isRed = (color: number): boolean => channel(color, 16) > channel(color, 8) + 60 && channel(color, 16) > channel(color, 0) + 60
+/** The flag in a state, at half size, all in the state's colour. */
+const flagGrid = (state: Waypoint): Grid => half(spriteGrid('flag', () => CLOTH[state]))
 
-/** The flag in a state, at half size: each red shade becomes the state's colour, as light as the red was. */
-const flagGrid = (state: Waypoint): Grid =>
-  half(spriteGrid('flag', color => {
-    if (!isRed(color)) return color
-    const light = channel(color, 16) / 255
-    return rgb(channel(CLOTH[state], 16) * light, channel(CLOTH[state], 8) * light, channel(CLOTH[state], 0) * light)
-  }))
-
-const ghostly = (color: number): number =>
-  rgb((channel(color, 16) + channel(GHOST_TINT, 16)) / 2, (channel(color, 8) + channel(GHOST_TINT, 8)) / 2, (channel(color, 0) + channel(GHOST_TINT, 0)) / 2)
-
-/** The colour at the top-left of a zone's sky. */
-export const skyColor = (zone: Zone): number => {
-  const backdrop = BACKDROPS[zone]
-  return spriteGrid(backdrop.hills[0] ?? 'forestA', color => shaded(color, backdrop.shade))[0]?.[0] ?? 0
-}
+/** A zone's background colour: the scene's top-left pixel. */
+export const skyColor = (zone: Zone): number => BACKDROPS[zone].background
 
 /** One waypoint per task, in order, at most MAX_FLAGS: the flag a task falls on takes its most urgent state. */
 export const waypointsOf = (tasks: readonly Task[]): Waypoint[] =>
@@ -107,9 +110,11 @@ export const fitWaypoints = (waypoints: readonly Waypoint[], slots: number): Way
   return flags
 }
 
+const propName = (prop: Prop): SpriteName => (typeof prop === 'string' ? prop : prop[0])
+
 /** The pixels the zone's props take at the right, with their margin. */
 export const propsWidth = (zone: Zone): number =>
-  BACKDROPS[zone].props.reduce((sum, name) => sum + SPRITES[name].width, 0) + 4
+  BACKDROPS[zone].props.reduce((sum, prop) => sum + SPRITES[propName(prop)].width, 0) + 4
 
 /** The road's width: the span left of the props where flags and figures go. */
 export const roadWidth = (columns: number, zone: Zone): number => Math.max(0, Math.floor(columns) - propsWidth(zone))
@@ -122,7 +127,7 @@ export const waypointX = (index: number, count: number, width: number): number =
   Math.round(2 + (index * Math.max(0, width - 4)) / Math.max(1, count))
 
 /**
- * Where the avatar's sprite starts: just right of the flag in progress, else
+ * Where the wizard's sprite starts: just right of the flag in progress, else
  * of the first flag still to do; of the last flag when all are done; at the
  * left margin when there are none.
  */
@@ -154,45 +159,43 @@ export type SceneArgs = {
 
 /**
  * The scene as columns × SCENE_HEIGHT pixels: the waypoints are fitted to the
- * flags the width has room for. Frame 1 is the astronaut's step: the bob.
+ * flags the road has room for. Frame 1 lifts the figures a pixel: the bob.
  */
 export const scene = ({ columns, zone, waypoints, companions, frame }: SceneArgs): Grid => {
   const width = Math.max(0, Math.floor(columns))
   const backdrop = BACKDROPS[zone]
-  const hills = backdrop.hills.map(name => spriteGrid(name, color => shaded(color, backdrop.shade)))
-  // Under everything, the sky above the ground line and the hills' foot below
-  // it, so a sprite's transparent pixels (the water's top rows) are never holes.
-  const foot = hills[0]?.[GROUND_ROW - 1]?.[0] ?? skyColor(zone)
+  // Under everything: the background above the ground line, the ground below it.
   const canvas = Array.from({ length: SCENE_HEIGHT }, (_, y) =>
-    Array<number | undefined>(width).fill(y < GROUND_ROW ? skyColor(zone) : foot),
+    Array<number | undefined>(width).fill(y < GROUND_ROW ? backdrop.background : backdrop.ground),
   )
 
   for (let x = 0, i = 0; x < width; i++) {
-    const tile = hills[i % hills.length] ?? []
-    stamp(canvas, tile, x, 0)
-    x += tile[0]?.length ?? width
+    const name = backdrop.far[i % backdrop.far.length] ?? 'pine'
+    const far = spriteGrid(name, color => mix(color, backdrop.background, FAR_FADE))
+    stamp(canvas, far, x, GROUND_ROW - far.length - FAR_RISE)
+    x += 14 + (i % 3) * 3
   }
 
-  const ground = spriteGrid(backdrop.ground).slice(0, SCENE_HEIGHT - GROUND_ROW)
-  for (let x = 0; x < width; x += ground[0]?.length ?? width) stamp(canvas, ground, x, GROUND_ROW)
+  const texture = spriteGrid(backdrop.texture, color => mix(color, backdrop.ground, 0.4)).slice(0, SCENE_HEIGHT - GROUND_ROW)
+  for (let x = 0; x < width; x += texture[0]?.length ?? width) stamp(canvas, texture, x, GROUND_ROW)
 
   let right = width - 2
-  for (const name of [...backdrop.props].reverse()) {
-    const prop = spriteGrid(name)
-    right -= prop[0]?.length ?? 0
-    stamp(canvas, prop, right, GROUND_ROW - prop.length)
+  for (const prop of [...backdrop.props].reverse()) {
+    const grid = typeof prop === 'string' ? spriteGrid(prop) : spriteGrid(prop[0], () => prop[1])
+    right -= grid[0]?.length ?? 0
+    stamp(canvas, grid, right, GROUND_ROW - grid.length)
   }
 
   const road = roadWidth(width, zone)
   const flags = fitWaypoints(waypoints, flagSlots(road))
-  const pose: SpriteName = frame === 1 ? 'astronautStep' : 'astronaut'
+  const lift = frame === 1 ? -1 : 0
   const hero = avatarX(flags, road)
-  const figure = spriteGrid(pose)
-  const ghost = half(spriteGrid(pose, ghostly))
+  const wizard = spriteGrid('wizard', () => WIZARD_COLOR)
+  const ghost = spriteGrid('ghost', () => mix(GHOST, backdrop.background, 0.55))
 
-  // Ghosts first, so the flags in front of them stay visible; the astronaut last.
+  // Ghosts first, so the flags in front of them stay visible; the wizard last.
   for (let k = Math.min(companions, MAX_GHOSTS); k >= 1; k--) {
-    stamp(canvas, ghost, hero - GHOST_STEP * k, GROUND_ROW - ghost.length)
+    stamp(canvas, ghost, hero - GHOST_STEP * k, GROUND_ROW - ghost.length + lift)
   }
 
   flags.forEach((state, i) => {
@@ -200,7 +203,7 @@ export const scene = ({ columns, zone, waypoints, companions, frame }: SceneArgs
     stamp(canvas, flag, waypointX(i, flags.length, road), GROUND_ROW - flag.length)
   })
 
-  stamp(canvas, figure, hero, GROUND_ROW - figure.length)
+  stamp(canvas, wizard, hero, GROUND_ROW - wizard.length + lift)
 
   return canvas
 }
