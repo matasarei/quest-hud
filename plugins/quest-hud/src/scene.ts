@@ -10,7 +10,7 @@ import type { Allies, FightKind, Foes, Task, Zone } from '../types'
 import type { Grid } from './avatar'
 import { downsample, mirrorGrid, spriteGrid, stamp, type Canvas, type Sprite } from './paint/pixels'
 import { rasterize, rgbToGrid } from './paint/raster'
-import { landscape } from './world/landscapes'
+import { landscape, PARALLAX } from './world/landscapes'
 import { ART_SCALE, BAND_ICON, CHEST, DRAGON, FLAG, FOX, GHOST, MASCOT, OCTOCAT, PROPS, SPIDER, WALK, WIZARD, type Pose, type PropName } from './world/sprites'
 
 /** Pixel rows: fourteen terminal rows of half blocks. */
@@ -31,6 +31,8 @@ export const SIZE = { wizard: units(WIZARD.stand), foe: units(DRAGON), familiar:
 export const FLAG_WIDTH = units(FLAG.done)
 /** Units a flag takes, with the gap to the next one. */
 export const FLAG_SLOT = FLAG_WIDTH + 3
+/** Units of open road before the landmarks come round again. */
+const LANDMARK_GAP = 12
 /** Units between ghosts trailing the wizard. */
 const GHOST_STEP = 10
 /** How far behind the wizard's box Claude's mascot stands: at his heel, where his sprite's margin is. */
@@ -43,7 +45,10 @@ const NO_FOES: Foes = { test: 'none', lint: 'none' }
 
 export type Waypoint = 'done' | 'now' | 'todo'
 
-/** A zone's landmarks, standing at the right of the road, left to right: the last is the one kept longest. */
+/**
+ * A zone's landmarks, left to right: the last is the one kept longest. At
+ * rest they stand at the right of the road; walking, they pass by.
+ */
 export type Prop = PropName
 export const ZONE_PROPS: Readonly<Record<Zone, readonly Prop[]>> = {
   wilds: ['bush', 'signpost'],
@@ -310,10 +315,16 @@ export const sceneArt = (args: SceneArgs): Grid => {
     : backdrop(zone).map(row => [...row])
   const kept = layout({ ...args, columns: width })
 
+  // The zone's landmarks stand by the road: they pass by with the near layer as
+  // the wizard walks, behind everyone, and come round again from the right.
+  const passed = motion.step * PARALLAX.near
+  const loop = width + propsUnits(kept.props) + LANDMARK_GAP
   let right = width - 2
   for (const prop of [...kept.props].reverse()) {
-    right -= units(PROPS[prop])
-    standAt(art, spriteGrid(PROPS[prop]), right)
+    const size = units(PROPS[prop])
+    right -= size
+    const x = ((((right - passed + size) % loop) + loop) % loop) - size
+    if (x < width) standAt(art, spriteGrid(PROPS[prop]), x)
   }
   for (const grid of extraGrids(kept.extras)) {
     right -= (grid[0]?.length ?? 0) / ART_SCALE + EXTRA_GAP

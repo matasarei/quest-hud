@@ -354,3 +354,23 @@ describe('a zone change', () => {
     expect(half[0]?.slice(0, 50)).toEqual(scene({ ...args, zone: 'camp' })[0]?.slice(50))
   })
 })
+
+describe('the landmarks on the walk', () => {
+  const at = (step: number, loot = 0) =>
+    scene({ columns: 120, zone: 'wilds', waypoints: [], companions: 0, loot, motion: { step, pose: 'stand', hop: false } })
+  const LEAF = PALETTE['0'] as number
+  const CHEST_WOOD = PALETTE.N as number
+
+  test('pass by with the near layer as the wizard walks, and come round again', () => {
+    const start = columnsOf(at(0), LEAF)
+    expect(start.length > 0).toBe(true)
+    expect(columnsOf(at(1), LEAF)[0]).toBe(start[0]! - 4)
+    // One loop: the road's width, the landmarks' own, and twelve units of open road, four units a step.
+    const loop = (120 + units('bush') + units('signpost') + 12) / 4
+    expect(columnsOf(at(loop), LEAF)).toEqual(start)
+  })
+
+  test('the chest travels with the party: it stays where it stands', () => {
+    expect(columnsOf(at(5, 1), CHEST_WOOD)).toEqual(columnsOf(at(0, 1), CHEST_WOOD))
+  })
+})
