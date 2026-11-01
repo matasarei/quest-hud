@@ -171,3 +171,31 @@ describe('/hud', () => {
     expect(result.text).toContain('◉$1.84')
   })
 })
+
+describe('prompts', () => {
+  const prompt = (text: string, kind: 'composer' | 'task-notification' | 'peer' | 'scheduled-trigger') =>
+    ({ text, wait: false, origin: { kind } }) as const
+
+  test('a prompt the person sent titles the quest', async ($, on) => {
+    engine(on)
+    on('prompt.submit', (_, e) => ({ text: e.text }))
+    await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+    await $.prompt.submit(prompt('make the export handle empty departments', 'composer'))
+    const ui = await $.ui.mount(band('terminal'))
+    expect((await ui.find({ type: 'Text', text: /⚔/ }))?.text).toBe('⚔ make the export handle empty departments')
+    await ui.unmount()
+  })
+
+  for (const kind of ['task-notification', 'peer', 'scheduled-trigger'] as const) {
+    test(`a ${kind} prompt never retitles the quest`, async ($, on) => {
+      engine(on)
+      on('prompt.submit', (_, e) => ({ text: e.text }))
+      await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+      await $.skill.prompt({ skill: 'plan', text: 'x' })
+      await $.prompt.submit(prompt('Background task finished with three results', kind))
+      const ui = await $.ui.mount(band('terminal'))
+      expect((await ui.find({ type: 'Text', text: /⚔/ }))?.text).toBe('⚔ plan')
+      await ui.unmount()
+    })
+  }
+})

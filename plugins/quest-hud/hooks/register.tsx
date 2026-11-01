@@ -19,6 +19,11 @@ type Detail = 'off' | 'status' | 'band'
 const pick = <T extends string>(value: unknown, allowed: readonly T[], fallback: T): T =>
   typeof value === 'string' && (allowed as readonly string[]).includes(value) ? (value as T) : fallback
 
+// Prompts a person sent: typed, through Remote Control, or as the SDK's own turn.
+// A background task's notification, a scheduled firing or another session's
+// message is not the person's next quest.
+const PERSON_ORIGINS: ReadonlySet<string> = new Set(['composer', 'bridge', 'sdk'])
+
 const TASK_TOOLS: ReadonlySet<string> = new Set(['TaskCreate', 'TaskUpdate', 'TodoWrite'])
 
 const COLOR: Readonly<Record<Tone, string | undefined>> = {
@@ -75,7 +80,7 @@ export const register: Register = (on, options) => {
   }).catch(($, e, next) => next(e))
 
   on('prompt.submit', async ($, e, next) => {
-    if (e.isMeta !== true) {
+    if (e.isMeta !== true && PERSON_ORIGINS.has(e.origin.kind)) {
       const now = await $.clock.now()
       const list = await read($, tasks)
       await update($, quest, current => fromPrompt(current, e.text, list, now))
