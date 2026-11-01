@@ -3,6 +3,9 @@ import type { Engine } from 'claude-code/testing'
 
 import { engine, RUN, start, world } from './kit'
 
+// Tests about the cells scene (the Raster, the bob) ask for it: auto draws an image first.
+const CELLS = { options: { graphics: 'cells' } } as const
+
 const pane = (surface: 'terminal' | 'desktop', bodyColumns = 60) => ({
   plugin: 'quest-hud',
   component: 'Pane',
@@ -44,7 +47,7 @@ describe('the Road pane', () => {
 
       expect((await ui.find({ type: 'Text', text: /⚔/ }))?.text).toBe('⚔ gku:implement · Forge — building and fixing')
       expect((await ui.find({ type: 'Text', text: /^task/ }))?.text).toBe('task 1/2')
-      expect(await ui.find({ type: surface === 'terminal' ? 'Raster' : 'Svg' })).toBeTruthy()
+      expect(await ui.find({ type: surface === 'terminal' ? 'Image' : 'Svg' })).toBeTruthy()
       expect((await ui.find({ type: 'Text', text: /Read the exporter/ }))?.text).toBe('✓ Read the exporter')
       expect((await ui.find({ type: 'Text', text: /Write the tests/ }))?.text).toBe('▸ Write the tests')
       expect((await ui.find({ type: 'Text', text: /^♥/ }))?.text).toBe('♥ ████████░░ 80%   ')
@@ -55,7 +58,7 @@ describe('the Road pane', () => {
     })
   }
 
-  test('the terminal\'s scene is a Raster keyed scene, as wide as the body and 14 rows tall', async ($, on) => {
+  test('the terminal\'s scene is a Raster keyed scene, as wide as the body and 14 rows tall', CELLS, async ($, on) => {
     engine(on)
     await implementing($)
     const ui = await $.ui.mount(pane('terminal', 60))
@@ -103,7 +106,7 @@ describe('the bob', () => {
   const mainTurn = { text: 'go', turnId: 'turn-1' }
   const turnDone = { turnId: 'turn-1', answer: '', durationMs: 1, isAborted: false, reason: 'answer' } as const
 
-  test('two frames a second while Claude works, then the figures at rest, then nothing', async ($, on) => {
+  test('two frames a second while Claude works, then the figures at rest, then nothing', CELLS, async ($, on) => {
     const clock = engine(on)
     world.panes = [{ id: 'quest-hud', isShown: true }]
     await implementing($)
@@ -120,7 +123,7 @@ describe('the bob', () => {
     await ui.unmount()
   })
 
-  test('no bob while the pane is not shown', async ($, on) => {
+  test('no bob while the pane is not shown', CELLS, async ($, on) => {
     const clock = engine(on)
     world.panes = [{ id: 'quest-hud', isShown: false }]
     await implementing($)
@@ -142,7 +145,7 @@ describe('the bob', () => {
     await ui.unmount()
   })
 
-  test('hiding the pane mid-turn stops it at the next step', async ($, on) => {
+  test('hiding the pane mid-turn stops it at the next step', CELLS, async ($, on) => {
     const clock = engine(on)
     world.panes = [{ id: 'quest-hud', isShown: true }]
     await implementing($)
@@ -156,7 +159,7 @@ describe('the bob', () => {
     await ui.unmount()
   })
 
-  test('a subagent\'s turn neither starts nor stops it', async ($, on) => {
+  test('a subagent\'s turn neither starts nor stops it', CELLS, async ($, on) => {
     const clock = engine(on)
     world.panes = [{ id: 'quest-hud', isShown: true }]
     await implementing($)
@@ -169,7 +172,7 @@ describe('the bob', () => {
 })
 
 describe('the bob and a new session', () => {
-  test('a session start stops a bob that was running', async ($, on) => {
+  test('a session start stops a bob that was running', CELLS, async ($, on) => {
     const clock = engine(on)
     world.panes = [{ id: 'quest-hud', isShown: true }]
     await implementing($)
@@ -186,7 +189,7 @@ describe('the bob and a new session', () => {
 })
 
 describe('the bob and the first draw', () => {
-  test('a turn that started before the pane was first drawn bobs once it is drawn', async ($, on) => {
+  test('a turn that started before the pane was first drawn bobs once it is drawn', CELLS, async ($, on) => {
     const clock = engine(on)
     world.panes = [{ id: 'quest-hud', isShown: true }]
     await implementing($)
@@ -194,6 +197,102 @@ describe('the bob and the first draw', () => {
     const ui = await $.ui.mount(pane('terminal'))
     await clock.advance(1000)
     expect(world.blits).toHaveLength(2)
+    await ui.unmount()
+  })
+})
+
+describe('images or cells', () => {
+  const PROBE = 150
+
+  test('graphics = cells: a Raster, and no probe', CELLS, async ($, on) => {
+    const clock = engine(on)
+    await implementing($)
+    const ui = await $.ui.mount(pane('terminal'))
+    expect(await ui.find({ type: 'Raster', key: 'scene' })).toBeTruthy()
+    expect(await ui.find({ type: 'Image' })).toBeFalsy()
+    await clock.advance(PROBE)
+    expect(world.imageBlits).toBe(0)
+    await ui.unmount()
+  })
+
+  test('graphics = images: an Image the size of the scene, and no probe', { options: { graphics: 'images' } }, async ($, on) => {
+    const clock = engine(on)
+    await implementing($)
+    const ui = await $.ui.mount(pane('terminal', 60))
+    const image = await ui.find({ type: 'Image', key: 'scene-image' })
+    expect(image?.props.columns).toBe(60)
+    expect(image?.props.rows).toBe(14)
+    await clock.advance(PROBE)
+    expect(world.imageBlits).toBe(0)
+    await ui.unmount()
+  })
+
+  test('auto, the engine takes the probe: images stay', async ($, on) => {
+    const clock = engine(on)
+    await implementing($)
+    const first = await $.ui.mount(pane('terminal'))
+    expect(await first.find({ type: 'Image', key: 'scene-image' })).toBeTruthy()
+    await clock.advance(PROBE)
+    expect(world.imageBlits).toBe(1)
+    expect(world.state.imagesWork).toBe(true)
+    await first.unmount()
+    const again = await $.ui.mount(pane('terminal'))
+    expect(await again.find({ type: 'Image' })).toBeTruthy()
+    await clock.advance(PROBE)
+    expect(world.imageBlits).toBe(1)
+    await again.unmount()
+  })
+
+  test('auto, the engine refuses the probe: cells from then on', async ($, on) => {
+    const clock = engine(on)
+    world.refuseImages = true
+    await implementing($)
+    const first = await $.ui.mount(pane('terminal'))
+    await clock.advance(PROBE)
+    expect(world.imageBlits).toBe(1)
+    expect(world.state.imagesWork).toBe(false)
+    await first.unmount()
+    const again = await $.ui.mount(pane('terminal'))
+    expect(await again.find({ type: 'Raster', key: 'scene' })).toBeTruthy()
+    expect(await again.find({ type: 'Image' })).toBeFalsy()
+    await again.unmount()
+  })
+
+  test('a new session id forgets the answer, and probes again', async ($, on) => {
+    const clock = engine(on)
+    world.refuseImages = true
+    await implementing($)
+    const first = await $.ui.mount(pane('terminal'))
+    await clock.advance(PROBE)
+    await first.unmount()
+    world.id = 's2'
+    await start($)
+    expect(world.state.imagesWork).toBe(null)
+    const again = await $.ui.mount(pane('terminal'))
+    expect(await again.find({ type: 'Image' })).toBeTruthy()
+    await again.unmount()
+  })
+
+  test('an image scene does not bob', { options: { graphics: 'images' } }, async ($, on) => {
+    const clock = engine(on)
+    world.panes = [{ id: 'quest-hud', isShown: true }]
+    await implementing($)
+    const ui = await $.ui.mount(pane('terminal'))
+    await $.turn.start({ text: 'go', turnId: 'turn-1' })
+    await clock.advance(1000)
+    expect(world.blits).toHaveLength(0)
+    await ui.unmount()
+  })
+
+  test('the desktop draws an Svg and never probes; at 200 columns it stays under the Svg cap', async ($, on) => {
+    const clock = engine(on)
+    await implementing($)
+    const ui = await $.ui.mount(pane('desktop', 200))
+    const svg = await ui.find({ type: 'Svg' })
+    expect(typeof svg?.props.source).toBe('string')
+    expect(String(svg?.props.source).length < 131_072).toBe(true)
+    await clock.advance(PROBE)
+    expect(world.imageBlits).toBe(0)
     await ui.unmount()
   })
 })
