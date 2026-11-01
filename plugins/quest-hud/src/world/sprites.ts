@@ -454,73 +454,63 @@ export const SPIDER = sprite([
 /**
  * GitHub's Octocat, brought by gh: our own drawing after the real one — a
  * wide black cat's head with pointed ears and whiskers, a peach face with
- * white-and-brown eyes and a smile, tentacles splaying into a blue puddle.
- * 24 × 24, smaller than the wizard. Drawn for the text cells first: every
- * 2 × 2 block reduces to the 12 × 12 cell picture as designed, and only the
- * finer touches (glints, nose, thin whiskers) are for images.
+ * white-and-brown eyes, tentacles splaying into a blue puddle. 20 × 20, a
+ * little over half the wizard's height. Drawn for the text cells first:
+ * every 2 × 2 block reduces to the 10 × 10 cell picture as designed, and
+ * only the finer touches (glints, nose, smile, thin whiskers) are for images.
  */
 export const OCTOCAT = sprite([
-    '..ll................ll..',
-    '..ll................ll..',
-    '..llll............llll..',
-    '..llll............llll..',
-    '..llllllllllllllllllll..',
-    '..llllllllllllllllllll..',
-    '..llEEEEEEEEEEEEEEEEll..',
-    '..llEEEEEEEEEEEEEEEEll..',
-    'llllee22eeeeeeee22eellll',
-    '..llee22eeeeeeee22eell..',
-    'llllee<2eeeeeeee<2eellll',
-    '..llee<<eee@@eee<<eell..',
-    '..lllleeee<<<<eeeellll..',
-    '..lllleeeee<<eeeeellll..',
-    '....llllllllllllllll....',
-    '....llllllllllllllll....',
-    '........llllllll........',
-    '........llllllll........',
-    '......ll..llll..ll......',
-    '......ll..llll..ll......',
-    '....ll....llll....ll....',
-    '....ll....llll....ll....',
-    '""""ll""""llll""""ll""""',
-    '====ll====llll====ll====',
+  '..ll............ll..',
+  '..ll............ll..',
+  '..llll........llll..',
+  '..llll........llll..',
+  '..llllllllllllllll..',
+  '..llllllllllllllll..',
+  '..llEEEEEEEEEEEEll..',
+  '..llEEEEEEEEEEEEll..',
+  'llllee22eeee22eellll',
+  '..llee22eeee22eell..',
+  'llllee<2eeee<2eellll',
+  '..llee<<e@@e<<eell..',
+  '..lllleeeee<eellll..',
+  '..lllleee<<eeellll..',
+  '....llllllllllll....',
+  '....llllllllllll....',
+  '....ll..llll..ll....',
+  '....ll..llll..ll....',
+  '""ll""""llll""""ll""',
+  '==ll====llll====ll==',
 ])
 
-/** GitLab's fox, brought by glab: a fox of sharp crystal facets, its head the GitLab mark. */
+/**
+ * GitLab's fox, brought by glab: a fox of sharp crystal facets in GitLab's
+ * red, orange and yellow, its head the GitLab mark, a pale-tipped tail. 20 ×
+ * 20, the Octocat's size, drawn for the text cells first like it; its eyes
+ * and the glint along its back are for images. It faces the road mirrored,
+ * so every touch sits on an odd row, which never decides a cell either way.
+ */
 export const FOX = sprite([
-    '................................',
-    '...................o.........o..',
-    '.o................o#o.......o#o.',
-    'o>o..............o##o.......o##o',
-    'o>o..............o##o.......o##o',
-    'o>>o.............o###o.....o###o',
-    'o#o..............o###ooooooo###o',
-    'o#o.............o%%%%!!!!!!%%%%o',
-    'o&#o.............o%%%%!!!!!%%%%o',
-    'o&##o.............o%%%!!!!!%%%o.',
-    'o&##o..............o%%%!!!%%%o..',
-    'o&###o..............o%%!!!%%o...',
-    'o&&###o...........oooo%!!!%o....',
-    'o&&####o...ooooooo%%%##%!%o.....',
-    'o&&####oooo%%%%%%%%%####!o......',
-    '.o&&####%%%%%%%%%%%######o......',
-    '..o&######%%%%%%%%########o.....',
-    '...o#!!#####%%%%#####!!!!!o.....',
-    '....o!!#######%##!!!!!!!!!o.....',
-    '.....o!######!!!!!!!!!!!!o......',
-    '......o####!!!!!!!!!!!!!!o......',
-    '......o##!!!!!!!!!!!!!!!!o......',
-    '......o&&oo!!ooooooo&&o!!o......',
-    '......o&&oo!!o.....o&&o!!o......',
-    '......o&&oo!o......o&oo!!o......',
-    '......o&&oo!o......o&oo!!o......',
-    '......o&&oo!o......o&oo!!o......',
-    '......o&&oo!o......o&oo!!o......',
-    '.......o&oo!o......o&o.o!o......',
-    '.......o&oo!o......o&o.o!o......',
-    '.......o&oo!o......o&o.o!o......',
-    '........o..o........o...o.......',
-  ])
+  '..........!!......!!',
+  '..........!!......!!',
+  '>>........!!##..##!!',
+  '>>........!!##..##!!',
+  '##!!......%%##!!##%%',
+  '##!!......%%#1!!#1%%',
+  '##!!##......%%!!%%..',
+  '##!!##......%%!!%%..',
+  '..!!##%%%%%%%%!!....',
+  '..!!##%>%>%>%>!!....',
+  '....!!########!!....',
+  '....!!########!!....',
+  '....&&..!!..&&..!!..',
+  '....&&..!!..&&..!!..',
+  '....&&..!!..&&..!!..',
+  '....&&..!!..&&..!!..',
+  '....&&..!!..&&..!!..',
+  '....&&..!!..&&..!!..',
+  '....&&..!!..&&..!!..',
+  '....&&..!!..&&..!!..',
+])
 
 /** Loot: a wooden chest with gold bands. */
 export const CHEST = sprite([
