@@ -34,7 +34,7 @@ describe('the avatar map', () => {
 })
 
 describe('rasterWords', () => {
-  test('12 columns by 8 rows, three words a cell', () => {
+  test('the 12 × 16 avatar map is 12 columns by 8 rows of cells, three words a cell', () => {
     expect(rasterSize(AVATAR)).toEqual({ columns: 12, rows: 8 })
     expect(rasterWords(AVATAR, MAGE)).toHaveLength(12 * 8 * 3)
   })
