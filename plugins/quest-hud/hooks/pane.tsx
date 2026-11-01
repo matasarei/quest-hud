@@ -24,10 +24,11 @@ const IMAGE_CELLS = 255
 export type SceneMode = 'raster' | 'image' | 'svg'
 
 /**
- * The scene as RasterProps.cells, for a draw or a blit: the art (2 pixels a
- * column, 4 a row) with its rows halved, two by two pixels a cell, in quadrants.
+ * Art as RasterProps.cells, for a draw or a blit — the Road's scene or the
+ * band's wizard: the art (2 pixels a column, 4 a row) with its rows halved,
+ * two by two pixels a cell, in quadrants.
  */
-export const sceneCells = (art: Grid): string => gridToQuadrantCells(downsample(art, 1, 2))
+export const artCells = (art: Grid): string => gridToQuadrantCells(downsample(art, 1, 2))
 
 /** An Image's source as a whole PNG file, base64: a frame of pixel art is a few kilobytes. */
 export type PngSource = { png: string }
@@ -56,7 +57,7 @@ export function drawRoad($: EngineInterface, e: RenderInput<'Pane'>, road: Road,
         />
       )
     : mode === 'raster' && 'Raster' in elements
-      ? <elements.Raster key={SCENE_KEY} columns={Math.max(1, columns)} rows={rows} cells={sceneCells(road.art)} />
+      ? <elements.Raster key={SCENE_KEY} columns={Math.max(1, columns)} rows={rows} cells={artCells(road.art)} />
       : 'Svg' in elements
         ? <elements.Svg source={gridToSvg(road.scene)} alt="the road" width={columns * 8} height={rows * 16} />
         : null

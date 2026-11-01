@@ -11,8 +11,8 @@ const CAST: ReadonlyArray<readonly [string, Sprite, number, number]> = [
   ['mascot', MASCOT.still, 20, 16], ['mascot hop', MASCOT.hop, 20, 16], ['ghost', GHOST, 32, 32], ['dragon', DRAGON, 32, 32],
   ['spider', SPIDER, 32, 32], ['octocat', OCTOCAT, 20, 20], ['fox', FOX, 20, 20], ['chest', CHEST, 32, 24],
   ['flag done', FLAG.done, 16, 32], ['flag now', FLAG.now, 16, 32], ['flag todo', FLAG.todo, 16, 32],
-  ['band icon', BAND_ICON, 10, 6],
-  ['band cast', BAND_CAST, 10, 6],
+  ['band icon', BAND_ICON, 20, 12],
+  ['band cast', BAND_CAST, 20, 12],
 ]
 
 describe('the cast', () => {
@@ -33,6 +33,35 @@ describe('the cast', () => {
     for (const pose of POSES.filter(p => p !== 'stand')) expect(WIZARD[pose].rows.join() === WIZARD.stand.rows.join()).toBe(false)
     expect(MASCOT.hop.rows.join() === MASCOT.still.rows.join()).toBe(false)
     expect(new Set([FLAG.done, FLAG.now, FLAG.todo].map(f => f.rows.join())).size).toBe(3)
+  })
+})
+
+describe('the band\'s wizard', () => {
+  /** The pixels a quadrant cell shows: the art's rows halved, each 2 × 2 block. */
+  const blocks = (sprite: Sprite): string[] => {
+    const rows = sprite.rows.filter((_, y) => y % 2 === 0)
+    const out: string[] = []
+    for (let y = 0; y < rows.length; y += 2) {
+      for (let x = 0; x < (rows[0]?.length ?? 0); x += 2) {
+        out.push([rows[y]?.[x], rows[y]?.[x + 1], rows[y + 1]?.[x], rows[y + 1]?.[x + 1]].join(''))
+      }
+    }
+    return out
+  }
+
+  test('keeps each quadrant cell to the two colours it can show', () => {
+    for (const [name, sprite] of [['icon', BAND_ICON], ['cast', BAND_CAST]] as const) {
+      expect([name, sprite.rows.every((row, y) => y % 2 === 1 || row === sprite.rows[y + 1])]).toEqual([name, true])
+      expect([name, blocks(sprite).filter(block => new Set(block).size > 2)]).toEqual([name, []])
+    }
+  })
+
+  test('casts with the staff as long as at rest, down to the bottom row', () => {
+    const staff = (sprite: Sprite): number[] => sprite.rows.map(row => row.indexOf('w'))
+    const bottom = (sprite: Sprite): number => staff(sprite)[sprite.rows.length - 1] ?? -1
+    expect(bottom(BAND_ICON)).toBeGreaterThan(-1)
+    expect(bottom(BAND_CAST)).toBe(bottom(BAND_ICON))
+    expect(staff(BAND_CAST)).toEqual(staff(BAND_ICON))
   })
 })
 

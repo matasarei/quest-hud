@@ -378,9 +378,11 @@ export const scene = (args: SceneArgs): Grid => downsample(sceneArt(args), ART_S
 export const BAND = { columns: 10, rows: 3 } as const
 
 /**
- * The band's portrait: a small wizard drawn for the size. While the Road
- * walks he casts — the staff raised on every other frame (BAND_CAST), lowered
- * between (BAND_ICON) — and in a fight, as the Road's wizard strikes.
+ * The band's portrait: a small wizard drawn for the size, as art — 20 × 12,
+ * two pixels a column and four a row, as the Road's art is. While the Road
+ * walks he casts — his hand up and the orb flaring on every other frame
+ * (BAND_CAST), at rest between (BAND_ICON) — and in a fight, as the Road's
+ * wizard strikes.
  */
 export const bandPortrait = (pose: Pose = 'stand'): Grid =>
   spriteGrid(pose === 'walk1' || pose === 'walk3' || pose === 'strike' ? BAND_CAST : BAND_ICON)
