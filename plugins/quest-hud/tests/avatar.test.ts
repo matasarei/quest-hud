@@ -1,9 +1,33 @@
 import { describe, expect, test } from 'claude-code/testing'
 
 import {
-  AVATAR, AVATAR_SMALL, DEFAULT_COLOR, gridSize, gridToRasterCells, gridToRgba, gridToSvg, gridWords, IMAGE_BYTES, imageScale,
-  MAGE, mapToGrid, rasterSize, rasterWords, toBase64, toRasterCells, toSvg, type Grid,
+  DEFAULT_COLOR, gridSize, gridToRasterCells, gridToRgba, gridToSvg, gridWords, IMAGE_BYTES, imageScale,
+  mapToGrid, rasterSize, rasterWords, toBase64, toRasterCells, toSvg, type Grid, type Palette,
 } from '../src/avatar'
+
+// A 12 × 16 pixel map and its palette to encode: the mage the band once drew.
+const MAP: readonly string[] = [
+  '.....HH.....',
+  '....HHHH....',
+  '...HHHHHH...',
+  '..hhhhhhhh..',
+  '...SSSSSS...',
+  '...SESSES...',
+  '...SSSSSS...',
+  '..RRRRRRRRg.',
+  '.RRRRRRRRRs.',
+  '.SRRRBBRRRs.',
+  '..RRRRRRRRs.',
+  '..RRrRRrRRs.',
+  '..RRrRRrRRs.',
+  '..RRRRRRRRs.',
+  '...kk..kk.s.',
+  '...kk..kk...',
+]
+const COLORS: Palette = {
+  H: 0x6a55e0, h: 0xf2d15b, S: 0xf1c7a1, E: 0x14151b, R: 0x6a55e0, r: 0x4c3da1,
+  B: 0xf2d15b, s: 0x8a5a2b, g: 0x6fe3ff, k: 0x3a2a1a,
+}
 
 /** Paints an SVG's rectangles back onto a grid of its size, to compare pixel for pixel. */
 const paint = (svg: string, columns: number, rows: number): Grid => {
@@ -19,24 +43,10 @@ const paint = (svg: string, columns: number, rows: number): Grid => {
   return grid
 }
 
-describe('the avatar map', () => {
-  test('every row is as wide as the first', () => {
-    expect(AVATAR.every(row => row.length === 12)).toBe(true)
-    expect(AVATAR).toHaveLength(16)
-    expect(AVATAR_SMALL.every(row => row.length === 6)).toBe(true)
-    expect(AVATAR_SMALL).toHaveLength(6)
-  })
-
-  test('every pixel of both maps has a colour in the palette', () => {
-    const missing = [...AVATAR, ...AVATAR_SMALL].join('').split('').filter(c => c !== '.' && MAGE[c] === undefined)
-    expect(missing).toEqual([])
-  })
-})
-
 describe('rasterWords', () => {
-  test('the 12 × 16 avatar map is 12 columns by 8 rows of cells, three words a cell', () => {
-    expect(rasterSize(AVATAR)).toEqual({ columns: 12, rows: 8 })
-    expect(rasterWords(AVATAR, MAGE)).toHaveLength(12 * 8 * 3)
+  test('a 12 × 16 map is 12 columns by 8 rows of cells, three words a cell', () => {
+    expect(rasterSize(MAP)).toEqual({ columns: 12, rows: 8 })
+    expect(rasterWords(MAP, COLORS)).toHaveLength(12 * 8 * 3)
   })
 
   test('two filled pixels: upper half, top as foreground, bottom as background', () => {
@@ -74,15 +84,15 @@ describe('toRasterCells', () => {
     expect(toRasterCells(['a', 'a'], { a: 0xff8800 })).toBe('gCUAAACI/wAAiP8A')
   })
 
-  test('the avatar encodes to 96 cells of 12 bytes', () => {
-    expect(toRasterCells(AVATAR, MAGE)).toHaveLength(Math.ceil((96 * 12) / 3) * 4)
+  test('the map encodes to 96 cells of 12 bytes', () => {
+    expect(toRasterCells(MAP, COLORS)).toHaveLength(Math.ceil((96 * 12) / 3) * 4)
   })
 })
 
 describe('toSvg', () => {
-  test('its rectangles paint back exactly the avatar\'s pixels, and nothing runs', () => {
-    const svg = toSvg(AVATAR, MAGE)
-    expect(paint(svg, 12, 16)).toEqual(mapToGrid(AVATAR, MAGE))
+  test('its rectangles paint back exactly the map\'s pixels, and nothing runs', () => {
+    const svg = toSvg(MAP, COLORS)
+    expect(paint(svg, 12, 16)).toEqual(mapToGrid(MAP, COLORS))
     expect(svg.replace(/<rect [^>]*\/>/g, '')).toBe('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 16" shape-rendering="crispEdges"></svg>')
     expect(svg.includes('<script')).toBe(false)
     expect(svg.startsWith('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 16"')).toBe(true)
@@ -121,10 +131,10 @@ describe('the grid', () => {
   })
 
   test('the map-based functions give exactly what the grid ones give', () => {
-    const avatar = mapToGrid(AVATAR, MAGE)
-    expect(rasterWords(AVATAR, MAGE)).toEqual(gridWords(avatar))
-    expect(toRasterCells(AVATAR, MAGE)).toBe(gridToRasterCells(avatar))
-    expect(toSvg(AVATAR, MAGE)).toBe(gridToSvg(avatar))
+    const avatar = mapToGrid(MAP, COLORS)
+    expect(rasterWords(MAP, COLORS)).toEqual(gridWords(avatar))
+    expect(toRasterCells(MAP, COLORS)).toBe(gridToRasterCells(avatar))
+    expect(toSvg(MAP, COLORS)).toBe(gridToSvg(avatar))
   })
 
   test('a run of one colour is one rectangle, and paints back the same pixels', () => {

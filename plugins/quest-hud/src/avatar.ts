@@ -1,42 +1,8 @@
-// The avatar: one pixel map, drawn as half-block cells on a terminal (Raster)
-// and as rectangles elsewhere (Svg). One character per pixel; '.' is empty.
-
-export const AVATAR: readonly string[] = [
-  '.....HH.....',
-  '....HHHH....',
-  '...HHHHHH...',
-  '..hhhhhhhh..',
-  '...SSSSSS...',
-  '...SESSES...',
-  '...SSSSSS...',
-  '..RRRRRRRRg.',
-  '.RRRRRRRRRs.',
-  '.SRRRBBRRRs.',
-  '..RRRRRRRRs.',
-  '..RRrRRrRRs.',
-  '..RRrRRrRRs.',
-  '..RRRRRRRRs.',
-  '...kk..kk.s.',
-  '...kk..kk...',
-]
-
-/** The band's avatar: 6x6 pixels, three cell rows beside the two text rows. */
-export const AVATAR_SMALL: readonly string[] = [
-  '..HH..',
-  '.HHHH.',
-  'hhhhhh',
-  '.ESSE.',
-  '.RRRRs',
-  'RRBBRs',
-]
+// Pixel grids drawn as half-block cells on a terminal (Raster), as rectangles
+// elsewhere (Svg), or as an Image's pixels; and pixel maps, one character a
+// pixel ('.' is empty), read through a palette.
 
 export type Palette = Readonly<Record<string, number>>
-
-/** The mage, in the mocks' colours, as 0xRRGGBB. */
-export const MAGE: Palette = {
-  H: 0x6a55e0, h: 0xf2d15b, S: 0xf1c7a1, E: 0x14151b, R: 0x6a55e0, r: 0x4c3da1,
-  B: 0xf2d15b, s: 0x8a5a2b, g: 0x6fe3ff, k: 0x3a2a1a,
-}
 
 /** Raster's word for the terminal's own default colour. */
 export const DEFAULT_COLOR = 0x01000000

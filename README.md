@@ -34,11 +34,11 @@ inline above the prompt below that):
 
 ```
 ⚔ gku:implement · Forge — building and fixing        task 2/5 · loot 1
-[the zone's scene, 14 rows: its scenery dim behind, its ground, its props, a flag
- per task (green done, yellow in progress, grey to do), the purple wizard beside
- the one in progress, a ghost behind for each subagent, a monster facing the wizard
- while a fight is on or lost, and a chest, an octopus and a fox once they came —
- it bobs while Claude works]
+[the zone's scene, 14 rows of pixel art: its landscape behind, its landmarks, a flag
+ per task (green done, gold in progress, grey to do), the purple wizard beside the
+ one in progress with Claude's mascot at his heel, a little daemon-ghost behind for
+ each subagent, a monster facing the wizard while a fight is on or lost, and a chest,
+ GitHub's Octocat and GitLab's fox once they came — they walk while Claude works]
 with Explore
 ✓ Read the exporter
 ✓ Add the CSV writer
@@ -68,8 +68,8 @@ HUD reads only the command and its output, and never shows a command as it was t
 | a test run: `npm test`, `pytest`, `go test`, `cargo test`, `phpunit`, `rspec`, `bun test`, `claude plugin test` and others | a **dragon** while it runs; it stays after a failed run, until a run of the same kind passes | `fight tests won` or `lost`, with the score when the output shows one |
 | a lint or type check: `eslint`, `ruff check`, `mypy`, `tsc --noEmit`, `shellcheck`, `phpcs`, `npm run lint` and others | a **spider**, the same way | `fight lint won` or `lost` |
 | `git commit` | a **chest**, and `loot N` in the header | `loot`, with the commit's short sha and subject |
-| `gh` | the **octopus**, for the rest of the session | `ally PR #3 opened`, `merged`, `ready`, `closed`, checks passed or failed |
-| `glab` | the **fox**, for the rest of the session | `ally MR !12 opened`, and so on |
+| `gh` | **GitHub's Octocat**, for the rest of the session | `ally PR #3 opened`, `merged`, `ready`, `closed`, checks passed or failed |
+| `glab` | **GitLab's fox**, a fox of crystal facets, for the rest of the session | `ally MR !12 opened`, and so on |
 
 Wrapped commands count too (`cd app && npm test`, `timeout 300 pytest`, `docker compose exec
 app vendor/bin/phpunit`, `uv run pytest`); a mention does not (`echo "npm test"`, `grep
@@ -79,19 +79,27 @@ changes nothing.
 
 **On a narrow pane** the road keeps room for the wizard, three task flags (the one in progress
 and one each side) and any monster. To make that room, things give way in turn: the zone's
-props from the left, keeping its last one, then the fox, the octopus and the chest, then that
+landmarks from the left, keeping its last one, then the fox, the Octocat and the chest, then that
 last prop. The header still counts the loot, and the log still names the allies. Below 32
 columns the pane draws no scene and gives its rows to the tasks and the log.
 
-**Images or text cells.** The scene is drawn as true pixels where the terminal shows images
-(kitty, Ghostty, iTerm2 3.5+), and as half-block text cells everywhere else, from the same
-sprites. With `graphics = auto` (the default), the HUD finds out once a session: it draws the
-image, and if Claude Code could not show it there, it switches to cells. In cells the
-wizard bobs while Claude works; an image redraws only when something changes. On the desktop
-app the scene is an SVG.
+**Animation.** While Claude works, the Road walks: four frames a second, slow and stepped as a
+terminal animates. The landscape steps past in layers at different speeds, the wizard takes
+his four walking poses, and the mascot hops. In a fight he stops and strikes. When the zone
+changes, the old landscape slides out and the new one in, over six frames. When Claude is
+idle, nothing moves, and nothing is drawn. The wizard above the prompt steps with the Road.
 
-**Art:** sprites from [Kenney](https://kenney.nl)'s 1-Bit Pack, CC0 (public domain; the credit
-is a courtesy). Its sheet and licence are in `art/1-bit-pack/`.
+**Images or text cells.** Where the terminal shows images (kitty, Ghostty, iTerm2 3.5+), the
+scene is the art's own pixels, two a column across and four a row down, sent as a small PNG
+(about 14 KB a frame at 120 columns). Everywhere else it is half-block text cells, one pixel a
+column and two a row: the same art, each 2 × 2 block of it one cell pixel. With `graphics = auto` (the default), the HUD finds out once a session:
+it draws the image, and if Claude Code could not show it there, it switches to cells. On the
+desktop app the scene is an SVG, still.
+
+**Art:** drawn for Quest HUD in code, after the
+[claude-rpg](https://github.com/matasarei/claude-rpg) banner: the landscapes are shapes painted as
+pixel art (`src/world/landscapes.ts`), the cast are pixel maps (`src/world/sprites.ts`). GitHub's
+Octocat, GitLab's fox and Claude's mascot are our own drawings of them, not their logo files.
 
 **It costs nothing.** No model calls, nothing added to the context, no network. Every hook
 only observes Claude Code's own events and passes them on unchanged, and nothing is written
@@ -162,10 +170,9 @@ shellcheck --severity=warning plugins/quest-hud/scripts/*.sh plugins/quest-hud/t
 
 Run it from disk: `claude --plugin-dir plugins/quest-hud`; saving a file reloads the mod.
 
-The sprites in `plugins/quest-hud/src/art/sprites.ts` are generated from the pack's sheet in
-`art/1-bit-pack/`: add a sprite to the list in `tools/import-art.py` by its tile number on the
-sheet (`row × 49 + column`), and run `python3 -I tools/import-art.py` (Python 3, standard
-library). Installing the HUD needs none of this.
+The sprites in `plugins/quest-hud/src/world/sprites.ts` are pixel maps, one character a pixel
+from `PALETTE` (`.` is see-through), edited as text. The landscapes in
+`plugins/quest-hud/src/world/landscapes.ts` are shapes; `src/paint/` paints both.
 
 ## License
 

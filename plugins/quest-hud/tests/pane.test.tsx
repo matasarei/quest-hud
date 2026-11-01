@@ -1,9 +1,11 @@
 import { describe, expect, test } from 'claude-code/testing'
 import type { Engine } from 'claude-code/testing'
 
+import { imageScale } from '../src/avatar'
+import { skyColor } from '../src/scene'
 import { engine, RUN, start, world } from './kit'
 
-// Tests about the cells scene (the Raster, the bob) ask for it: auto draws an image first.
+// Tests about the cells scene (the Raster, its animation) ask for it: auto draws an image first.
 const CELLS = { options: { graphics: 'cells' } } as const
 
 const pane = (surface: 'terminal' | 'desktop', bodyColumns = 60) => ({
@@ -102,28 +104,28 @@ describe('opening the pane', () => {
   })
 })
 
-describe('the bob', () => {
+describe('the animation', () => {
   const mainTurn = { text: 'go', turnId: 'turn-1' }
   const turnDone = { turnId: 'turn-1', answer: '', durationMs: 1, isAborted: false, reason: 'answer' } as const
 
-  test('two frames a second while Claude works, then the figures at rest, then nothing', CELLS, async ($, on) => {
+  test('four frames a second while Claude works, each a step further, then one at rest, then nothing', CELLS, async ($, on) => {
     const clock = engine(on)
     world.panes = [{ id: 'quest-hud', isShown: true }]
     await implementing($)
     const ui = await $.ui.mount(pane('terminal'))
     await $.turn.start(mainTurn)
     await clock.advance(1000)
-    expect(world.blits).toHaveLength(2)
-    expect(world.blits[0] === world.blits[1]).toBe(false)
+    expect(world.blits).toHaveLength(4)
+    expect(new Set(world.blits).size).toBe(4)
     await $.turn.complete(turnDone)
-    expect(world.blits).toHaveLength(3)
-    expect(world.blits[2]).toBe(world.blits[1])
+    expect(world.blits).toHaveLength(5)
+    expect(world.blits[4] === world.blits[3]).toBe(false)
     await clock.advance(2000)
-    expect(world.blits).toHaveLength(3)
+    expect(world.blits).toHaveLength(5)
     await ui.unmount()
   })
 
-  test('no bob while the pane is not shown', CELLS, async ($, on) => {
+  test('none while the pane is not shown', CELLS, async ($, on) => {
     const clock = engine(on)
     world.panes = [{ id: 'quest-hud', isShown: false }]
     await implementing($)
@@ -134,7 +136,7 @@ describe('the bob', () => {
     await ui.unmount()
   })
 
-  test('no bob on the desktop, where the scene is an Svg', async ($, on) => {
+  test('none on the desktop, where the scene is an Svg', async ($, on) => {
     const clock = engine(on)
     world.panes = [{ id: 'quest-hud', isShown: true }]
     await implementing($)
@@ -151,7 +153,7 @@ describe('the bob', () => {
     await implementing($)
     const ui = await $.ui.mount(pane('terminal'))
     await $.turn.start(mainTurn)
-    await clock.advance(500)
+    await clock.advance(250)
     expect(world.blits).toHaveLength(1)
     world.panes = [{ id: 'quest-hud', isShown: false }]
     await clock.advance(2000)
@@ -171,14 +173,14 @@ describe('the bob', () => {
   })
 })
 
-describe('the bob and a new session', () => {
-  test('a session start stops a bob that was running', CELLS, async ($, on) => {
+describe('the animation and a new session', () => {
+  test('a session start stops an animation that was running', CELLS, async ($, on) => {
     const clock = engine(on)
     world.panes = [{ id: 'quest-hud', isShown: true }]
     await implementing($)
     const ui = await $.ui.mount(pane('terminal'))
     await $.turn.start({ text: 'go', turnId: 'turn-1' })
-    await clock.advance(500)
+    await clock.advance(250)
     expect(world.blits).toHaveLength(1)
     world.id = 's2'
     await start($)
@@ -188,15 +190,15 @@ describe('the bob and a new session', () => {
   })
 })
 
-describe('the bob and the first draw', () => {
-  test('a turn that started before the pane was first drawn bobs once it is drawn', CELLS, async ($, on) => {
+describe('the animation and the first draw', () => {
+  test('a turn that started before the pane was first drawn animates once it is drawn', CELLS, async ($, on) => {
     const clock = engine(on)
     world.panes = [{ id: 'quest-hud', isShown: true }]
     await implementing($)
     await $.turn.start({ text: 'go', turnId: 'turn-1' })
     const ui = await $.ui.mount(pane('terminal'))
     await clock.advance(1000)
-    expect(world.blits).toHaveLength(2)
+    expect(world.blits).toHaveLength(4)
     await ui.unmount()
   })
 })
@@ -273,7 +275,7 @@ describe('images or cells', () => {
     await again.unmount()
   })
 
-  test('an image scene does not bob', { options: { graphics: 'images' } }, async ($, on) => {
+  test('an image scene animates too, as PNG frames, and comes to rest', { options: { graphics: 'images' } }, async ($, on) => {
     const clock = engine(on)
     world.panes = [{ id: 'quest-hud', isShown: true }]
     await implementing($)
@@ -281,6 +283,10 @@ describe('images or cells', () => {
     await $.turn.start({ text: 'go', turnId: 'turn-1' })
     await clock.advance(1000)
     expect(world.blits).toHaveLength(0)
+    expect(world.imageBlits).toBe(4)
+    await $.turn.complete({ turnId: 'turn-1', answer: '', durationMs: 1, isAborted: false, reason: 'answer' })
+    await clock.advance(2000)
+    expect(world.imageBlits).toBe(5)
     await ui.unmount()
   })
 
@@ -327,12 +333,12 @@ describe('the monsters on the Road', () => {
       await ui.unmount()
       return source
     }
-    expect((await svg()).includes('#e2643a')).toBe(false)
+    expect((await svg()).includes('#d0803f')).toBe(false)
     await lose($)
-    expect((await svg()).includes('#e2643a')).toBe(true)
+    expect((await svg()).includes('#d0803f')).toBe(true)
     world.bash = { stdout: ' 232 pass\n 0 fail\n' }
     await $.tool.call({ tool: 'Bash', command: 'claude plugin test plugins/quest-hud', description: '' })
-    expect((await svg()).includes('#e2643a')).toBe(false)
+    expect((await svg()).includes('#d0803f')).toBe(false)
   })
 
   const drawn = async ($: Engine, find: { type: 'Raster' | 'Image'; key: string }) => {
@@ -401,7 +407,7 @@ describe('a pane too narrow for the scene', () => {
     await ui.unmount()
   })
 
-  test('no bob in cells while Claude works', CELLS, async ($, on) => {
+  test('no animation in cells while Claude works', CELLS, async ($, on) => {
     const clock = engine(on)
     world.panes = [{ id: 'quest-hud', isShown: true }]
     await implementing($)
@@ -410,5 +416,118 @@ describe('a pane too narrow for the scene', () => {
     await clock.advance(1000)
     expect(world.blits).toEqual([])
     await ui.unmount()
+  })
+})
+
+describe('a zone change', () => {
+  const review = { skill: 'review', pluginName: 'gku', text: 'x', frontmatter: { description: 'Review a change' } }
+
+  test('a skill start while Claude is idle slides the new zone in over six frames, then stops', CELLS, async ($, on) => {
+    const clock = engine(on)
+    world.panes = [{ id: 'quest-hud', isShown: true }]
+    await implementing($)
+    const ui = await $.ui.mount(pane('terminal'))
+    await $.skill.prompt(review)
+    await clock.advance(2000)
+    expect(world.blits).toHaveLength(6)
+    expect(world.blits.every((frame, i) => i === 0 || frame !== world.blits[i - 1])).toBe(true)
+    await clock.advance(2000)
+    expect(world.blits).toHaveLength(6)
+    await ui.unmount()
+  })
+
+  test('the desktop never slides: its Svg is drawn still', async ($, on) => {
+    const clock = engine(on)
+    world.panes = [{ id: 'quest-hud', isShown: true }]
+    await implementing($)
+    const desktop = await $.ui.mount(pane('desktop'))
+    await $.skill.prompt(review)
+    await clock.advance(2000)
+    expect(world.blits).toHaveLength(0)
+    expect(world.imageBlits).toBe(0)
+    await desktop.unmount()
+  })
+
+  test('as an image too', { options: { graphics: 'images' } }, async ($, on) => {
+    const clock = engine(on)
+    world.panes = [{ id: 'quest-hud', isShown: true }]
+    await implementing($)
+    const ui = await $.ui.mount(pane('terminal'))
+    await $.skill.prompt(review)
+    await clock.advance(2000)
+    expect(world.imageBlits).toBe(6)
+    await ui.unmount()
+  })
+})
+
+describe('the band\'s wizard', () => {
+  const band = { plugin: 'quest-hud', component: 'AbovePrompt', surface: 'terminal', props: { hasSurvey: false, isWorking: false, maxRows: 6, bodyColumns: 140, scroll: { offset: 0, bodyRows: 6 }, view: {} } } as const
+
+  test('steps with the Road\'s animation while Claude works, and comes to rest with it', CELLS, async ($, on) => {
+    const clock = engine(on)
+    world.panes = [{ id: 'quest-hud', isShown: true }]
+    await implementing($)
+    const road = await $.ui.mount(pane('terminal'))
+    const portrait = await $.ui.mount(band)
+    await $.turn.start({ text: 'go', turnId: 'turn-1' })
+    await clock.advance(1000)
+    expect(world.bandBlits).toHaveLength(4)
+    expect(new Set(world.bandBlits).size > 1).toBe(true)
+    await $.turn.complete({ turnId: 'turn-1', answer: '', durationMs: 1, isAborted: false, reason: 'answer' })
+    expect(world.bandBlits).toHaveLength(5)
+    await clock.advance(2000)
+    expect(world.bandBlits).toHaveLength(5)
+    await portrait.unmount()
+    await road.unmount()
+  })
+})
+
+describe('the image\'s detail', () => {
+  /** A PNG's width and height, read from its header in the base64. */
+  const pngSize = (base64: string): [number, number] => {
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+    const bits = [...base64.slice(0, 32)].map(c => alphabet.indexOf(c).toString(2).padStart(6, '0')).join('')
+    const byte = (i: number) => parseInt(bits.slice(i * 8, i * 8 + 8), 2)
+    const word = (i: number) => ((byte(i) << 24) | (byte(i + 1) << 16) | (byte(i + 2) << 8) | byte(i + 3)) >>> 0
+    return [word(16), word(20)]
+  }
+
+  test('an image shows the art\'s own pixels, twice the cells\' each way', { options: { graphics: 'images' } }, async ($, on) => {
+    engine(on)
+    await implementing($)
+    const ui = await $.ui.mount(pane('terminal', 60))
+    const image = await ui.find({ type: 'Image', key: 'scene-image' })
+    const source: unknown = image?.props.source
+    const png = typeof source === 'object' && source !== null && 'png' in source ? String(source.png) : ''
+    const [width, height] = pngSize(png)
+    // 60 columns and 28 pixel rows at the art's 2 a unit, 120 × 56, each art pixel a square of the image's scale.
+    const scale = imageScale(120, 56)
+    expect([width, height]).toEqual([120 * scale, 56 * scale])
+    await ui.unmount()
+  })
+})
+
+describe('a zone change while the pane is hidden', () => {
+  /** The colour of a Raster's top-left pixel: its first cell's foreground, read from the base64 words. */
+  const topLeft = (cells: string): number => {
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+    const bits = [...cells.slice(0, 16)].map(c => alphabet.indexOf(c).toString(2).padStart(6, '0')).join('')
+    const byte = (i: number) => parseInt(bits.slice(i * 8, i * 8 + 8), 2)
+    return byte(4) | (byte(5) << 8) | (byte(6) << 16)
+  }
+
+  test('shows the new zone when the pane is shown again, not a slide stuck at its start', CELLS, async ($, on) => {
+    engine(on)
+    world.panes = [{ id: 'quest-hud', isShown: true }]
+    await implementing($)
+    const before = await $.ui.mount(pane('terminal'))
+    await before.unmount()
+    world.panes = [{ id: 'quest-hud', isShown: false }]
+    await $.skill.prompt({ skill: 'review', pluginName: 'gku', text: 'x', frontmatter: { description: 'Review a change' } })
+    world.panes = [{ id: 'quest-hud', isShown: true }]
+    const after = await $.ui.mount(pane('terminal'))
+    const raster = await after.find({ type: 'Raster', key: 'scene' })
+    expect(topLeft(String(raster?.props.cells))).toBe(skyColor('arena'))
+    await after.unmount()
   })
 })

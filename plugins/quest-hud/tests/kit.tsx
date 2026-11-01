@@ -8,7 +8,9 @@ export const world: {
   id: string
   agents: AgentInfo[]
   blits: string[]
-  /** Blits that swap an Image (the probe), apart from the bob's cell blits. */
+  /** Cell blits of the band's portrait, apart from the scene's. */
+  bandBlits: string[]
+  /** Blits that swap an Image (the probe, the animation's image frames), apart from the cell blits. */
   imageBlits: number
   /** When true, the engine answers an Image blit as where it drew the alt. */
   refuseImages: boolean
@@ -24,6 +26,7 @@ export const world: {
   state: {},
   agents: [],
   blits: [],
+  bandBlits: [],
   imageBlits: 0,
   refuseImages: false,
   opened: [],
@@ -38,6 +41,7 @@ export const engine = (on: On) => {
   world.id = 's1'
   world.agents = []
   world.blits = []
+  world.bandBlits = []
   world.imageBlits = 0
   world.refuseImages = false
   world.opened = []
@@ -72,7 +76,9 @@ export const engine = (on: On) => {
       world.imageBlits += 1
       return { value: world.refuseImages ? { deny: 'the Image draws its alt there' } : {} }
     }
-    world.blits.push('cells' in e && typeof e.cells === 'string' ? e.cells : '')
+    const cells = 'cells' in e && typeof e.cells === 'string' ? e.cells : ''
+    if (e.key === 'avatar') world.bandBlits.push(cells)
+    else world.blits.push(cells)
     return { value: {} }
   })
   on('tool.call', (_, e) => {

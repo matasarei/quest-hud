@@ -6,7 +6,9 @@ import type { Grid } from './avatar'
 import { clockTime } from './log'
 import { bar, hpLeft, mpLeft, zoneLine, type Bars, type Segment } from './meters'
 import { cleanTitle } from './quest'
-import { MAX_GHOSTS, scene, SCENE_HEIGHT, waypointsOf } from './scene'
+import { downsample } from './paint/pixels'
+import { MAX_GHOSTS, sceneArt, SCENE_HEIGHT, waypointsOf, type Motion, type Transition } from './scene'
+import { ART_SCALE } from './world/sprites'
 import { progress } from './tasks'
 
 /** Rows the scene takes: two pixel rows per terminal row. */
@@ -33,13 +35,19 @@ export type RoadArgs = {
   bars: Bars
   columns: number
   rows: number
-  frame: 0 | 1
+  /** How far along the road the figures are, and how they stand; at rest when left out. */
+  motion?: Motion
+  /** A zone change under way. */
+  transition?: Transition
 }
 
 export type Road = {
   header: string
   count?: string
+  /** The scene, one pixel a unit: text cells and the desktop's Svg. */
   scene: Grid
+  /** The same scene at the art's resolution, ART_SCALE pixels a unit: an Image. */
+  art: Grid
   companions?: string
   tasks: string[]
   meters: Segment[]
@@ -49,9 +57,11 @@ export type Road = {
 /** The zone the scene shows: the skill's, or in the Wilds the last kind of work. */
 export const sceneZone = (quest: Quest | null, activity: Zone | null): Zone => quest?.zone ?? activity ?? 'wilds'
 
-/** The scene alone, for a redraw or a blit of one frame. */
-export const roadScene = (args: Pick<RoadArgs, 'quest' | 'tasks' | 'companions' | 'activity' | 'foes' | 'loot' | 'allies' | 'columns' | 'frame'>): Grid =>
-  scene({
+type SceneInputs = Pick<RoadArgs, 'quest' | 'tasks' | 'companions' | 'activity' | 'foes' | 'loot' | 'allies' | 'columns' | 'motion' | 'transition'>
+
+/** The scene alone at the art's resolution, for an Image's redraw or a blit of one frame. */
+export const roadArt = (args: SceneInputs): Grid =>
+  sceneArt({
     columns: args.columns,
     zone: sceneZone(args.quest, args.activity),
     waypoints: waypointsOf(args.tasks),
@@ -59,8 +69,12 @@ export const roadScene = (args: Pick<RoadArgs, 'quest' | 'tasks' | 'companions' 
     foes: args.foes,
     loot: args.loot,
     allies: args.allies,
-    frame: args.frame,
+    ...(args.motion === undefined ? {} : { motion: args.motion }),
+    ...(args.transition === undefined ? {} : { transition: args.transition }),
   })
+
+/** The scene alone, one pixel a unit: for cells. */
+export const roadScene = (args: SceneInputs): Grid => downsample(roadArt(args), ART_SCALE)
 
 const mark = (task: Task): string => (task.status === 'completed' ? '✓' : task.status === 'in_progress' ? '▸' : '·')
 
@@ -110,10 +124,13 @@ export const road = (args: RoadArgs): Road => {
     ? log.slice(-logRoom).map(entry => `${clockTime(entry.at)} ${entry.kind.padEnd(5)} ${entry.text}`)
     : []
 
+  const art = hasScene ? roadArt({ ...args, columns }) : []
+
   return {
     header,
     ...(total > 0 || loot > 0 ? { count: [total > 0 ? `task ${done}/${total}` : '', loot > 0 ? `loot ${loot}` : ''].filter(Boolean).join(' · ') } : {}),
-    scene: hasScene ? roadScene({ ...args, columns }) : [],
+    scene: downsample(art, ART_SCALE),
+    art,
     ...(companionsLine ? { companions: companionsLine } : {}),
     tasks: taskRows,
     meters: meterSegments(meters, bars),
