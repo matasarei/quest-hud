@@ -38,7 +38,7 @@ describe('the log, from tool calls', () => {
     engine(on)
     await start($)
     await $.tool.call({ tool: 'EnterPlanMode' })
-    expect(await texts($)).toEqual(['plan mode'])
+    expect(await texts($)).toEqual(['entered'])
   })
 
   test('a subagent\'s own calls stay out of the log and the task list', async ($, on) => {
@@ -90,7 +90,7 @@ describe('camp', () => {
     on('session.compact', () => ({ messages: [{ role: 'assistant', text: 'summary', toolUses: [] }], tokensBefore: 164_000, tokensAfter: 38_000 }))
     await start($)
     await $.session.compact({ trigger: 'manual', messages: [{ role: 'user', text: 'hi', toolUses: [] }] })
-    expect(await texts($)).toEqual(['camp · 164k → 38k'])
+    expect(await texts($)).toEqual(['164k → 38k'])
   })
 
   test('a skipped compaction is no line', async ($, on) => {

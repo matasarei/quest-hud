@@ -265,7 +265,7 @@ export const register: Register = (on, options) => {
     }
 
     if (e.tool === 'EnterPlanMode') {
-      await addLog($, { kind: 'plan', text: 'plan mode' })
+      await addLog($, { kind: 'plan', text: 'entered' })
       await update($, activity, () => 'map')
     }
 
@@ -305,8 +305,8 @@ export const register: Register = (on, options) => {
     if (compacted.skip === undefined) {
       const { tokensBefore, tokensAfter } = compacted
       const text = tokensBefore !== undefined && tokensAfter !== undefined
-        ? `camp · ${shortTokens(tokensBefore)} → ${shortTokens(tokensAfter)}`
-        : 'camp · context compacted'
+        ? `${shortTokens(tokensBefore)} → ${shortTokens(tokensAfter)}`
+        : 'context compacted'
       await addLog($, { kind: 'camp', text })
     }
 
