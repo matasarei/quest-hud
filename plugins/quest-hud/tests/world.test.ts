@@ -73,6 +73,22 @@ describe('the band\'s wizard', () => {
   })
 })
 
+describe('Claude\'s mascot', () => {
+  test('both frames keep each quadrant cell to two colours, so text cells draw it clean', () => {
+    for (const [name, sprite] of [['still', MASCOT.still], ['hop', MASCOT.hop]] as const) {
+      const rows = sprite.rows.filter((_, y) => y % 2 === 0)
+      const crowded: string[] = []
+      for (let y = 0; y + 1 < rows.length; y += 2) {
+        for (let x = 0; x + 1 < (rows[0]?.length ?? 0); x += 2) {
+          const block = new Set([rows[y]?.[x], rows[y]?.[x + 1], rows[y + 1]?.[x], rows[y + 1]?.[x + 1]])
+          if (block.size > 2) crowded.push(`${x},${y}`)
+        }
+      }
+      expect([name, crowded]).toEqual([name, []])
+    }
+  })
+})
+
 describe('the landscapes', () => {
   test('cover the whole width from the top to the bottom, in every zone and at any step', () => {
     for (const zone of ['wilds', 'map', 'forge', 'arena', 'harbour', 'watchtower', 'dungeon', 'camp'] as const) {
