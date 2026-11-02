@@ -7,6 +7,7 @@ import {
 } from '../src/scene'
 import { PALETTE, PROPS } from '../src/world/sprites'
 import type { Task, Zone } from '../types'
+import { striping } from './measure'
 
 const ZONES: readonly Zone[] = ['watchtower', 'harbour', 'dungeon', 'arena', 'forge', 'map', 'camp', 'wilds']
 
@@ -73,19 +74,6 @@ describe('scene', () => {
   const three: Waypoint[] = ['done', 'now', 'todo']
 
   test('for text cells, the backdrop is dithered in row pairs: halved, it stripes less in every zone; images as before', () => {
-    /** Of the pixels that differ from their right neighbour, the share that match the one below: vertical stripes. */
-    const striping = (grid: Scene): number => {
-      let mixed = 0
-      let striped = 0
-      for (let y = 0; y + 1 < grid.length; y++) {
-        for (let x = 0; x + 1 < (grid[y]?.length ?? 0); x++) {
-          if (grid[y]?.[x] === grid[y]?.[x + 1]) continue
-          mixed++
-          if (grid[y]?.[x] === grid[y + 1]?.[x]) striped++
-        }
-      }
-      return striped / Math.max(1, mixed)
-    }
     const SKIES: readonly Zone[] = ['watchtower', 'harbour', 'arena', 'camp', 'wilds']
     for (const zone of ZONES) {
       const args = { columns: 60, zone, waypoints: three, companions: 0 }
