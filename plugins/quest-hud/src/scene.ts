@@ -294,13 +294,73 @@ export const foeX = (hero: number, width: number, count: number, index: number, 
 const foeGrid = (kind: FightKind): Grid => (kind === 'test' ? mirrorGrid(spriteGrid(DRAGON)) : spriteGrid(SPIDER))
 
 /**
+ * How far a zone change has gone, in pixels of a scene `width` pixels wide:
+ * the old scene that far out to the left, the new one that far in from the
+ * right. The backdrop and what stands by the road both slide by it.
+ */
+export const slideShift = (width: number, progress: number): number => Math.round(width * Math.max(0, Math.min(1, progress)))
+
+/**
  * Two landscapes side by side, `progress` of the way from the first to the
  * second: the first slides out to the left as the second comes in from the right.
  */
 export const slide = (from: Grid, to: Grid, progress: number): Canvas => {
   const width = to[0]?.length ?? 0
-  const shift = Math.round(width * Math.max(0, Math.min(1, progress)))
+  const shift = slideShift(width, progress)
   return to.map((line, y) => line.map((color, x) => (x + shift < width ? from[y]?.[x + shift] : to[y]?.[x + shift - width]) ?? color))
+}
+
+/** Something standing by the road, in art pixels: its left edge, and the columns it may paint (`to` excluded). */
+export type Roadside = { grid: Grid; x: number; from: number; to: number }
+
+/**
+ * What stands by the road in a layout — the zone's landmarks, and the chest
+ * once there is loot, just left of them — at `step` of the walk: it passes by
+ * with the near layer, behind everyone, and comes round again from the right.
+ * At rest it stands at the right, where the layout keeps room for it. `right`
+ * is where it ends on the left, in units, at rest: the allies stand left of it.
+ */
+const roadsideOf = (kept: Layout, width: number, step: number): { things: Array<{ grid: Grid; x: number }>; right: number } => {
+  const standing: Array<{ grid: Grid; x: number; size: number }> = []
+  let right = width - 2
+  for (const prop of [...kept.props].reverse()) {
+    const size = units(PROPS[prop])
+    right -= size
+    standing.push({ grid: spriteGrid(PROPS[prop]), x: right, size })
+  }
+  if ((kept.extras.loot ?? 0) > 0) {
+    right -= SIZE.extra + EXTRA_GAP
+    standing.push({ grid: spriteGrid(CHEST), x: right, size: SIZE.extra })
+  }
+  const passed = step * PARALLAX.near
+  const loop = width + (width - 2 - right) + LANDMARK_GAP
+  const things = standing
+    .map(thing => ({ grid: thing.grid, x: ((((thing.x - passed + thing.size) % loop) + loop) % loop) - thing.size }))
+    .filter(thing => thing.x < width)
+    .map(thing => ({ grid: thing.grid, x: thing.x * ART_SCALE }))
+  return { things, right }
+}
+
+/**
+ * The roadside a frame draws. It is scenery, so in a zone change it slides
+ * with its backdrop: the old zone's out to the left, kept left of the seam,
+ * and the new zone's in from the right, kept right of it — by `slideShift`,
+ * the backdrop's own offset.
+ */
+export const roadside = (args: SceneArgs): Roadside[] => {
+  const width = Math.max(0, Math.floor(args.columns))
+  const pixels = width * ART_SCALE
+  const step = (args.motion ?? REST).step
+  const own = (zone: Zone): Array<{ grid: Grid; x: number }> => roadsideOf(layout({ ...args, columns: width, zone }), width, step).things
+  const { transition } = args
+  if (transition === undefined || transition.from === args.zone || transition.progress >= 1) {
+    return own(args.zone).map(thing => ({ ...thing, from: 0, to: pixels }))
+  }
+  const seam = pixels - slideShift(pixels, transition.progress)
+  return [
+    ...own(transition.from).map(thing => ({ ...thing, x: thing.x - (pixels - seam), from: 0, to: seam })),
+    ...own(args.zone).map(thing => ({ ...thing, x: thing.x + seam, from: seam, to: pixels })),
+  ]
 }
 
 /** Paints a sprite's grid with its feet on the ground, its left edge at `x` units. */
@@ -319,28 +379,8 @@ export const sceneArt = (args: SceneArgs): Grid => {
     ? slide(backdrop(transition.from), backdrop(zone), transition.progress)
     : backdrop(zone).map(row => [...row])
   const kept = layout({ ...args, columns: width })
-
-  // What stands by the road — the zone's landmarks, and the chest once there is
-  // loot, just left of them — passes by with the near layer as the wizard walks,
-  // behind everyone, and comes round again from the right. At rest it stands at
-  // the right, where the layout keeps room for it.
-  const roadside: Array<{ grid: Grid; x: number; size: number }> = []
-  let right = width - 2
-  for (const prop of [...kept.props].reverse()) {
-    const size = units(PROPS[prop])
-    right -= size
-    roadside.push({ grid: spriteGrid(PROPS[prop]), x: right, size })
-  }
-  if ((kept.extras.loot ?? 0) > 0) {
-    right -= SIZE.extra + EXTRA_GAP
-    roadside.push({ grid: spriteGrid(CHEST), x: right, size: SIZE.extra })
-  }
-  const passed = motion.step * PARALLAX.near
-  const loop = width + (width - 2 - right) + LANDMARK_GAP
-  for (const thing of roadside) {
-    const x = ((((thing.x - passed + thing.size) % loop) + loop) % loop) - thing.size
-    if (x < width) standAt(art, thing.grid, x)
-  }
+  for (const thing of roadside(args)) stamp(art, thing.grid, thing.x, GROUND_ROW * ART_SCALE - thing.grid.length, thing.from, thing.to)
+  let right = roadsideOf(kept, width, motion.step).right
 
   // GitHub's Octocat and GitLab's fox joined the party: they keep their places as it walks.
   for (const grid of allyGrids(kept.extras)) {

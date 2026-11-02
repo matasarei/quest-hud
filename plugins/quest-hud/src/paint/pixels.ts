@@ -21,15 +21,21 @@ export const mirrorGrid = (grid: Grid): Grid => grid.map(line => [...line].rever
 
 export const gridWidth = (grid: Grid): number => grid.reduce((most, line) => Math.max(most, line.length), 0)
 
-/** Paints the grid's pixels onto the canvas with its top-left at (x, y); none outside. */
-export const stamp = (canvas: Canvas, grid: Grid, x: number, y: number): void => {
+/**
+ * Paints the grid's pixels onto the canvas with its top-left at (x, y); none
+ * outside it, nor outside the columns `from` to `to` (end excluded), the
+ * whole row when left out.
+ */
+export const stamp = (canvas: Canvas, grid: Grid, x: number, y: number, from = 0, to = Infinity): void => {
   const left = Math.round(x)
   const top = Math.round(y)
   grid.forEach((line, dy) => {
     const row = canvas[top + dy]
     if (!row) return
+    const first = Math.max(0, from)
+    const end = Math.min(row.length, to)
     line.forEach((color, dx) => {
-      if (color !== undefined && left + dx >= 0 && left + dx < row.length) row[left + dx] = color
+      if (color !== undefined && left + dx >= first && left + dx < end) row[left + dx] = color
     })
   })
 }

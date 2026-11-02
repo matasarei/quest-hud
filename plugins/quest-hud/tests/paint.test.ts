@@ -292,6 +292,16 @@ describe('pixel art', () => {
     expect(canvas).toEqual([[0, 0, 0x111111], [0, 0, 0x222222]])
   })
 
+  test('a stamp kept to columns writes nothing outside them; with none, the whole row', () => {
+    const solid = [[7, 7, 7, 7]]
+    const kept: Canvas = [[0, 0, 0, 0, 0, 0]]
+    stamp(kept, solid, 1, 0, 2, 4)
+    expect(kept).toEqual([[0, 0, 7, 7, 0, 0]])
+    const whole: Canvas = [[0, 0, 0, 0, 0, 0]]
+    stamp(whole, solid, 1, 0)
+    expect(whole).toEqual([[0, 7, 7, 7, 7, 0]])
+  })
+
   test('down by blocks keeps each block\'s most common colour; up by squares keeps every pixel', () => {
     expect(downsample([[1, 1], [1, 2]], 2)).toEqual([[1]])
     expect(downsample([[1, 2], [2, 1]], 2)).toEqual([[1]])
