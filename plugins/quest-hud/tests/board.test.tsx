@@ -480,3 +480,41 @@ describe('the counts row', () => {
     await ui.unmount()
   })
 })
+
+describe('a read that outlives its session', () => {
+  test('a new session started while the herald is out keeps its empty board and places no row', async ($, on) => {
+    engine(on)
+    world.gh = github(sweepWith({ review: { issueCount: 1, nodes: [pull(7, 'Fix the door')] } }))
+    let open: () => void = () => undefined
+    world.ghGate = new Promise(resolve => { open = resolve })
+    await start($)
+    await run($, 'quest-hud:quests')
+    world.id = 's2'
+    await start($)
+    open()
+    await settled($)
+    const text = await boardText($)
+    expect(text).not.toContain('Fix the door')
+    expect(text).toContain('/quest-hud:quests')
+    expect(world.placed).toEqual([])
+    expect(world.toasts).toEqual([])
+  })
+
+  test('that session can then read for itself', async ($, on) => {
+    engine(on)
+    world.gh = github(sweepWith({ review: { issueCount: 1, nodes: [pull(7, 'Fix the door')] } }))
+    let open: () => void = () => undefined
+    world.ghGate = new Promise(resolve => { open = resolve })
+    await start($)
+    await run($, 'quest-hud:quests')
+    world.id = 's2'
+    await start($)
+    open()
+    await settled($)
+    world.ghGate = undefined
+    expect(await run($, 'quest-hud:quests')).toContain('The herald rides')
+    await settled($)
+    expect(await boardText($)).toContain('Fix the door')
+    expect(world.placed).toHaveLength(1)
+  })
+})

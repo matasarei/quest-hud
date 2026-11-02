@@ -332,14 +332,14 @@ async function turnOn($: EngineInterface, detail: Detail): Promise<string> {
 const reachingGitHub: { isRunning: boolean } = { isRunning: false }
 
 /** Reads GitHub through gh. Only /quest-hud:quests calls it, in the background: never at a start, never on a timer. */
-async function readGitHub($: EngineInterface): Promise<Board> {
+async function readGitHub($: EngineInterface, session: string): Promise<Board> {
   const [swept, notified, here] = await Promise.all([runGh($, SWEEP_ARGV, SWEEP_MS), runGh($, NOTIFICATIONS_ARGV), readHereRepo($)])
   const at = await $.clock.now()
   const sweep = swept === undefined ? undefined : parseSweep(swept.stdout, at)
   if (sweep === undefined) return failedBoard(failureOf(swept?.exitCode), at)
 
   const unread = notified === undefined ? undefined : parseNotifications(notified.stdout, at, new Set(sweep.repos))
-  await update($, board, () => boardOf({ phase: 'scanning', at, sweep, unread, here }))
+  if ((await $.session.id()) === session) await update($, board, () => boardOf({ phase: 'scanning', at, sweep, unread, here }))
   const scan = tallyScan(await scanRepos($, sweep.repos.slice(0, SCAN_REPOS)), at)
 
   return boardOf({ phase: 'done', at, sweep, unread, here, scan })
@@ -360,9 +360,12 @@ async function postCounts($: EngineInterface, done: Board): Promise<void> {
   if (placed?.isPlaced !== true) $.ui.toast(text)
 }
 
-/** One read of GitHub, start to end. Whatever goes wrong, the board says so. */
+/** One read of GitHub, start to end. Whatever goes wrong, the board says so; a session that began meanwhile is left alone. */
 async function postBoard($: EngineInterface, at: number): Promise<void> {
-  const done = await readGitHub($).catch(() => failedBoard('no-answer', at))
+  const session = await $.session.id()
+  const done = await readGitHub($, session).catch(() => failedBoard('no-answer', at))
+  if ((await $.session.id()) !== session) return
+
   await update($, board, () => done)
   await postCounts($, done)
 }
