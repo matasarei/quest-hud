@@ -93,20 +93,6 @@ async function statusLines($: EngineInterface): Promise<string> {
   ].join('\n')
 }
 
-// The engine keeps a plugin's status line until told otherwise, across a reload, so a line an
-// earlier load pinned may still be up. register sets this, since it runs again when an option changes.
-let mayHoldOldStatus = true
-
-/** The one-line entry, drawn only when the detail option asks for it; otherwise the first call of a load clears any left over. */
-async function showStatus($: EngineInterface, detail: Detail, bars: Bars): Promise<void> {
-  if (detail === 'status' && !(await read($, hidden))) {
-    $.ui.status(statusText(await read($, quest), await read($, tasks), await read($, meters), bars))
-  } else if (mayHoldOldStatus) {
-    $.ui.status(undefined)
-  }
-  mayHoldOldStatus = false
-}
-
 /** Milliseconds between the animation's frames: four a second, slow and stepped, as a terminal animates. */
 export const ANIM_MS = 250
 
@@ -295,7 +281,7 @@ async function stopAnim($: EngineInterface): Promise<void> {
 }
 
 /** What /quest-hud:off answers: stored, so it holds in every session; the hooks go on observing, and only the drawing stops. */
-async function turnOff($: EngineInterface, detail: Detail): Promise<string> {
+async function turnOff($: EngineInterface): Promise<string> {
   if (await read($, hidden)) return 'Quest HUD is already off.'
 
   const wasOpen = (await $.ui.panes()).some(pane => pane.id === PANE_ID)
@@ -304,20 +290,18 @@ async function turnOff($: EngineInterface, detail: Detail): Promise<string> {
   await update($, hidden, () => true)
   stopTimer()
   await $.ui.close({ id: PANE_ID })
-  if (detail === 'status') $.ui.status(undefined)
 
   return 'Quest HUD is off, in every session. /quest-hud:on brings it back.'
 }
 
 /** What /quest-hud:on answers: the HUD as it was, with the Road back if off closed it or the detail option asks for it. */
-async function turnOn($: EngineInterface, detail: Detail, bars: Bars): Promise<string> {
+async function turnOn($: EngineInterface, detail: Detail): Promise<string> {
   if (!(await read($, hidden))) return 'Quest HUD is already on.'
 
   const wasOpen = (await $.store.get('roadWasOpen')) === true
   await $.store.set('hidden', false)
   await $.store.delete('roadWasOpen')
   await update($, hidden, () => false)
-  await showStatus($, detail, bars)
   if (wasOpen || detail === 'pane') await $.ui.open({ id: PANE_ID, title: PANE_TITLE })
 
   return detail === 'off' ? 'Quest HUD is on, but the detail option in /config is off.' : 'Quest HUD is back.'
@@ -367,7 +351,6 @@ async function refreshCompanions($: EngineInterface): Promise<void> {
 }
 
 export const register: Register = (on, options) => {
-  mayHoldOldStatus = true
   const detail = pick<Detail>(options.detail, ['off', 'status', 'band', 'pane'], 'band')
   const hasBand = detail === 'band' || detail === 'pane'
   const bars = pick<Bars>(options.bars, ['hpmp', 'all'], 'hpmp')
@@ -411,7 +394,6 @@ export const register: Register = (on, options) => {
     stopTimer()
     const usage = await $.session.usage()
     await update($, meters, () => fromMeasure(usage))
-    await showStatus($, detail, bars)
 
     // Unasked, the engine places it only from 144 columns; below that it waits.
     if (detail === 'pane' && !isHidden) {
@@ -426,7 +408,6 @@ export const register: Register = (on, options) => {
       const list = await read($, tasks)
       await update($, quest, current => afterPrompt(current, e.text, list))
       await noteZone($)
-      await showStatus($, detail, bars)
     }
 
     return next(e)
@@ -447,7 +428,6 @@ export const register: Register = (on, options) => {
     await update($, quest, () => started)
     await noteZone($)
     await addLog($, { kind: 'skill', text: `${started.title} · ${ZONE_LABEL[started.zone]}` })
-    await showStatus($, detail, bars)
 
     return result
   }).catch(($, e, next) => next(e))
@@ -504,7 +484,6 @@ export const register: Register = (on, options) => {
         if (done) await addLog($, { kind: 'task', text: `✓ ${cleanTitle(done.subject)}` })
       }
 
-      await showStatus($, detail, bars)
     }
 
     const counts = scoutCounts(e.tool)
@@ -577,7 +556,6 @@ export const register: Register = (on, options) => {
           contextTokens: tokensAfter,
           contextPercent: Math.round((tokensAfter / current.window) * 100),
         })
-        await showStatus($, detail, bars)
       }
     }
 
@@ -586,7 +564,6 @@ export const register: Register = (on, options) => {
 
   on('session.measure', async ($, e, next) => {
     await update($, meters, () => fromMeasure(e))
-    await showStatus($, detail, bars)
 
     return next(e)
   }).catch(($, e, next) => next(e))
@@ -603,9 +580,9 @@ export const register: Register = (on, options) => {
 
   on('command.run', { command: 'quest-hud:status' }, async $ => ({ text: await statusLines($) })).catch(($, e, next) => next(e))
 
-  on('command.run', { command: 'quest-hud:off' }, async $ => ({ text: await turnOff($, detail) })).catch(($, e, next) => next(e))
+  on('command.run', { command: 'quest-hud:off' }, async $ => ({ text: await turnOff($) })).catch(($, e, next) => next(e))
 
-  on('command.run', { command: 'quest-hud:on' }, async $ => ({ text: await turnOn($, detail, bars) })).catch(($, e, next) => next(e))
+  on('command.run', { command: 'quest-hud:on' }, async $ => ({ text: await turnOn($, detail) })).catch(($, e, next) => next(e))
 
   // The bare name takes the same words after a space, and any other word gets a
   // free answer: a typo after the colon goes to the model, one after the space stops here.
@@ -616,8 +593,8 @@ export const register: Register = (on, options) => {
     if (word === 'status') return { text: await statusLines($) }
     if (word === 'pane') return { text: await openRoad($) }
     if (word === 'statusline') return { text: help($.plugin.root) }
-    if (word === 'off') return { text: await turnOff($, detail) }
-    if (word === 'on') return { text: await turnOn($, detail, bars) }
+    if (word === 'off') return { text: await turnOff($) }
+    if (word === 'on') return { text: await turnOn($, detail) }
 
     return { text: unknownText(e.args.trim(), settings) }
   })

@@ -165,7 +165,7 @@ export const bandModel = (quest: Quest | null, tasks: readonly Task[], meters: M
   return { head, meters: row }
 }
 
-/** The one-line form, for `$.ui.status`. */
+/** The one-line form, for /quest-hud:status. */
 export const statusText = (quest: Quest | null, tasks: readonly Task[], meters: Meters | null, bars: Bars): string => {
   const parts: string[] = []
   const { done, total } = progress(tasks)
