@@ -339,7 +339,8 @@ async function readGitHub($: EngineInterface, session: string): Promise<Board> {
   if (sweep === undefined) return failedBoard(failureOf(swept?.exitCode), at)
 
   const unread = notified === undefined ? undefined : parseNotifications(notified.stdout, at, new Set(sweep.repos))
-  if ((await $.session.id()) === session) await update($, board, () => boardOf({ phase: 'scanning', at, sweep, unread, here }))
+  // Only a sight of the rows while the scan runs: a write that fails costs that, and not the sweep.
+  if ((await $.session.id()) === session) await update($, board, () => boardOf({ phase: 'scanning', at, sweep, unread, here })).catch(() => undefined)
   const scan = tallyScan(await scanRepos($, sweep.repos.slice(0, SCAN_REPOS)), at)
 
   return boardOf({ phase: 'done', at, sweep, unread, here, scan })

@@ -62,6 +62,8 @@ export const world: {
   /** The rows the plugin placed in the transcript, by id; when true, the engine draws none. */
   placed: string[]
   refusePlace: boolean
+  /** The engine refuses a state write this says yes to, as a failed write would. */
+  refuseState?: (key: string, value: unknown) => boolean
   toasts: string[]
 } = {
   id: 's1',
@@ -132,9 +134,11 @@ export const engine = (on: On, store: Readonly<Record<string, unknown>> = {}) =>
   world.remote = undefined
   world.placed = []
   world.refusePlace = false
+  world.refuseState = undefined
   world.toasts = []
   // Every value the plugin stores, as the kit's own store accepted it.
   on('state.set', async (_, e, next) => {
+    if (world.refuseState?.(e.key, e.value)) return { deny: 'the state is full' }
     const stored = await next(e)
     if (stored.value?.isSet) world.state[e.key] = e.value
     return stored

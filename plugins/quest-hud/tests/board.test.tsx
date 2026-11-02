@@ -518,3 +518,19 @@ describe('a read that outlives its session', () => {
     expect(world.placed).toHaveLength(1)
   })
 })
+
+const hasPhase = (value: unknown, phase: string): boolean => typeof value === 'object' && value !== null && (value as { phase?: unknown }).phase === phase
+
+describe('a state write that fails', () => {
+  test('while the scan starts: the sweep it already holds still reaches the board', async ($, on) => {
+    engine(on)
+    world.gh = github(sweepWith({ review: { issueCount: 1, nodes: [pull(7, 'Fix the door')] } }))
+    world.refuseState = (key, value) => key === 'board' && hasPhase(value, 'scanning')
+    await start($)
+    await run($, 'quest-hud:quests')
+    await settled($)
+    const text = await boardText($)
+    expect(text).toContain('Fix the door')
+    expect(text).not.toContain('did not answer')
+  })
+})
