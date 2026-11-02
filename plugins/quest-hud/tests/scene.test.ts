@@ -3,7 +3,7 @@ import { describe, expect, test } from 'claude-code/testing'
 import { downsample } from '../src/paint/pixels'
 import {
   atRest, avatarX, BAND, bandPortrait, figures, FLAG_SLOT, FLAG_WIDTH, fitWaypoints, flagSlots, foeX, GROUND_ROW, layout, MAX_FLAGS, MAX_GHOSTS, MIN_FLAGS, propsWidth,
-  nextMotion, REST, roadWidth, scene, sceneArt, SCENE_HEIGHT, SIZE, slide, slideShift, skyColor, waypointsOf, waypointX, ZONE_PROPS, type Waypoint,
+  nextMotion, REST, roadWidth, scene, sceneArt, SCENE_HEIGHT, SIZE, slide, slideShift, roadside, skyColor, waypointsOf, waypointX, ZONE_PROPS, type Waypoint,
 } from '../src/scene'
 import { PALETTE, PROPS } from '../src/world/sprites'
 import type { Task, Zone } from '../types'
@@ -384,6 +384,34 @@ describe('a zone change', () => {
     expect(end).toEqual(plain)
     const half = scene({ ...args, transition: { from: 'camp', progress: 0.5 } })
     expect(half[0]?.slice(0, 50)).toEqual(scene({ ...args, zone: 'camp' })[0]?.slice(50))
+  })
+})
+
+describe('the landmarks in a zone change', () => {
+  const args = { columns: 100, zone: 'arena', waypoints: ['done', 'now'], companions: 0, loot: 1 } as const
+  const WIDTH = 100 * 2
+
+  test('at its start the frame is the old zone\'s scene, landmarks and chest included; at its end the new one\'s', () => {
+    expect(JSON.stringify(sceneArt({ ...args, transition: { from: 'camp', progress: 0 } }))).toBe(JSON.stringify(sceneArt({ ...args, zone: 'camp' })))
+    expect(JSON.stringify(sceneArt({ ...args, transition: { from: 'camp', progress: 1 } }))).toBe(JSON.stringify(sceneArt(args)))
+  })
+
+  test('the old zone\'s roadside goes out with its backdrop, the new one\'s comes in with its own, kept to their sides of the seam', () => {
+    const still = (zone: 'camp' | 'arena') => roadside({ ...args, zone })
+    for (const progress of [0.25, 0.5, 0.75]) {
+      const shift = slideShift(WIDTH, progress)
+      const seam = WIDTH - shift
+      const out = still('camp').map(t => ({ ...t, x: t.x - shift, to: seam }))
+      const into = still('arena').map(t => ({ ...t, x: t.x + seam, from: seam }))
+      expect(roadside({ ...args, transition: { from: 'camp', progress } })).toEqual([...out, ...into])
+    }
+  })
+
+  test('with no slide under way, the roadside is the zone\'s own, over the whole width', () => {
+    const things = roadside(args)
+    expect(things.length).toBe(3)
+    expect(things.every(t => t.from === 0 && t.to === WIDTH)).toBe(true)
+    expect(roadside({ ...args, transition: { from: 'arena', progress: 0.5 } })).toEqual(things)
   })
 })
 
