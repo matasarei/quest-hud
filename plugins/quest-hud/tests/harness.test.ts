@@ -198,6 +198,13 @@ describe('notes', () => {
     expect(cardOf(inventory({ skills: ['x'] }), usage({ skillRuns: { 'bad\u202ename': 1 } })).parts[2]?.note).toBe('1 run, mostly bad name')
   })
 
+  test('keep each guardrail apart, so a "no" reads on one only', () => {
+    const note = (inv: Partial<Inventory>) => cardOf(inventory(inv), usage()).parts.find(part => part.name === 'Guardrails')?.note
+    expect(note({ hasPermissionRules: true, hasAutoMode: true })).toBe('no hooks · permission rules · auto mode')
+    expect(note({ hasHooks: true, hasPermissionRules: true, hasDenyRules: true })).toBe('hooks · deny rules')
+    expect(note({})).toBe('no hooks · no permission rules')
+  })
+
   test('name the missing language server', () => {
     const card = cardOf(inventory(), usage({ mcpCalls: 1, edits: { php: 3 } }))
     expect(card.parts.find(part => part.name === 'Tools')?.note).toBe('MCP used, no PHP language server')

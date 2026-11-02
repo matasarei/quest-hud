@@ -194,15 +194,14 @@ export const pickQuests = (inventory: Inventory, usage: Usage, limit: number): L
     const raises = (scores[row.part] ?? 0) < 3 ? `${row.part} +1` : row.part
     return [{ row, quest: { ...quest, tag: row.isSide ? 'side quest' : row.tag ?? raises } }]
   })
-  const shown = quests.slice(0, limit)
+  const sides = quests.filter(one => one.row.isSide)
+  const others = quests.filter(one => !one.row.isSide && one.row !== guild)
+  // The guild always has a place, and one side quest if any applies: they are how a pack gets named.
+  const room = limit - 1 - (sides.length > 0 ? 1 : 0)
+  const kept = new Set(others.slice(0, room))
+  const main = quests.filter(one => one.row === guild || kept.has(one))
 
-  // The list is full and the guild did not make it: it takes the last place.
-  if (!shown.some(one => one.row === guild)) {
-    const guilds = quests.find(one => one.row === guild)
-    if (guilds !== undefined) shown[shown.length - 1] = guilds
-  }
-
-  return shown.map(one => one.quest)
+  return [...main, ...sides.slice(0, limit - main.length)].map(one => one.quest)
 }
 
 const sizeText = (bytes: number): string =>

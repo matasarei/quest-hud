@@ -159,6 +159,28 @@ describe('the order', () => {
     expect(at('The Grilling')).toBeGreaterThan(at("The Guild's Next Skill"))
   })
 
+  test('a side quest keeps a place, however many others come first', () => {
+    const shown = pickQuests(
+      inventory({ ...GKU_HERE, workedProjects: 9, instructedProjects: 8 }),
+      usage({ testRuns: 9, edits: { php: 99 } }),
+      MAX_QUESTS,
+    )
+    expect(shown).toHaveLength(MAX_QUESTS)
+    expect(shown.at(-1)?.title).toBe('The Grilling')
+    expect(shown.at(-1)?.tag).toBe('side quest')
+    expect(shown.some(quest => quest.title.startsWith('The Guild'))).toBe(true)
+  })
+
+  test('with no side quest to give, the place goes to the others', () => {
+    const shown = pickQuests(
+      inventory({ ...GKU_HERE, plugins: ['gku', 'mattpocock-skills', 'session-report'], workedProjects: 9, instructedProjects: 8 }),
+      usage({ testRuns: 9, edits: { php: 99 } }),
+      MAX_QUESTS,
+    )
+    expect(shown).toHaveLength(MAX_QUESTS)
+    expect(shown.every(quest => quest.tag !== 'side quest')).toBe(true)
+  })
+
   test('at most MAX_QUESTS', () => {
     expect(pickQuests(inventory({ workedProjects: 9 }), usage({ testRuns: 9, edits: { php: 99 } }), MAX_QUESTS).length).toBe(MAX_QUESTS)
   })

@@ -167,7 +167,7 @@ const guardrails = ({ hasHooks, hasDenyRules, hasPermissionRules, hasAutoMode, h
     hasHooks ? 'hooks' : 'no hooks',
     hasDenyRules ? 'deny rules' : hasPermissionRules ? 'permission rules' : 'no permission rules',
     ...(hasAutoMode ? ['auto mode'] : []),
-  ].join(', ')
+  ].join(' · ')
 
   return part('Guardrails', score, note)
 }
