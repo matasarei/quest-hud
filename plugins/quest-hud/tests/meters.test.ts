@@ -47,9 +47,13 @@ describe('left', () => {
     expect(hpLeft({ window: 1, weekUsed: 104.5 })).toBe(0)
   })
 
-  test('nothing measured is undefined, not 100', () => {
+  test('no weekly window measured is undefined, not 100', () => {
     expect(hpLeft(null)).toBeUndefined()
-    expect(mpLeft({ window: 200_000 })).toBeUndefined()
+  })
+
+  test('a context window not measured yet is full: nothing is spent before the first response', () => {
+    expect(mpLeft({ window: 200_000 })).toBe(100)
+    expect(mpLeft(null)).toBe(100)
   })
 })
 
@@ -108,8 +112,8 @@ describe('bandModel', () => {
     expect(text(band.meters).startsWith('✦ MP ')).toBe(true)
   })
 
-  test('the context not measured yet shows MP as —', () => {
-    expect(text(bandModel(null, [], null, 'hpmp', NOW).meters)).toBe('✦ MP — ctx')
+  test('the context not measured yet shows MP full, with no token count', () => {
+    expect(text(bandModel(null, [], null, 'hpmp', NOW).meters)).toBe('✦ MP ██████████████ 100% ctx')
   })
 
   test('no skill running: the Wilds, and the task list if Claude keeps one', () => {
@@ -118,7 +122,7 @@ describe('bandModel', () => {
   })
 
   test('the status line with no skill shows the task count alone', () => {
-    expect(statusText(null, tasks, null, 'hpmp')).toBe('task 1/3 ✦ —')
+    expect(statusText(null, tasks, null, 'hpmp')).toBe('task 1/3 ✦▰▰▰▰▰▰▰▰▰▰ 100%')
   })
 
   test('tasks with none in progress: the count and no subject', () => {
@@ -147,12 +151,12 @@ describe('hintText', () => {
     expect(hintText(quest, tasks, fromMeasure(SUBSCRIBER), 'hpmp')).toMatch(/^♥[▰▱]{10} \d+% ✦[▰▱]{10} \d+% ⚔ gku:implement 1\/2$/)
   })
 
-  test('before any figures: the waiting MP, and no quest or tasks', () => {
-    expect(hintText(null, [], null, 'hpmp')).toBe('✦ —')
+  test('before any figures: a full MP, and no quest or tasks', () => {
+    expect(hintText(null, [], null, 'hpmp')).toBe('✦▰▰▰▰▰▰▰▰▰▰ 100%')
   })
 
   test('tasks with no quest are counted after the bars', () => {
-    expect(hintText(null, [{ id: 'a', subject: 'x', status: 'pending' }], null, 'hpmp')).toBe('✦ — task 0/1')
+    expect(hintText(null, [{ id: 'a', subject: 'x', status: 'pending' }], null, 'hpmp')).toBe('✦▰▰▰▰▰▰▰▰▰▰ 100% task 0/1')
   })
 
   test('all adds the 5-hour window and the cost at the end; hpmp does not', () => {
@@ -167,8 +171,8 @@ describe('statusText', () => {
     expect(statusText(quest, tasks, fromMeasure(SUBSCRIBER), 'hpmp')).toBe('⚔ gku:implement 1/3 ♥▰▰▰▰▰▰▱▱▱▱ 62% ✦▰▰▰▰▰▰▱▱▱▱ 59%')
   })
 
-  test('nothing yet: only the MP placeholder', () => {
-    expect(statusText(null, [], null, 'hpmp')).toBe('✦ —')
+  test('nothing yet: only a full MP', () => {
+    expect(statusText(null, [], null, 'hpmp')).toBe('✦▰▰▰▰▰▰▰▰▰▰ 100%')
   })
 
   test('bars = all adds the 5-hour window and the cost', () => {

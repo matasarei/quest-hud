@@ -134,25 +134,27 @@ describe('the band', () => {
     await survey.unmount()
   })
 
-  test('with no rate-limit windows there is no HP, and MP waits for a measure', async ($, on) => {
+  test('with no rate-limit windows there is no HP, and MP is full until a measure', async ($, on) => {
     engine(on)
     await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
     await $.skill.prompt({ skill: 'plan', text: 'x' })
     const ui = await $.ui.mount(band('terminal'))
     expect(await ui.find({ type: 'Text', text: /HP/ })).toBeFalsy()
-    expect((await ui.find({ type: 'Text', text: /^—$/ }))?.text).toBe('—')
+    expect(await ui.find({ type: 'Text', text: /^—$/ })).toBeFalsy()
+    expect((await ui.find({ type: 'Text', text: /^ 100%$/ }))?.text).toBe(' 100%')
     await ui.unmount()
   })
 
   // A /clear wipes the host's state, and neither session.start nor session.measure follows:
   // the plugin's values are their initial ones while the engine still has the figures.
-  test('after a /clear, HP comes back from the engine with nothing fired, and MP waits', async ($, on) => {
+  test('after a /clear, HP comes back from the engine with nothing fired, and MP is full', async ($, on) => {
     engine(on)
     session.rateLimits = SUBSCRIBER.rateLimits
     const ui = await $.ui.mount(band('terminal'))
     expect((await ui.find({ type: 'Text', text: /^♥ HP/ }))?.text).toBe('♥ HP ')
     expect(await ui.find({ type: 'Text', text: / 62%$/ })).toBeTruthy()
-    expect((await ui.find({ type: 'Text', text: /^—$/ }))?.text).toBe('—')
+    expect(await ui.find({ type: 'Text', text: /^—$/ })).toBeFalsy()
+    expect((await ui.find({ type: 'Text', text: /^ 100%$/ }))?.text).toBe(' 100%')
     await ui.unmount()
   })
 
@@ -160,7 +162,7 @@ describe('the band', () => {
     engine(on)
     session.rateLimits = SUBSCRIBER.rateLimits
     const { text } = await $.command.run({ command: 'quest-hud:status', args: '', ...RUN })
-    expect(text?.split('\n')[0]).toBe('♥▰▰▰▰▰▰▱▱▱▱ 62% ✦ —')
+    expect(text?.split('\n')[0]).toBe('♥▰▰▰▰▰▰▱▱▱▱ 62% ✦▰▰▰▰▰▰▰▰▰▰ 100%')
   })
 
   test('a subagent\'s task list is not the session\'s', async ($, on) => {

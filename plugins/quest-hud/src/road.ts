@@ -102,7 +102,7 @@ const meterSegments = (meters: Meters | null, bars: Bars): Segment[] => {
   const mp = mpLeft(meters)
 
   if (hp !== undefined) segments.push({ text: `♥ ${bar(hp, BAR_WIDTH)} ${hp}%   `, tone: 'hp' })
-  segments.push({ text: mp === undefined ? '✦ —' : `✦ ${bar(mp, BAR_WIDTH)} ${mp}%`, tone: 'mp' })
+  segments.push({ text: `✦ ${bar(mp, BAR_WIDTH)} ${mp}%`, tone: 'mp' })
   if (bars === 'all' && meters?.fiveHourUsed !== undefined) segments.push({ text: `   ⚡${Math.round(meters.fiveHourUsed)}%`, tone: 'five' })
   if (bars === 'all' && meters?.costUsd !== undefined) segments.push({ text: `   ◉ $${meters.costUsd.toFixed(2)}`, tone: 'gold' })
 

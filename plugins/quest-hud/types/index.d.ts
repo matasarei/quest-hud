@@ -20,7 +20,7 @@ export type Task = {
 
 /** The session's figures, as `session.measure` last pushed them. */
 export type Meters = {
-  /** Context used, 0–100; absent until the live window's first response. */
+  /** Context used, 0–100; absent until the live window's first response, and drawn as none spent. */
   contextPercent?: number
   contextTokens?: number
   window: number

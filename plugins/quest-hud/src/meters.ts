@@ -57,9 +57,12 @@ export const fromMeasure = (usage: UsageLike): Meters => {
   return meters
 }
 
-/** Percent of the context window left; undefined until a response has filled it. */
-export const mpLeft = (meters: Meters | null): number | undefined =>
-  meters?.contextPercent === undefined ? undefined : Math.round(clamp(100 - meters.contextPercent))
+/**
+ * Percent of the context window left. The engine reports the fill only from the
+ * first response of the live window: before it, nothing is spent and MP is full.
+ */
+export const mpLeft = (meters: Meters | null): number =>
+  meters?.contextPercent === undefined ? 100 : Math.round(clamp(100 - meters.contextPercent))
 
 /** Percent of the weekly window left; undefined where the account reports none. */
 export const hpLeft = (meters: Meters | null): number | undefined =>
@@ -149,8 +152,8 @@ export const bandModel = (quest: Quest | null, tasks: readonly Task[], meters: M
 
   row.push(
     { text: '✦ MP ', tone: 'mp' },
-    { text: mp === undefined ? '—' : bar(mp, BAND_WIDTH), tone: 'mp' },
-    { text: mp === undefined ? '' : ` ${mp}%`, tone: 'mp' },
+    { text: bar(mp, BAND_WIDTH), tone: 'mp' },
+    { text: ` ${mp}%`, tone: 'mp' },
     { text: tokens !== undefined && meters ? ` ctx · ${shortTokens(tokens)}/${shortTokens(meters.window)}` : ' ctx', tone: 'dim' },
   )
 
@@ -173,7 +176,7 @@ const lineParts = (quest: Quest | null, tasks: readonly Task[], meters: Meters |
 
   return {
     work: quest ? [`⚔ ${quest.title}${total > 0 ? ` ${done}/${total}` : ''}`] : total > 0 ? [`task ${done}/${total}`] : [],
-    gauges: [...(hp === undefined ? [] : [`♥${bar(hp, 10, '▰', '▱')} ${hp}%`]), mp === undefined ? '✦ —' : `✦${bar(mp, 10, '▰', '▱')} ${mp}%`],
+    gauges: [...(hp === undefined ? [] : [`♥${bar(hp, 10, '▰', '▱')} ${hp}%`]), `✦${bar(mp, 10, '▰', '▱')} ${mp}%`],
     extras: [
       ...(bars === 'all' && meters?.fiveHourUsed !== undefined ? [`⚡${Math.round(meters.fiveHourUsed)}%`] : []),
       ...(bars === 'all' && meters?.costUsd !== undefined ? [`◉$${meters.costUsd.toFixed(2)}`] : []),
