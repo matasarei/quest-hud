@@ -3,7 +3,7 @@ import { describe, expect, test } from 'claude-code/testing'
 import { downsample } from '../src/paint/pixels'
 import {
   atRest, avatarX, BAND, bandPortrait, figures, FLAG_SLOT, FLAG_WIDTH, fitWaypoints, flagSlots, foeX, GROUND_ROW, layout, MAX_FLAGS, MAX_GHOSTS, MIN_FLAGS, propsWidth,
-  nextMotion, REST, roadWidth, scene, sceneArt, SCENE_HEIGHT, SIZE, slide, skyColor, waypointsOf, waypointX, ZONE_PROPS, type Waypoint,
+  nextMotion, REST, roadWidth, scene, sceneArt, SCENE_HEIGHT, SIZE, slide, slideShift, skyColor, waypointsOf, waypointX, ZONE_PROPS, type Waypoint,
 } from '../src/scene'
 import { PALETTE, PROPS } from '../src/world/sprites'
 import type { Task, Zone } from '../types'
@@ -368,6 +368,11 @@ describe('a zone change', () => {
     expect(slide(from, to, 0)).toEqual([[1, 2, 3, 4]])
     expect(slide(from, to, 0.5)).toEqual([[3, 4, 5, 6]])
     expect(slide(from, to, 1)).toEqual([[5, 6, 7, 8]])
+  })
+
+  test('slideShift: how far the old scene has gone out, in pixels, the same for everything that slides', () => {
+    expect([0, 0.25, 0.5, 1, -1, 2].map(p => slideShift(200, p))).toEqual([0, 50, 100, 200, 0, 200])
+    expect(slideShift(5, 0.5)).toBe(3)
   })
 
   test('the scene slides only its landscape: at the start the old zone\'s sky, at the end the new scene', () => {

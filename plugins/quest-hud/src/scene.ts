@@ -294,12 +294,19 @@ export const foeX = (hero: number, width: number, count: number, index: number, 
 const foeGrid = (kind: FightKind): Grid => (kind === 'test' ? mirrorGrid(spriteGrid(DRAGON)) : spriteGrid(SPIDER))
 
 /**
+ * How far a zone change has gone, in pixels of a scene `width` pixels wide:
+ * the old scene that far out to the left, the new one that far in from the
+ * right. The backdrop and what stands by the road both slide by it.
+ */
+export const slideShift = (width: number, progress: number): number => Math.round(width * Math.max(0, Math.min(1, progress)))
+
+/**
  * Two landscapes side by side, `progress` of the way from the first to the
  * second: the first slides out to the left as the second comes in from the right.
  */
 export const slide = (from: Grid, to: Grid, progress: number): Canvas => {
   const width = to[0]?.length ?? 0
-  const shift = Math.round(width * Math.max(0, Math.min(1, progress)))
+  const shift = slideShift(width, progress)
   return to.map((line, y) => line.map((color, x) => (x + shift < width ? from[y]?.[x + shift] : to[y]?.[x + shift - width]) ?? color))
 }
 
