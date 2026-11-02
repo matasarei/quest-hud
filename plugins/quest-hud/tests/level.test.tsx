@@ -213,6 +213,52 @@ describe('when the transcripts cannot be read', () => {
   })
 })
 
+describe('a grep that does not finish', () => {
+  const readFiles = (): string[] => (world.spawned[0] ?? []).filter(arg => arg.endsWith('.jsonl'))
+
+  test('killed partway, its files are not taken as read: the next run reads them again', async ($, on) => {
+    engine(on)
+    machine()
+    world.grep = grepLine('s1', 'a', 'Read')
+    world.grepEnds = [{ code: null, signal: 'SIGKILL' }]
+    await start($)
+    await run($, 'quest-hud:level')
+    await settled($)
+    expect(Object.keys((world.store.survey ?? {}) as object)).toEqual([])
+    world.spawned = []
+    world.grep = grepLine('s1', 'a', 'Read') + grepLine('s2', 'b', 'Read')
+    await run($, 'quest-hud:level')
+    await settled($)
+    expect(readFiles()).toEqual([`${DIR}/s1.jsonl`, `${DIR}/s2.jsonl`])
+    expect((await stored($))?.usage.sessions).toBe(2)
+  })
+
+  test('killed in one batch, the batches before it still count', async ($, on) => {
+    engine(on)
+    machine()
+    world.dirs[DIR] = Array.from({ length: 150 }, (_, i) => file(`f${i}.jsonl`))
+    world.grep = grepLine('f0', 'a', 'Read')
+    world.grepEnds = [{ code: 0, signal: null }, { code: null, signal: 'SIGTERM' }]
+    await start($)
+    await run($, 'quest-hud:level')
+    await settled($)
+    expect(Object.keys((world.store.survey ?? {}) as object)).toHaveLength(100)
+  })
+
+  test('exit 2 is a file swept meanwhile: the rest is read, and not read again', async ($, on) => {
+    engine(on)
+    machine()
+    world.grepEnds = [{ code: 2, signal: null }]
+    await start($)
+    await run($, 'quest-hud:level')
+    await settled($)
+    world.spawned = []
+    await run($, 'quest-hud:level')
+    await settled($)
+    expect(world.spawned).toEqual([])
+  })
+})
+
 describe('what the level reads of the machine', () => {
   test('a project needs five prompts, and to exist, and not to be a scratch run', async ($, on) => {
     engine(on)

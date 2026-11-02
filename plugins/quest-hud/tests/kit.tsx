@@ -43,6 +43,8 @@ export const world: {
   /** What grep prints; undefined when it cannot start. A held scan waits for `grepGate`. */
   grep: string | undefined
   grepGate?: Promise<void>
+  /** How each spawn ends, in turn; past the list, as grep ends on its own. */
+  grepEnds: Array<{ code: number | null; signal: string | null }>
   /** Every command spawned, and every one run. */
   spawned: string[][]
   ran: string[][]
@@ -70,6 +72,7 @@ export const world: {
   settings: {},
   commands: [],
   grep: '',
+  grepEnds: [],
   spawned: [],
   ran: [],
 }
@@ -100,6 +103,7 @@ export const engine = (on: On, store: Readonly<Record<string, unknown>> = {}) =>
   world.commands = []
   world.grep = ''
   world.grepGate = undefined
+  world.grepEnds = []
   world.spawned = []
   world.ran = []
   // Every value the plugin stores, as the kit's own store accepted it.
@@ -147,7 +151,7 @@ export const engine = (on: On, store: Readonly<Record<string, unknown>> = {}) =>
     await world.grepGate
     if (world.grep === undefined) throw new Error('grep: not found')
     if (world.grep !== '') yield { stream: 'stdout' as const, text: world.grep }
-    return { value: { code: world.grep === '' ? 1 : 0, signal: null } }
+    return { value: world.grepEnds.shift() ?? { code: world.grep === '' ? 1 : 0, signal: null } }
   })
   on('command.register', () => ({ value: { command: 'quest-hud' } }))
   on('session.id', () => ({ value: world.id }))

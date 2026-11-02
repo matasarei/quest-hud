@@ -349,8 +349,8 @@ async function keepCard($: EngineInterface, card: LevelCard): Promise<boolean> {
  */
 async function readSessions($: EngineInterface, files: readonly Transcript[], changed: readonly Transcript[], cached: Readonly<Record<string, Surveyed>>, history: History, inventory: Inventory): Promise<void> {
   const before = await currentLevel($)
-  const tallies = await scanTranscripts($, changed).catch(() => ({}))
-  const survey = mergeSurvey(cached, files, changed, tallies)
+  const { tallies, unread } = await scanTranscripts($, changed).catch(() => ({ tallies: {}, unread: [] as Transcript[] }))
+  const survey = mergeSurvey(cached, files, changed.filter(file => !unread.includes(file)), tallies)
   const card = cardOf(inventory, usageOf(survey, files, history, inventory, await $.clock.now()))
   const isCardKept = await keepCard($, card)
   const isSurveyKept = await $.store.set('survey', survey).then(() => true, () => false)

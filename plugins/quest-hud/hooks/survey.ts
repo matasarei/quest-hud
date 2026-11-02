@@ -14,6 +14,9 @@ const HISTORY_TAIL = '4000000'
 /** Transcripts to a spawn: an argument list has a limit. */
 const FILES_PER_SCAN = 100
 
+/** grep's exit for a file it could not open while it read the others: anything past this, or no code at all, it did not finish. */
+const GREP_TROUBLE = 2
+
 const INSTRUCTION_FILES: readonly string[] = ['CLAUDE.md', 'AGENTS.md', '.claude/CLAUDE.md']
 const PROJECT_SETTINGS: readonly string[] = ['.claude/settings.json', '.claude/settings.local.json']
 
@@ -139,19 +142,28 @@ export async function readInventory($: EngineInterface, config: string, history:
  * Reads the transcripts with grep, whose pattern stops inside each tool's input,
  * so no prompt or output is in the stream. Through `$.process.spawn`, as
  * `$.fs.read` refuses a large file and `$.process.run` cuts its output at 4 MiB.
- * A file swept meanwhile makes grep complain and go on. Rejects if grep cannot start.
+ * A file swept meanwhile makes grep complain and go on, exit 2: the rest was read.
+ * A batch that was killed answers as unread, so its files are not taken as read.
+ * Rejects if grep cannot start.
  */
-export async function scanTranscripts($: EngineInterface, files: readonly Transcript[]): Promise<Record<string, Tally>> {
+export async function scanTranscripts($: EngineInterface, files: readonly Transcript[]): Promise<{ tallies: Record<string, Tally>; unread: Transcript[] }> {
   const reader = surveyReader()
+  const unread: Transcript[] = []
 
   for (let at = 0; at < files.length; at += FILES_PER_SCAN) {
-    const paths = files.slice(at, at + FILES_PER_SCAN).map(file => file.path)
-    const scan = $.process.spawn({ argv: ['grep', '-HoE', SURVEY_PATTERN, '--', ...paths], env: { LC_ALL: 'C' } })
+    const batch = files.slice(at, at + FILES_PER_SCAN)
+    const scan = $.process.spawn({ argv: ['grep', '-HoE', SURVEY_PATTERN, '--', ...batch.map(file => file.path)], env: { LC_ALL: 'C' } })
+    const pieces = scan[Symbol.asyncIterator]()
 
-    for await (const { stream, text } of scan) {
-      if (stream === 'stdout') reader.feed(text)
+    for (let piece = await pieces.next(); ; piece = await pieces.next()) {
+      if (piece.done) {
+        if (piece.value.code === null || piece.value.code > GREP_TROUBLE) unread.push(...batch)
+        break
+      }
+
+      if (piece.value.stream === 'stdout') reader.feed(piece.value.text)
     }
   }
 
-  return reader.end()
+  return { tallies: reader.end(), unread }
 }
