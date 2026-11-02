@@ -41,6 +41,8 @@ const FAMILIAR_BEHIND = 6
 const FOE_GAP = 2
 /** The least a monster behind another shows of itself, in units, when the road is short. */
 const FOE_PEEK = 10
+/** Less still, when only that keeps both monsters on a narrow road: below it the one behind is not drawn. */
+const FOE_MIN_PEEK = 6
 const NO_FOES: Foes = { test: 'none', lint: 'none' }
 
 export type Waypoint = 'done' | 'now' | 'todo'
@@ -278,17 +280,31 @@ export const layout = ({ columns, zone, waypoints, foes = NO_FOES, loot = 0, all
 
 /**
  * Where the monster in place `index` of `count` starts: right of the wizard,
- * the first nearest. On a short road the ones behind close up, down to
- * FOE_PEEK units apart, and all of them move left as far as the wizard to
- * stay off the landmarks; past that they stand in front of them.
+ * past the flags `ahead` of him, the first nearest. On a short road the ones
+ * behind close up, down to FOE_PEEK units apart, and all of them move left to
+ * stay off the landmarks and inside the road: in front of the flags ahead, as
+ * far as the wizard, the ones behind closing up to FOE_MIN_PEEK if that is
+ * what keeps them in. With no room even then, they stand against the wizard.
  */
 export const foeX = (hero: number, width: number, count: number, index: number, ahead = hero + SIZE.wizard): number => {
   const size = SIZE.foe
+  const wall = hero + SIZE.wizard
   const start = ahead + FOE_GAP
-  const pitch = count <= 1 ? size + FOE_GAP : Math.max(FOE_PEEK, Math.min(size + FOE_GAP, Math.floor((width - start - size) / (count - 1))))
-  const first = Math.max(ahead, Math.min(start, width - (count - 1) * pitch - size))
+  let pitch = count <= 1 ? size + FOE_GAP : Math.max(FOE_PEEK, Math.min(size + FOE_GAP, Math.floor((width - start - size) / (count - 1))))
+  if (count > 1 && wall + (count - 1) * pitch + size > width && wall + (count - 1) * FOE_MIN_PEEK + size <= width) {
+    pitch = Math.floor((width - wall - size) / (count - 1))
+  }
+  const first = Math.max(wall, Math.min(start, width - (count - 1) * pitch - size))
   return first + index * pitch
 }
+
+/**
+ * The monsters that go on the road, nearest first: all of them while the ones
+ * behind can still peek out by FOE_MIN_PEEK, else only the nearest. The log
+ * names every fight either way.
+ */
+export const foesShown = <T>(hero: number, width: number, up: readonly T[]): T[] =>
+  up.length <= 1 || hero + SIZE.wizard + (up.length - 1) * FOE_MIN_PEEK + SIZE.foe <= width ? [...up] : up.slice(0, 1)
 
 /**
  * The monster of a test run in a room, where a dragon would not fit; outdoors

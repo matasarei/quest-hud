@@ -2,7 +2,7 @@ import { describe, expect, test } from 'claude-code/testing'
 
 import { downsample } from '../src/paint/pixels'
 import {
-  atRest, avatarX, BAND, bandPortrait, figures, FLAG_SLOT, FLAG_WIDTH, fitWaypoints, flagSlots, foeX, GROUND_ROW, layout, MAX_FLAGS, MAX_GHOSTS, MIN_FLAGS, propsWidth,
+  atRest, avatarX, BAND, bandPortrait, figures, foesShown, FLAG_SLOT, FLAG_WIDTH, fitWaypoints, flagSlots, foeX, GROUND_ROW, layout, MAX_FLAGS, MAX_GHOSTS, MIN_FLAGS, propsWidth,
   nextMotion, REST, roadWidth, scene, sceneArt, SCENE_HEIGHT, SIZE, slide, slideShift, roadside, skyColor, waypointsOf, waypointX, ZONE_PROPS, type Waypoint,
 } from '../src/scene'
 import { PALETTE, PROPS } from '../src/world/sprites'
@@ -210,6 +210,21 @@ describe('the monsters', () => {
     // No room at all: they stand against the wizard, the one behind peeking out by 10.
     expect(foeX(hero, 50, 2, 0)).toBe(hero + SIZE.wizard)
     expect(foeX(hero, 50, 2, 1)).toBe(hero + SIZE.wizard + 10)
+  })
+
+  test('with no room past the flags ahead, they stand in front of them, never past the road\'s end', () => {
+    // Four tasks packed: the wizard at 21–37, the upcoming flags up to 47.
+    expect(foeX(21, 56, 1, 0, 47)).toBe(40)
+    expect([0, 1].map(i => foeX(21, 66, 2, i, 47))).toEqual([40, 50])
+    // Short by 3 for a 10 peek: the one behind closes up to what fits.
+    expect([0, 1].map(i => foeX(21, 60, 2, i, 47))).toEqual([37, 44])
+  })
+
+  test('foesShown: both while the one behind can peek out by 6, else only the nearest', () => {
+    expect(foesShown(21, 59, ['test', 'lint'])).toEqual(['test', 'lint'])
+    expect(foesShown(21, 58, ['test', 'lint'])).toEqual(['test'])
+    expect(foesShown(21, 40, ['lint'])).toEqual(['lint'])
+    expect(foesShown(21, 40, [])).toEqual([])
   })
 
   test('narrow widths still give a full grid with both up', () => {
