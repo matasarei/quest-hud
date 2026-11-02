@@ -308,7 +308,9 @@ export const WIZARD: Readonly<Record<Pose, Sprite>> = {
  * for the text cells, like the allies: each row doubled, at most two colours
  * in each 2 × 2 quadrant cell — an edge in its own darker shade, with the
  * wizard's dark down the left of its body and arm alone, for volume (all round,
- * it read as hair; on the leg, a hop would need a third colour in a cell), two tall eyes, side arms, four short legs, 10 rows tall in its 16-row
+ * it read as hair; on the leg, a hop would need a third colour in a cell), one
+ * pixel wide, the left arm's tip dark as well (lit, its cell would hold a third
+ * colour), two tall eyes, side arms, four short legs, 10 rows tall in its 16-row
  * box. The hop lifts it a row, half a cell, legs and all.
  */
 export const MASCOT = {
@@ -321,12 +323,12 @@ export const MASCOT = {
     '....................',
     '.odddddddddddddddd..',
     '.odddddddddddddddd..',
-    'oodaaa11aaaa11aaad..',
-    'oodaaa11aaaa11aaad..',
-    'oaaaaa11aaaa11aaaaaa',
-    'oaaaaa11aaaa11aaaaaa',
-    'oodddddddddddddddd..',
-    'oodddddddddddddddd..',
+    '.odaaa11aaaa11aaad..',
+    '.odaaa11aaaa11aaad..',
+    'ooaaaa11aaaa11aaaaaa',
+    'ooaaaa11aaaa11aaaaaa',
+    '.odddddddddddddddd..',
+    '.odddddddddddddddd..',
     '...dd.dd....dd.dd...',
     '...dd.dd....dd.dd...',
   ]),
@@ -337,12 +339,12 @@ export const MASCOT = {
     '....................',
     '.odddddddddddddddd..',
     '.odddddddddddddddd..',
-    'oodaaa11aaaa11aaad..',
-    'oodaaa11aaaa11aaad..',
-    'oaaaaa11aaaa11aaaaaa',
-    'oaaaaa11aaaa11aaaaaa',
-    'oodddddddddddddddd..',
-    'oodddddddddddddddd..',
+    '.odaaa11aaaa11aaad..',
+    '.odaaa11aaaa11aaad..',
+    'ooaaaa11aaaa11aaaaaa',
+    'ooaaaa11aaaa11aaaaaa',
+    '.odddddddddddddddd..',
+    '.odddddddddddddddd..',
     '...dd.dd....dd.dd...',
     '...dd.dd....dd.dd...',
     '....................',

@@ -28,6 +28,16 @@ describe("Claude's mascot's left side", () => {
         expect(filled.at(-1)).not.toBe(PALETTE.o)
       }
     })
+
+    test(`${name}: that dark is one pixel wide, with the arm's tip alone beyond it`, () => {
+      const rows = spriteGrid(frame).filter(cells => cells.some(pixel => pixel !== undefined))
+      for (const row of rows.slice(0, -2)) {
+        const hasArm = row.at(-1) !== undefined
+        expect([row[0] === PALETTE.o, row[0] === undefined]).toEqual([hasArm, !hasArm])
+        expect(row[1]).toBe(PALETTE.o)
+        expect(row[2]).not.toBe(PALETTE.o)
+      }
+    })
   }
 })
 
