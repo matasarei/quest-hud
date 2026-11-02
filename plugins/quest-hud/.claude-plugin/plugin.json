@@ -10,7 +10,7 @@
     "detail": {
       "type": "string",
       "title": "Detail",
-      "description": "What the HUD draws: nothing, one status-line entry, the band above the prompt, or the band and the Road pane opened at the start (placed from 144 columns; /hud pane opens it at any width).",
+      "description": "What the HUD draws: nothing, one status-line entry, the band above the prompt, or the band and the Road pane opened at the start (placed from 144 columns; /quest-hud:pane opens it at any width).",
       "options": ["off", "status", "band", "pane"],
       "default": "band"
     },

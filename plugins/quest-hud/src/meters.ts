@@ -25,7 +25,7 @@ export const ZONE_LABEL: Readonly<Record<Zone, string>> = {
   wilds: 'Wilds',
 }
 
-/** What each zone stands for, said once where there is room: the pane and /hud. */
+/** What each zone stands for, said once where there is room: the pane and /quest-hud:status. */
 export const ZONE_MEANING: Readonly<Record<Zone, string>> = {
   watchtower: "reviewing someone else's change",
   harbour: 'pull requests and releases',

@@ -4,7 +4,7 @@
 #   ♥▰▰▰▰▰▰▱▱▱▱ 62% ✦▰▰▰▰▰▰▱▱▱▱ 59%
 # HP is what is left of the 7-day window (absent without a subscription), MP
 # what is left of the context window (— until the first response).
-# Setup: /hud statusline in a session where the mod runs, or the README.
+# Setup: /quest-hud:statusline in a session where the mod runs, or the README.
 
 if ! command -v jq >/dev/null 2>&1; then
   echo "quest-hud: needs jq"

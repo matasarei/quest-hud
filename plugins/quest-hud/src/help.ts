@@ -1,5 +1,5 @@
-// What `/hud help` prints: the subcommands, and the options with their values,
-// their defaults and the values in force. A word /hud does not know answers
+// What `/quest-hud:help` prints: the commands, and the options with their values,
+// their defaults and the values in force. A word /quest-hud does not know answers
 // with the same list, the word echoed cleaned. Pure.
 import { cleanTitle } from './quest'
 
@@ -17,18 +17,20 @@ export const OPTIONS: readonly OptionInfo[] = [
 /** The values in force, by option name, as register parsed them. */
 export type Settings = Readonly<Record<string, string>>
 
-const SUBCOMMANDS: ReadonlyArray<readonly [string, string]> = [
-  ['/hud', 'the quest, its zone and its tasks'],
-  ['/hud pane', 'open the Road beside the transcript, at any width'],
-  ['/hud statusline', 'set up the HP and MP bars where mods do not run'],
-  ['/hud help', 'this list'],
+const COMMANDS: ReadonlyArray<readonly [string, string]> = [
+  ['/quest-hud:status', 'the quest, its zone and its tasks'],
+  ['/quest-hud:pane', 'open the Road beside the transcript, at any width'],
+  ['/quest-hud:statusline', 'set up the HP and MP bars where mods do not run'],
+  ['/quest-hud:off', 'hide the HUD in every session, until on'],
+  ['/quest-hud:on', 'bring it back'],
+  ['/quest-hud:help', 'this list'],
 ]
 
 const ZONE_NAMES = 'watchtower, harbour, dungeon, arena, forge, map, camp, wilds'
 
-/** The list `/hud help` prints. */
+/** The list `/quest-hud:help` prints. */
 export const usageText = (settings: Settings): string => {
-  const commandWidth = Math.max(...SUBCOMMANDS.map(([command]) => command.length))
+  const commandWidth = Math.max(...COMMANDS.map(([command]) => command.length))
   const nameWidth = Math.max(...OPTIONS.map(option => option.name.length))
   const choices = (option: OptionInfo): string => (option.values.length > 0 ? option.values.join(' | ') : 'name=zone, …')
   const choiceWidth = Math.max(...OPTIONS.map(option => choices(option).length))
@@ -36,7 +38,7 @@ export const usageText = (settings: Settings): string => {
 
   return [
     'Quest HUD',
-    ...SUBCOMMANDS.map(([command, what]) => `  ${command.padEnd(commandWidth)}  ${what}`),
+    ...COMMANDS.map(([command, what]) => `  ${command.padEnd(commandWidth)}  ${what}`),
     '',
     'Options, set in /config (a change reloads the mod):',
     ...OPTIONS.flatMap(option => {
@@ -48,6 +50,6 @@ export const usageText = (settings: Settings): string => {
   ].join('\n')
 }
 
-/** What a word /hud does not know answers: that it does not, then the list. */
+/** What a word /quest-hud does not know answers: that it does not, then the list. */
 export const unknownText = (word: string, settings: Settings): string =>
-  [`No /hud ${cleanTitle(word)}.`, '', usageText(settings)].join('\n')
+  [`No /quest-hud ${cleanTitle(word)}.`, '', usageText(settings)].join('\n')

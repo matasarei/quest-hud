@@ -36,6 +36,7 @@ const foes = atom({ plugin: 'quest-hud', key: 'foes' } as const, NO_FOES)
 const loot = atom({ plugin: 'quest-hud', key: 'loot' } as const, 0)
 const NO_ALLIES: Allies = { octopus: false, fox: false }
 const allies = atom({ plugin: 'quest-hud', key: 'allies' } as const, NO_ALLIES)
+const hidden = atom({ plugin: 'quest-hud', key: 'hidden' } as const, false)
 
 /** off, a status entry, the band, or the band and the Road pane opened at the start. */
 type Detail = 'off' | 'status' | 'band' | 'pane'
@@ -71,9 +72,30 @@ const help = (root: string): string =>
     'It needs jq.',
   ].join('\n')
 
+/** What /quest-hud:pane answers: it opens the Road, at any width. */
+async function openRoad($: EngineInterface): Promise<string> {
+  if (await read($, hidden)) return 'Quest HUD is off. /quest-hud:on brings it back.'
+
+  const opened = await $.ui.open({ id: PANE_ID, title: PANE_TITLE })
+
+  return opened.isPlaced ? 'The Road is open.' : `The Road waits: ${opened.reason}`
+}
+
+/** What /quest-hud:status answers: the quest, what its zone means, the tasks. */
+async function statusLines($: EngineInterface): Promise<string> {
+  const current = await read($, quest)
+  const list = await read($, tasks)
+
+  return [
+    statusText(current, list, await read($, meters), 'all'),
+    `  ${zoneLine(current?.zone ?? 'wilds')}`,
+    ...list.map(task => `  ${task.status === 'completed' ? '✓' : task.status === 'in_progress' ? '▸' : '·'} ${cleanTitle(task.subject)}`),
+  ].join('\n')
+}
+
 /** The one-line entry, drawn only when the detail option asks for it. */
 async function showStatus($: EngineInterface, detail: Detail, bars: Bars): Promise<void> {
-  if (detail === 'status') {
+  if (detail === 'status' && !(await read($, hidden))) {
     $.ui.status(statusText(await read($, quest), await read($, tasks), await read($, meters), bars))
   }
 }
@@ -265,6 +287,35 @@ async function stopAnim($: EngineInterface): Promise<void> {
   if (wasRunning) await blitFrame($)
 }
 
+/** What /quest-hud:off answers: stored, so it holds in every session; the hooks go on observing, and only the drawing stops. */
+async function turnOff($: EngineInterface, detail: Detail): Promise<string> {
+  if (await read($, hidden)) return 'Quest HUD is already off.'
+
+  const wasOpen = (await $.ui.panes()).some(pane => pane.id === PANE_ID)
+  await $.store.set('hidden', true)
+  await $.store.set('roadWasOpen', wasOpen)
+  await update($, hidden, () => true)
+  stopTimer()
+  await $.ui.close({ id: PANE_ID })
+  if (detail === 'status') $.ui.status(undefined)
+
+  return 'Quest HUD is off, in every session. /quest-hud:on brings it back.'
+}
+
+/** What /quest-hud:on answers: the HUD as it was, with the Road back if off closed it or the detail option asks for it. */
+async function turnOn($: EngineInterface, detail: Detail, bars: Bars): Promise<string> {
+  if (!(await read($, hidden))) return 'Quest HUD is already on.'
+
+  const wasOpen = (await $.store.get('roadWasOpen')) === true
+  await $.store.set('hidden', false)
+  await $.store.delete('roadWasOpen')
+  await update($, hidden, () => false)
+  await showStatus($, detail, bars)
+  if (wasOpen || detail === 'pane') await $.ui.open({ id: PANE_ID, title: PANE_TITLE })
+
+  return detail === 'off' ? 'Quest HUD is on, but the detail option in /config is off.' : 'Quest HUD is back.'
+}
+
 /** One more line in the pane's log, stamped with the time now. */
 async function addLog($: EngineInterface, entry: Omit<LogEntry, 'at'>): Promise<void> {
   const at = await $.clock.now()
@@ -325,7 +376,9 @@ export const register: Register = (on, options) => {
   // session id: the quest in progress is kept. A new id (/clear, a resume of
   // another session) starts everything over.
   on('session.start', async ($, e, next) => {
-    await $.command.register({ name: 'hud', description: 'Show the Quest HUD state; "/hud help" lists the rest' })
+    await $.command.register({ name: 'quest-hud', description: "List Quest HUD's commands and its options" })
+    const isHidden = (await $.store.get('hidden')) === true
+    await update($, hidden, () => isHidden)
     const id = await $.session.id()
 
     if ((await read($, sessionId)) !== id) {
@@ -353,7 +406,7 @@ export const register: Register = (on, options) => {
     await showStatus($, detail, bars)
 
     // Unasked, the engine places it only from 144 columns; below that it waits.
-    if (detail === 'pane') {
+    if (detail === 'pane' && !isHidden) {
       await $.ui.open({ id: PANE_ID, title: PANE_TITLE })
     }
 
@@ -530,42 +583,41 @@ export const register: Register = (on, options) => {
     return next(e)
   }).catch(($, e, next) => next(e))
 
-  on('command.run', { command: 'hud' }, async ($, e) => {
-    const word = e.args.trim()
-    const settings = { detail, bars, graphics, zones: typeof options.zones === 'string' ? options.zones.trim() : '' }
+  const settings = { detail, bars, graphics, zones: typeof options.zones === 'string' ? options.zones.trim() : '' }
 
-    if (word.toLowerCase() === 'help') {
-      return { text: usageText(settings) }
-    }
+  // A skill file gives each command its /quest-hud: name; the mod answers it, so
+  // no model turn runs. If a hook fails, the skill's text says the mod is not running.
+  on('command.run', { command: 'quest-hud:help' }, async () => ({ text: usageText(settings) })).catch(($, e, next) => next(e))
 
-    if (word === 'statusline') {
-      return { text: help($.plugin.root) }
-    }
+  on('command.run', { command: 'quest-hud:statusline' }, async $ => ({ text: help($.plugin.root) })).catch(($, e, next) => next(e))
 
-    if (word === 'pane') {
-      const opened = await $.ui.open({ id: PANE_ID, title: PANE_TITLE })
-      return { text: opened.isPlaced ? 'The Road is open.' : `The Road waits: ${opened.reason}` }
-    }
+  on('command.run', { command: 'quest-hud:pane' }, async $ => ({ text: await openRoad($) })).catch(($, e, next) => next(e))
 
-    if (word !== '') {
-      return { text: unknownText(word, settings) }
-    }
+  on('command.run', { command: 'quest-hud:status' }, async $ => ({ text: await statusLines($) })).catch(($, e, next) => next(e))
 
-    const current = await read($, quest)
-    const list = await read($, tasks)
-    const lines = [
-      statusText(current, list, await read($, meters), 'all'),
-      `  ${zoneLine(current?.zone ?? 'wilds')}`,
-      ...list.map(task => `  ${task.status === 'completed' ? '✓' : task.status === 'in_progress' ? '▸' : '·'} ${cleanTitle(task.subject)}`),
-    ]
+  on('command.run', { command: 'quest-hud:off' }, async $ => ({ text: await turnOff($, detail) })).catch(($, e, next) => next(e))
 
-    return { text: lines.join('\n') }
+  on('command.run', { command: 'quest-hud:on' }, async $ => ({ text: await turnOn($, detail, bars) })).catch(($, e, next) => next(e))
+
+  // The bare name takes the same words after a space, and any other word gets a
+  // free answer: a typo after the colon goes to the model, one after the space stops here.
+  on('command.run', { command: 'quest-hud' }, async ($, e) => {
+    const word = e.args.trim().toLowerCase()
+
+    if (word === '' || word === 'help') return { text: usageText(settings) }
+    if (word === 'status') return { text: await statusLines($) }
+    if (word === 'pane') return { text: await openRoad($) }
+    if (word === 'statusline') return { text: help($.plugin.root) }
+    if (word === 'off') return { text: await turnOff($, detail) }
+    if (word === 'on') return { text: await turnOn($, detail, bars) }
+
+    return { text: unknownText(e.args.trim(), settings) }
   })
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     const below = await next(e)
 
-    if (!hasBand || e.props.hasSurvey) {
+    if (!hasBand || e.props.hasSurvey || (await read($, hidden))) {
       return below
     }
 

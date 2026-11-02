@@ -81,6 +81,8 @@ declare module 'claude-code' {
       loot: number
       /** The octopus once gh ran this session, the fox once glab did. */
       allies: Allies
+      /** /quest-hud:off is in force: nothing is drawn. Read from `$.store` at each start. */
+      hidden: boolean
     }
   }
 }

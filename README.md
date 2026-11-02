@@ -41,6 +41,7 @@ It works with whatever skills you use. A skill's zone comes from its name and de
 
 - [The Road](#the-road)
 - [Install](#install)
+- [Commands](#commands)
 - [Options](#options)
 - [Without mods](#without-mods)
 - [Development](#development)
@@ -48,7 +49,7 @@ It works with whatever skills you use. A skill's zone comes from its name and de
 
 ## The Road
 
-`/hud pane` opens the Road beside the transcript (docked in fullscreen from 110 columns,
+`/quest-hud:pane` opens the Road beside the transcript (docked in fullscreen from 110 columns,
 inline above the prompt below that):
 
 ```
@@ -129,7 +130,8 @@ The banner above is claude-rpg's, with Quest HUD's wizard and Claude's mascot on
 
 **It costs nothing.** No model calls, nothing added to the context, no network. Every hook
 only observes Claude Code's own events and passes them on unchanged, and nothing is written
-into your project.
+into your project: the only file is `/quest-hud:off`'s switch, a small JSON file in Claude Code's
+configuration folder. The commands are skills the model is never told about.
 
 ## Install
 
@@ -148,6 +150,21 @@ set up on your machine.
 Requires Claude Code **2.1.316** or later, the version it is built and tested on. The mod API
 is early access and may change between releases.
 
+## Commands
+
+| Command | What it does |
+|---|---|
+| `/quest-hud:status` | prints the current state, what the zone means, and the task list |
+| `/quest-hud:pane` | opens the Road at any width |
+| `/quest-hud:statusline` | prints the setup for [the status line](#without-mods) |
+| `/quest-hud:off` | hides the band, the status entry and the Road in every session, until `on`; the HUD keeps following along, so it comes back up to date |
+| `/quest-hud:on` | brings them back, with the Road if `off` closed it |
+| `/quest-hud:help` | lists the commands and the options, with the values in force |
+
+The mod answers each one itself, with no model call. `/quest-hud pane` with a space works too,
+and a word `/quest-hud` does not know shows the list. A typo after the colon, such as
+`/quest-hud:pan`, is not a command, so Claude Code sends it to the model as an ordinary message.
+
 ## Options
 
 Set them in `/config`; a change reloads the mod.
@@ -162,10 +179,6 @@ Set them in `/config`; a change reloads the mod.
 Zones: `watchtower`, `harbour`, `dungeon`, `arena`, `forge`, `map`, `camp`, `wilds`. A name
 is a skill's full name (`gku:plan`) or the part after the plugin prefix (`plan`).
 
-`/hud` prints the current state, what the zone means, and the task list. `/hud pane` opens the
-Road at any width. `/hud help` lists the subcommands and the options, with the values in force;
-a word `/hud` does not know shows the same list.
-
 ## Without mods
 
 On a Claude Code without mods, `scripts/hud-line.sh` shows the HP and MP bars in the classic
@@ -175,7 +188,7 @@ status line:
 ♥▰▰▰▰▰▰▱▱▱▱ 62% ✦▰▰▰▰▰▰▱▱▱▱ 59%
 ```
 
-In a session where the mod runs, `/hud statusline` prints both steps with the right path.
+In a session where the mod runs, `/quest-hud:statusline` prints both steps with the right path.
 Otherwise, copy `plugins/quest-hud/scripts/hud-line.sh` from this repository to
 `~/.claude/hud-line.sh`, and add to `~/.claude/settings.json`:
 
