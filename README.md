@@ -166,7 +166,8 @@ response.
 ## Art
 
 The art in the mod is drawn in code, as shapes (`src/world/landscapes.ts`) and pixel maps
-(`src/world/sprites.ts`). GitHub's Octocat, GitLab's fox and Claude's mascot are our own drawings of them, not their logo files.
+(`src/world/sprites.ts`). GitHub's Octocat, GitLab's fox and Claude's mascot are our own drawings of
+them, not their logo files.
 
 The banner was generated with Google Gemini from the
 [claude-rpg](https://github.com/matasarei/claude-rpg) banner.
