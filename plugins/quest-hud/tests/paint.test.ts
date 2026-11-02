@@ -5,6 +5,7 @@ import { adler32, crc32, deflate, pngBytes } from '../src/paint/png'
 import { bayer, ditherBand, downsample, gridToRgb, mirrorGrid, spriteGrid, stamp, type Canvas } from '../src/paint/pixels'
 import { rasterize, rgbToGrid, type Rgb } from '../src/paint/raster'
 import { pictureToSvg } from '../src/paint/svg'
+import { fnv1a, striping } from './measure'
 
 // A test-only inflate for what the encoder writes: stored and fixed-Huffman blocks.
 const inflate = (data: Uint8Array): Uint8Array => {
@@ -256,23 +257,12 @@ describe('pixel art', () => {
     ]
     const grid = (ditherRows?: number) =>
       rgbToGrid(rasterize(picture, 40, 56, 1, 0, { pixel: true, bands: 5, ...(ditherRows === undefined ? {} : { ditherRows }) }))
-    /** Of the pixels that differ from their right neighbour, the share that match the one below: vertical stripes. */
-    const striping = (g: ReadonlyArray<ReadonlyArray<number | undefined>>): number => {
-      let mixed = 0
-      let striped = 0
-      for (let y = 0; y + 1 < g.length; y++) {
-        for (let x = 0; x + 1 < (g[y]?.length ?? 0); x++) {
-          if (g[y]?.[x] === g[y]?.[x + 1]) continue
-          mixed++
-          if (g[y]?.[x] === g[y + 1]?.[x]) striped++
-        }
-      }
-      return striped / Math.max(1, mixed)
-    }
 
     test('each pair of rows is the same, and the default is today\'s dither', () => {
       const paired = grid(2)
       for (let y = 0; y < paired.length; y += 2) expect(JSON.stringify(paired[y + 1])).toBe(JSON.stringify(paired[y]))
+      // Today's dither, byte for byte: its fingerprint, taken from main before row pairs could change it.
+      expect(fnv1a(JSON.stringify(grid()))).toBe('6181c3f1')
       expect(JSON.stringify(grid(1))).toBe(JSON.stringify(grid()))
       expect(JSON.stringify(grid(2)) === JSON.stringify(grid())).toBe(false)
     })

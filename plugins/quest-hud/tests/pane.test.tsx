@@ -4,6 +4,7 @@ import type { Engine } from 'claude-code/testing'
 import { imageScale, QUADRANT } from '../src/avatar'
 import { sceneArt } from '../src/scene'
 import { engine, RUN, start, world } from './kit'
+import { striping } from './measure'
 
 // Tests about the cells scene (the Raster, its animation) ask for it: auto draws an image first.
 const CELLS = { options: { graphics: 'cells' } } as const
@@ -576,19 +577,6 @@ describe('the Road\'s text cells', () => {
       const bit = 1 << ((y % 2) * 2 + (x % 2))
       return (QUADRANT.indexOf(w[i]!) & bit) !== 0 ? w[i + 1]! : w[i + 2]!
     }))
-  }
-  /** Of the pixels that differ from their right neighbour, the share that match the one below: vertical stripes. */
-  const striping = (grid: number[][]): number => {
-    let mixed = 0
-    let striped = 0
-    for (let y = 0; y + 1 < grid.length; y++) {
-      for (let x = 0; x + 1 < (grid[y]?.length ?? 0); x++) {
-        if (grid[y]![x] === grid[y]![x + 1]) continue
-        mixed++
-        if (grid[y]![x] === grid[y + 1]![x]) striped++
-      }
-    }
-    return striped / Math.max(1, mixed)
   }
 
   test('a dithered sky shows no vertical stripes, drawn or blitted', CELLS, async ($, on) => {
