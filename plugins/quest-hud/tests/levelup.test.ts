@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'claude-code/testing'
 
 import { cardOf, type Inventory } from '../src/harness'
-import { CATALOGUE_CHECKED, levelText, levelUpText, MAX_QUESTS, pickQuests, scoutRidesText } from '../src/levelup'
+import { CATALOGUE_CHECKED, levelLogText, levelText, levelUpText, MAX_QUESTS, pickQuests, scoutRidesText } from '../src/levelup'
 import type { Usage } from '../types'
 
 const inventory = (over: Partial<Inventory> = {}): Inventory => ({
@@ -259,6 +259,14 @@ describe('/quest-hud:level', () => {
 
   test('one session is a session', () => {
     expect(levelText(cardOf(inventory(), usage({ sessions: 1, days: 1 })))).toContain('1 session, 1 day')
+  })
+
+  test('the log names the level, and what could not be read or kept', () => {
+    const card = cardOf(inventory(), usage())
+    expect(levelLogText(card, true, 0)).toBe('Lv 1 Novice')
+    expect(levelLogText(card, true, 1)).toBe('Lv 1 Novice · 1 session not read, read again next time')
+    expect(levelLogText(card, false, 0)).toBe('Lv 1 Novice · not kept, read again next time')
+    expect(levelLogText(card, false, 3)).toBe('Lv 1 Novice · 3 sessions not read, not kept, read again next time')
   })
 
   test('the scout says how much it is reading', () => {

@@ -143,8 +143,8 @@ export async function readInventory($: EngineInterface, config: string, history:
  * so no prompt or output is in the stream. Through `$.process.spawn`, as
  * `$.fs.read` refuses a large file and `$.process.run` cuts its output at 4 MiB.
  * A file swept meanwhile makes grep complain and go on, exit 2: the rest was read.
- * A batch that was killed answers as unread, so its files are not taken as read.
- * Rejects if grep cannot start.
+ * A batch that was killed answers as unread, so its files are not taken as read,
+ * and one that cannot start takes the batches after it along; what was read stands.
  */
 export async function scanTranscripts($: EngineInterface, files: readonly Transcript[]): Promise<{ tallies: Record<string, Tally>; unread: Transcript[] }> {
   const reader = surveyReader()
@@ -152,16 +152,22 @@ export async function scanTranscripts($: EngineInterface, files: readonly Transc
 
   for (let at = 0; at < files.length; at += FILES_PER_SCAN) {
     const batch = files.slice(at, at + FILES_PER_SCAN)
-    const scan = $.process.spawn({ argv: ['grep', '-HoE', SURVEY_PATTERN, '--', ...batch.map(file => file.path)], env: { LC_ALL: 'C' } })
-    const pieces = scan[Symbol.asyncIterator]()
 
-    for (let piece = await pieces.next(); ; piece = await pieces.next()) {
-      if (piece.done) {
-        if (piece.value.code === null || piece.value.code > GREP_TROUBLE) unread.push(...batch)
-        break
+    try {
+      const scan = $.process.spawn({ argv: ['grep', '-HoE', SURVEY_PATTERN, '--', ...batch.map(file => file.path)], env: { LC_ALL: 'C' } })
+      const pieces = scan[Symbol.asyncIterator]()
+
+      for (let piece = await pieces.next(); ; piece = await pieces.next()) {
+        if (piece.done) {
+          if (piece.value.code === null || piece.value.code > GREP_TROUBLE) unread.push(...batch)
+          break
+        }
+
+        if (piece.value.stream === 'stdout') reader.feed(piece.value.text)
       }
-
-      if (piece.value.stream === 'stdout') reader.feed(piece.value.text)
+    } catch {
+      unread.push(...files.slice(at))
+      break
     }
   }
 

@@ -245,6 +245,53 @@ describe('a grep that does not finish', () => {
     expect(Object.keys((world.store.survey ?? {}) as object)).toHaveLength(100)
   })
 
+  test('the log says so, even with the level unchanged', async ($, on) => {
+    engine(on)
+    machine()
+    await start($)
+    await run($, 'quest-hud:level')
+    await settled($)
+    const before = await stored($)
+    world.dirs[DIR] = [file('s1.jsonl', 99, 2000), file('s2.jsonl', 99, 2000), dir('memory')]
+    world.grepEnds = [{ code: null, signal: 'SIGKILL' }]
+    await run($, 'quest-hud:level')
+    await settled($)
+    expect((await stored($))?.level).toBe(before?.level)
+    expect(logged().at(-1)?.text).toBe(`Lv ${before?.level} ${before?.title} · 2 sessions not read, read again next time`)
+  })
+
+  test('a grep that cannot start says so too', async ($, on) => {
+    engine(on)
+    machine()
+    world.grep = undefined
+    await start($)
+    await run($, 'quest-hud:level')
+    await settled($)
+    expect(logged().at(-1)?.text).toContain('2 sessions not read')
+  })
+
+  test('one that stops starting keeps the batches it read, and says how many it did not', async ($, on) => {
+    engine(on)
+    machine()
+    world.dirs[DIR] = Array.from({ length: 150 }, (_, i) => file(`f${i}.jsonl`))
+    world.grep = grepLine('f0', 'a', 'Read')
+    world.grepFailsAt = 1
+    await start($)
+    await run($, 'quest-hud:level')
+    await settled($)
+    expect(Object.keys((world.store.survey ?? {}) as object)).toHaveLength(100)
+    expect(logged().at(-1)?.text).toContain('50 sessions not read')
+  })
+
+  test('a whole read says nothing of the kind', async ($, on) => {
+    engine(on)
+    machine()
+    await start($)
+    await run($, 'quest-hud:level')
+    await settled($)
+    expect(logged().at(-1)?.text).not.toContain('not read')
+  })
+
   test('exit 2 is a file swept meanwhile: the rest is read, and not read again', async ($, on) => {
     engine(on)
     machine()

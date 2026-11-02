@@ -345,18 +345,19 @@ async function keepCard($: EngineInterface, card: LevelCard): Promise<boolean> {
 /**
  * Reads the changed transcripts in the background and keeps what they came to.
  * A grep that cannot start reads as nothing found, so the card says usage
- * unread; the log carries the level when it first arrives or moves.
+ * unread; the log carries the level when it first arrives or moves, and says when
+ * a session could not be read or the result kept, as the next run then reads it again.
  */
 async function readSessions($: EngineInterface, files: readonly Transcript[], changed: readonly Transcript[], cached: Readonly<Record<string, Surveyed>>, history: History, inventory: Inventory): Promise<void> {
   const before = await currentLevel($)
-  const { tallies, unread } = await scanTranscripts($, changed).catch(() => ({ tallies: {}, unread: [] as Transcript[] }))
+  const { tallies, unread } = await scanTranscripts($, changed)
   const survey = mergeSurvey(cached, files, changed.filter(file => !unread.includes(file)), tallies)
   const card = cardOf(inventory, usageOf(survey, files, history, inventory, await $.clock.now()))
   const isCardKept = await keepCard($, card)
   const isSurveyKept = await $.store.set('survey', survey).then(() => true, () => false)
   const isKept = isCardKept && isSurveyKept
 
-  if (before?.level !== card.level || !isKept) await addLog($, { kind: 'level', text: levelLogText(card, isKept) })
+  if (before?.level !== card.level || !isKept || unread.length > 0) await addLog($, { kind: 'level', text: levelLogText(card, isKept, unread.length) })
 }
 
 /**

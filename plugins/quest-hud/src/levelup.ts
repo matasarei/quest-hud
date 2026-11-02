@@ -224,9 +224,12 @@ export const STILL_READING = 'Still reading the sessions: the Road shows the lev
 /** What /quest-hud:level-up answers before there is any level. */
 export const NO_LEVEL_YET = 'No level yet: /quest-hud:level reads it first.'
 
-/** What the log says when the level could not be kept: it stays on screen, and the next run reads everything. */
-export const levelLogText = ({ level, title }: LevelCard, isKept: boolean): string =>
-  `Lv ${level} ${title}${isKept ? '' : ' · not kept, read again next time'}`
+/** The log's line for a level: with what could not be read or kept, which the next run reads again. */
+export const levelLogText = ({ level, title }: LevelCard, isKept: boolean, notRead: number): string => {
+  const trouble = [...(notRead > 0 ? [`${plural(notRead, 'session')} not read`] : []), ...(isKept ? [] : ['not kept'])]
+
+  return `Lv ${level} ${title}${trouble.length > 0 ? ` · ${trouble.join(', ')}, read again next time` : ''}`
+}
 
 const PART_WIDTH = 12
 

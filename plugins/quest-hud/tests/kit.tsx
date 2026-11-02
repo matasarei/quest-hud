@@ -43,6 +43,8 @@ export const world: {
   /** What grep prints; undefined when it cannot start. A held scan waits for `grepGate`. */
   grep: string | undefined
   grepGate?: Promise<void>
+  /** Grep cannot start from this spawn on, counted from 0. */
+  grepFailsAt?: number
   /** How each spawn ends, in turn; past the list, as grep ends on its own. */
   grepEnds: Array<{ code: number | null; signal: string | null }>
   /** Every command spawned, and every one run. */
@@ -104,6 +106,7 @@ export const engine = (on: On, store: Readonly<Record<string, unknown>> = {}) =>
   world.grep = ''
   world.grepGate = undefined
   world.grepEnds = []
+  world.grepFailsAt = undefined
   world.spawned = []
   world.ran = []
   // Every value the plugin stores, as the kit's own store accepted it.
@@ -149,7 +152,7 @@ export const engine = (on: On, store: Readonly<Record<string, unknown>> = {}) =>
   on('process.spawn', async function* (_, e) {
     world.spawned.push([...e.argv])
     await world.grepGate
-    if (world.grep === undefined) throw new Error('grep: not found')
+    if (world.grep === undefined || (world.grepFailsAt !== undefined && world.spawned.length > world.grepFailsAt)) throw new Error('grep: not found')
     if (world.grep !== '') yield { stream: 'stdout' as const, text: world.grep }
     return { value: world.grepEnds.shift() ?? { code: world.grep === '' ? 1 : 0, signal: null } }
   })
