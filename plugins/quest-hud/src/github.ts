@@ -188,6 +188,9 @@ export const NOTIFICATIONS_ARGV: readonly string[] = [
   '--jq', '[.[] | {reason, updated_at, title: .subject.title, type: .subject.type, url: .subject.url, repo: .repository.full_name}]',
 ]
 
+// What a repository's name may hold before it goes into a path gh reads. `..` alone is no name.
+const REPO_NAME = /^[A-Za-z0-9_-][A-Za-z0-9_.-]*\/[A-Za-z0-9_-][A-Za-z0-9_.-]*$/
+
 const WRITERS: ReadonlySet<string> = new Set(['ADMIN', 'MAINTAIN', 'WRITE'])
 const BOSS_SEVERITY: Readonly<Record<string, number>> = { CRITICAL: 1, HIGH: 2 }
 /** In Normal: alerts, then open work, then drafts. */
@@ -315,7 +318,7 @@ export const parseSweep = (stdout: string, now: number): Sweep | undefined => {
 
   return {
     login,
-    repos: repoNodes.map(repo => text(repo.nameWithOwner)).filter(name => name !== ''),
+    repos: repoNodes.map(repo => text(repo.nameWithOwner)).filter(name => REPO_NAME.test(name)),
     repoTotal: typeof set.totalCount === 'number' ? set.totalCount : repoNodes.length,
     // A search's node that matched no fragment comes back empty: nothing to show.
     quests: inputs.filter(input => input.url !== undefined || input.title !== '').map(input => questOf(input, now)),
@@ -394,17 +397,18 @@ export const ridingBoard = (last: Board | null, at: number): Board => ({ phase: 
 export const failedBoard = (failure: BoardFailure, at: number): Board => ({ phase: 'done', at, quests: [], failure, isPartial: true, notes: [] })
 
 /** The board from what a sync has read so far. */
-export const boardOf = (parts: { phase: Board['phase']; at: number; sweep: Sweep; unread: readonly BoardQuest[] | undefined; here: string | undefined }): Board => {
-  const { sweep, unread } = parts
-  const { quests, left } = finishQuests([...sweep.quests, ...(unread ?? [])], parts.at, parts.here)
+export const boardOf = (parts: { phase: Board['phase']; at: number; sweep: Sweep; unread: readonly BoardQuest[] | undefined; here: string | undefined; scan?: ScanTally }): Board => {
+  const { sweep, unread, scan } = parts
+  const { quests, left } = finishQuests([...sweep.quests, ...(unread ?? []), ...(scan?.quests ?? [])], parts.at, parts.here)
   const notes = [
     ...(sweep.refused > 0 ? [`GitHub refused ${sweep.refused} part${sweep.refused === 1 ? '' : 's'} of its answer, so this list may be short.`] : []),
     ...(unread === undefined ? ['Notifications could not be read.'] : []),
     ...(sweep.isCut ? ['Some lists were longer than a sync reads.'] : []),
     ...(left > 0 ? [`${left} more quests did not fit.`] : []),
+    ...(scan === undefined || scan.scanned === 0 ? [] : [scanNote(scan, sweep.repoTotal)]),
   ]
 
-  return { phase: parts.phase, at: parts.at, quests, isPartial: sweep.refused > 0 || unread === undefined, notes }
+  return { phase: parts.phase, at: parts.at, quests, isPartial: sweep.refused > 0 || unread === undefined || (scan?.unread ?? 0) > 0, notes }
 }
 
 /** The ladder's words, as the board heads its sections. */
@@ -450,3 +454,98 @@ export const boardView = (board: Board | null, now: number): BoardView => {
     notes: board.notes,
   }
 }
+
+/** How many repositories a sync scans for secret and code alerts, the most recently pushed: GitHub has no account-wide read of either. */
+export const SCAN_REPOS = 20
+export const SCAN_AT_ONCE = 4
+const MAX_ALERTS_PER_SCAN = 50
+
+/**
+ * Open secret alerts. `hide_secret` asks GitHub to leave a secret's value out, and
+ * the --jq keeps only these fields in case it does not: the value never reaches the mod.
+ */
+export const secretArgv = (repo: string): readonly string[] => [
+  'gh', 'api', `repos/${repo}/secret-scanning/alerts?state=open&hide_secret=true&per_page=${MAX_ALERTS_PER_SCAN}`, '--hostname', 'github.com',
+  '--jq', '[.[] | {number, html_url, secret_type_display_name, created_at}]',
+]
+
+/** Open code-scanning alerts. */
+export const codeArgv = (repo: string): readonly string[] => [
+  'gh', 'api', `repos/${repo}/code-scanning/alerts?state=open&per_page=${MAX_ALERTS_PER_SCAN}`, '--hostname', 'github.com',
+  '--jq', '[.[] | {number, html_url, created_at, severity: .rule.security_severity_level, desc: .rule.description}]',
+]
+
+/** gh's call, as far as the scan cares. */
+export type GhAnswer = { exitCode: number; stdout: string; stderr: string }
+
+const SCANNING_OFF = /disabled|no analysis found|advanced security must be enabled|not enabled/i
+
+/** A repository's answer for one kind of alert: read, the feature is off there, or something stopped it. */
+export const scanOutcome = (answer: GhAnswer | undefined): 'read' | 'off' | 'unread' => {
+  if (answer === undefined) return 'unread'
+  if (answer.exitCode === 0) return 'read'
+
+  return SCANNING_OFF.test(answer.stderr) ? 'off' : 'unread'
+}
+
+const parsedList = (stdout: string): Json[] | undefined => {
+  const answer = parsed(stdout)
+  return Array.isArray(answer) ? objects(answer) : undefined
+}
+
+/** Open secret alerts as Bosses, first of all; undefined when they could not be read. Only the fields named here are kept. */
+export const parseSecretAlerts = (stdout: string, now: number): BoardQuest[] | undefined =>
+  parsedList(stdout)?.map(alert => questOf({
+    rank: 'boss',
+    url: alert.html_url,
+    title: `Leaked: ${text(alert.secret_type_display_name) || 'a secret'}`,
+    at: timeOf(alert.created_at),
+    isSecurity: true,
+  }, now))
+
+const CODE_BOSS: Readonly<Record<string, number>> = { critical: 1, high: 2 }
+
+/** Open code-scanning alerts; undefined when they could not be read. */
+export const parseCodeAlerts = (stdout: string, now: number): BoardQuest[] | undefined =>
+  parsedList(stdout)?.map(alert => {
+    const severity = text(alert.severity)
+    const bossOrder = CODE_BOSS[severity]
+
+    return questOf({
+      rank: bossOrder === undefined ? 'normal' : 'boss',
+      order: bossOrder ?? ORDER.alert,
+      url: alert.html_url,
+      title: `${severity === '' ? '' : `${capitalised(severity)}: `}${text(alert.desc)}`,
+      at: timeOf(alert.created_at),
+      isSecurity: true,
+    }, now)
+  })
+
+/** What a repository's scan answered. */
+export type ScanAnswer = { repo: string; secret: GhAnswer | undefined; code: GhAnswer | undefined }
+/** What the scan came to, and the alerts it found. `unread` counts the answers it could not read. */
+export type ScanTally = { scanned: number; secretOn: number; codeOn: number; unread: number; quests: BoardQuest[] }
+
+/** The scan's answers, added up. */
+export const tallyScan = (answers: readonly ScanAnswer[], now: number): ScanTally => {
+  const tally: ScanTally = { scanned: answers.length, secretOn: 0, codeOn: 0, unread: 0, quests: [] }
+  const take = (answer: GhAnswer | undefined, parse: (stdout: string, now: number) => BoardQuest[] | undefined): boolean => {
+    const outcome = scanOutcome(answer)
+    const found = outcome === 'read' ? parse(answer?.stdout ?? '', now) : undefined
+
+    if (outcome === 'unread' || (outcome === 'read' && found === undefined)) tally.unread += 1
+    tally.quests.push(...(found ?? []))
+
+    return found !== undefined
+  }
+
+  for (const { secret, code } of answers) {
+    if (take(secret, parseSecretAlerts)) tally.secretOn += 1
+    if (take(code, parseCodeAlerts)) tally.codeOn += 1
+  }
+
+  return tally
+}
+
+const scanNote = (scan: ScanTally, repoTotal: number): string =>
+  `Scanned ${scan.scanned} of ${repoTotal} repos: secret scanning on in ${scan.secretOn}, code scanning on in ${scan.codeOn}${scan.unread > 0 ? `, ${scan.unread} unread` : ''}.`

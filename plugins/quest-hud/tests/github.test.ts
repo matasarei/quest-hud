@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { ageText, countsText, finishQuests, labelOf, MAX_QUESTS, NOTIFICATIONS_ARGV, parseNotifications, parseSweep, questOf, safeHref, SWEEP_ARGV, SWEEP_QUERY, type QuestInput } from '../src/github'
+import { ageText, countsText, finishQuests, labelOf, MAX_QUESTS, NOTIFICATIONS_ARGV, parseNotifications, parseSweep, questOf, safeHref, SWEEP_ARGV, SWEEP_QUERY, type QuestInput, boardOf, codeArgv, parseCodeAlerts, parseSecretAlerts, repoOfRemote, SCAN_REPOS, scanOutcome, secretArgv, tallyScan } from '../src/github'
 import type { QuestRank } from '../types'
 
 const NOW = Date.parse('2026-11-02T12:00:00Z')
@@ -411,5 +411,114 @@ describe('the calls', () => {
 
   test('notifications read the unread only', () => {
     expect(NOTIFICATIONS_ARGV.join(' ')).not.toContain('all=true')
+  })
+})
+
+describe('repoOfRemote', () => {
+  for (const [remote, repo] of [
+    ['git@github.com:acme/api.git\n', 'acme/api'],
+    ['https://github.com/acme/api.git', 'acme/api'],
+    ['https://github.com/acme/api', 'acme/api'],
+    ['ssh://git@github.com/acme/my.repo.git', 'acme/my.repo'],
+    ['git@gitlab.com:acme/api.git', undefined],
+    ['', undefined],
+  ] as const) test(`${JSON.stringify(remote)} is ${String(repo)}`, () => expect(repoOfRemote(remote)).toBe(repo))
+})
+
+describe('the scan', () => {
+  const ok = (body: unknown) => ({ exitCode: 0, stdout: JSON.stringify(body), stderr: '' })
+  const refused = (message: string, exitCode = 1) => ({ exitCode, stdout: '', stderr: `gh: ${message} (HTTP 404)` })
+
+  test('its calls are reads on github.com, and a secret\'s value is asked to stay out twice over', () => {
+    const secret = secretArgv('o/r')
+    expect(secret.slice(0, 2)).toEqual(['gh', 'api'])
+    expect(secret[2]).toContain('repos/o/r/secret-scanning/alerts?')
+    expect(secret[2]).toContain('state=open')
+    expect(secret[2]).toContain('hide_secret=true')
+    expect(secret.join(' ')).toContain('--hostname github.com')
+    expect(secret.at(-2)).toBe('--jq')
+    expect(secret.at(-1)).toBe('[.[] | {number, html_url, secret_type_display_name, created_at}]')
+    const code = codeArgv('o/r')
+    expect(code[2]).toContain('repos/o/r/code-scanning/alerts?')
+    expect(code[2]).toContain('state=open')
+    for (const argv of [secret, code]) for (const flag of ['-X', '--method', '--input', '-f', '-F']) expect(argv).not.toContain(flag)
+  })
+
+  test('reads the 20 most recently pushed', () => expect(SCAN_REPOS).toBe(20))
+
+  for (const [what, gh, outcome] of [
+    ['a good answer', ok([]), 'read'],
+    ['secret scanning switched off', refused('Secret scanning is disabled on this repository.'), 'off'],
+    ['no code scanning yet', refused('no analysis found'), 'off'],
+    ['no Advanced Security', refused('Advanced Security must be enabled for this repository to use code scanning.'), 'off'],
+    ['not enabled, in other words', refused('Code scanning is not enabled for this repository.'), 'off'],
+    ['no permission', refused('Resource not accessible by integration'), 'unread'],
+    ['rate limited', refused('API rate limit exceeded'), 'unread'],
+    ['gh would not run', undefined, 'unread'],
+  ] as const) test(`${what} reads as ${outcome}`, () => expect(scanOutcome(gh)).toBe(outcome))
+
+  test('a secret alert is a Boss, first of all, and holds no value even if gh was given one', () => {
+    const rows = parseSecretAlerts(JSON.stringify([{ number: 4, html_url: 'https://github.com/o/r/security/secret-scanning/4', secret_type_display_name: 'AWS key', created_at: ISO, secret: 'AKIAREALVALUE' }]), NOW) ?? []
+    expect(rows[0]).toMatchObject({ rank: 'boss', order: 0, isSecurity: true, title: 'Leaked: AWS key', label: 'o/r alert #4' })
+    expect(JSON.stringify(rows)).not.toContain('AKIAREALVALUE')
+  })
+
+  for (const [severity, rank, order, title] of [
+    ['critical', 'boss', 1, 'Critical: Bad'],
+    ['high', 'boss', 2, 'High: Bad'],
+    ['medium', 'normal', 0, 'Medium: Bad'],
+    ['low', 'normal', 0, 'Low: Bad'],
+    [null, 'normal', 0, 'Bad'],
+  ] as const) test(`a code alert of severity ${String(severity)} is ${rank}`, () => {
+    const rows = parseCodeAlerts(JSON.stringify([{ number: 5, html_url: 'https://github.com/o/r/security/code-scanning/5', created_at: ISO, severity, desc: 'Bad' }]), NOW) ?? []
+    expect(rows[0]).toMatchObject({ rank, order, title, isSecurity: true })
+  })
+
+  test('an alert link off github.com keeps its row and loses its link', () => {
+    const rows = parseCodeAlerts(JSON.stringify([{ number: 5, html_url: 'https://evil.example/x', created_at: ISO, severity: 'high', desc: 'Bad' }]), NOW) ?? []
+    expect(rows[0]).toMatchObject({ rank: 'boss', label: 'no link' })
+    expect(rows[0]?.href).toBeUndefined()
+  })
+
+  test('what is not a list is unread', () => {
+    expect(parseSecretAlerts('nope', NOW)).toBeUndefined()
+    expect(parseCodeAlerts('{}', NOW)).toBeUndefined()
+  })
+
+  test('the tally counts each repository once for each kind', () => {
+    const tally = tallyScan([
+      { repo: 'o/a', secret: ok([]), code: refused('no analysis found') },
+      { repo: 'o/b', secret: refused('Secret scanning is disabled'), code: ok([]) },
+      { repo: 'o/c', secret: undefined, code: refused('Resource not accessible') },
+      { repo: 'o/d', secret: { exitCode: 0, stdout: 'garbled', stderr: '' }, code: ok([]) },
+    ], NOW)
+    expect(tally).toMatchObject({ scanned: 4, secretOn: 1, codeOn: 2, unread: 3 })
+  })
+
+  const sweep = { login: 'me', repos: [], repoTotal: 51, quests: [], refused: 0, isCut: false }
+  test('the board says how far the scan went, and a clean one is still whole', () => {
+    const scan = { scanned: 20, secretOn: 7, codeOn: 0, unread: 0, quests: [] }
+    const board = boardOf({ phase: 'done', at: NOW, sweep, unread: [], here: undefined, scan })
+    expect(board.notes).toEqual(['Scanned 20 of 51 repos: secret scanning on in 7, code scanning on in 0.'])
+    expect(board.isPartial).toBe(false)
+  })
+
+  test('a repository the scan could not read leaves the board partial, and says so', () => {
+    const scan = { scanned: 20, secretOn: 7, codeOn: 0, unread: 2, quests: [] }
+    const board = boardOf({ phase: 'done', at: NOW, sweep, unread: [], here: undefined, scan })
+    expect(board.notes[0]).toContain('2 unread')
+    expect(board.isPartial).toBe(true)
+  })
+
+  test('its alerts join the board, and rank above the rest', () => {
+    const quests = parseSecretAlerts(JSON.stringify([{ number: 4, html_url: 'https://github.com/o/r/security/secret-scanning/4', secret_type_display_name: 'AWS key', created_at: '2020-01-01T00:00:00Z' }]), NOW) ?? []
+    const review = only({ review: search(pull(1)) }).quests
+    const board = boardOf({ phase: 'done', at: NOW, sweep: { ...sweep, quests: review }, unread: [], here: undefined, scan: { scanned: 1, secretOn: 1, codeOn: 0, unread: 0, quests } })
+    expect(board.quests.map(q => q.rank)).toEqual(['boss', 'rareElite'])
+  })
+
+  test('sweep repositories hold only names a path can carry', () => {
+    const parsedSweep = only(repos(repoNode('o/r'), repoNode('../../evil'), repoNode('o/r?x=1')))
+    expect(parsedSweep.repos).toEqual(['o/r'])
   })
 })

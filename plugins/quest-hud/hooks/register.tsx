@@ -7,7 +7,7 @@ import type { EngineInterface, Register, Timer } from 'claude-code'
 import { gridToSvg } from '../src/avatar'
 import { commandKinds, endFights, fightKinds, fightOutcome, fightText, forgeEvent, holdsTheRoad, lootText, NO_FOES, startFights, stdoutOf } from '../src/bash'
 import { activeCompanions, sameCompanions } from '../src/companions'
-import { boardOf, boardView, failedBoard, failureOf, NOTIFICATIONS_ARGV, parseNotifications, parseSweep, ridingBoard, SWEEP_ARGV } from '../src/github'
+import { boardOf, boardView, failedBoard, failureOf, NOTIFICATIONS_ARGV, parseNotifications, parseSweep, ridingBoard, SCAN_REPOS, SWEEP_ARGV, tallyScan } from '../src/github'
 import { asCard, cardOf, type Inventory } from '../src/harness'
 import { unknownText, usageText } from '../src/help'
 import { levelLogText, levelText, levelUpText, NO_LEVEL_YET, rereadingText, scoutRidesText, STILL_READING } from '../src/levelup'
@@ -23,7 +23,7 @@ import { ART_SCALE } from '../src/world/sprites'
 import { parseZones, zoneFor } from '../src/zones'
 import type { Allies, FightKind, Foes, LevelCard, LogEntry, Meters, Usage, Zone } from '../types'
 import { BOARD_ID, BOARD_TITLE, drawBoard } from './board'
-import { readHereRepo, runGh, SWEEP_MS } from './github'
+import { readHereRepo, runGh, scanRepos, SWEEP_MS } from './github'
 import { artCells, drawRoad, PANE_ID, PANE_TITLE, SCENE_IMAGE_KEY, SCENE_KEY, sceneImage, type PngSource, type SceneMode } from './pane'
 import { configDir, readHistory, readInventory, readProjects, scanTranscripts } from './survey'
 
@@ -341,7 +341,9 @@ async function readGitHub($: EngineInterface): Promise<void> {
   }
 
   const unread = notified === undefined ? undefined : parseNotifications(notified.stdout, at, new Set(sweep.repos))
-  await update($, board, () => boardOf({ phase: 'done', at, sweep, unread, here }))
+  await update($, board, () => boardOf({ phase: 'scanning', at, sweep, unread, here }))
+  const scan = tallyScan(await scanRepos($, sweep.repos.slice(0, SCAN_REPOS)), at)
+  await update($, board, () => boardOf({ phase: 'done', at, sweep, unread, here, scan }))
 }
 
 /**

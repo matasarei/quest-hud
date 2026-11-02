@@ -55,6 +55,8 @@ export const world: {
   /** What gh answers a call; undefined, or no function, when it cannot start. A held call waits for `ghGate`. */
   gh?: (argv: readonly string[]) => { exitCode: number; stdout: string; stderr: string } | undefined
   ghGate?: Promise<void>
+  /** Holds only the calls it returns a promise for. */
+  ghHold?: (argv: readonly string[]) => Promise<void> | undefined
   /** What `git remote get-url origin` prints; undefined when it fails. */
   remote?: string
 } = {
@@ -119,6 +121,7 @@ export const engine = (on: On, store: Readonly<Record<string, unknown>> = {}) =>
   world.ran = []
   world.gh = undefined
   world.ghGate = undefined
+  world.ghHold = undefined
   world.remote = undefined
   // Every value the plugin stores, as the kit's own store accepted it.
   on('state.set', async (_, e, next) => {
@@ -165,6 +168,7 @@ export const engine = (on: On, store: Readonly<Record<string, unknown>> = {}) =>
     world.ran.push([...e.argv])
     if (e.argv[0] === 'gh') {
       await world.ghGate
+      await world.ghHold?.(e.argv)
       const answer = world.gh?.(e.argv)
       if (answer === undefined) throw new Error('gh: not found')
       return { value: { ...answer, isStdoutTruncated: false, isStderrTruncated: false } }
