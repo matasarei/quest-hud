@@ -96,6 +96,27 @@ export type LevelCard = {
   usage: Usage
 }
 
+/** Where a GitHub quest stands on the ladder, highest first: WoW's creature classifications. */
+export type QuestRank = 'boss' | 'rareElite' | 'elite' | 'rare' | 'normal' | 'minion' | 'trivial'
+
+/** One row of the Quest Board. Its title is outside text: cleaned, and drawn only on the board. */
+export type BoardQuest = {
+  /** What two sources of one quest share. */
+  id: string
+  rank: QuestRank
+  /** The kind's place within the rank, lowest first. */
+  order: number
+  /** Where the row links to; absent when the link failed its check. */
+  href?: string
+  label: string
+  title: string
+  /** Why it is on the board, in the HUD's own words; may be empty. */
+  why: string
+  at: number
+  isUnread: boolean
+  isSecurity: boolean
+}
+
 /** A subagent at work, drawn as a ghost behind the avatar. */
 export type Companion = { id: string; type: string }
 
