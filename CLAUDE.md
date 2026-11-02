@@ -79,9 +79,11 @@ files only (`git grep -I`): perl dies on binary input.
   values passed to it.
 - **The animation is one timer at most**, every `ANIM_MS` (250 ms, four frames a second),
   started by the main loop's `turn.start` or a zone change, only when the pane is shown and
-  drawn in a terminal (cells or an image). It stops at `turn.complete`, `ui.close`, a pane no
-  longer shown, a refused blit, a new session, or a zone's slide ending while Claude is idle,
-  and stopping blits the frame at rest. The desktop's Svg never animates. The only other timer
+  drawn in a terminal (cells or an image), or, with or without the pane, while a main turn runs
+  and the band's portrait is drawn as a Raster. It stops at `turn.complete`, a new session, a
+  zone's slide ending while Claude is idle, and when neither reason is left: `ui.close`, a pane
+  no longer shown or a refused blit, with no band drawn, or a band that has gone with no pane
+  shown. Stopping blits the frame at rest. The desktop's Svg never animates. The only other timer
   is the image probe: one `$.clock.after` per session, after the first image draw in `auto`.
   Nothing else may run on a timer.
 - **Bash commands are read by `src/bash.ts` only, and never drawn.** It recognises known
@@ -102,7 +104,8 @@ files only (`git grep -I`): perl dies on binary input.
   stripes; the desktop's Svg shows it at one pixel a unit (`scene`). A
   Raster takes one printable width-1 BMP character a cell, so octants (U+1CD00) and
   sextants (U+1FB00) are out. The band's portrait is art the same way, each 2 × 2 block in at
-  most two colours.
+  most two colours; the `avatar` option picks it from `BAND_AVATARS`, the wizard's own frames,
+  the Road's mascot cropped, and an Octocat close to the Road's.
   The roadside (a zone's landmarks, and the chest) is scenery: it walks with the near layer
   and, in a zone change, slides with its own zone's backdrop by the same `slideShift`
   (`roadside()`). The party (`party()`: flags, wizard, mascot, ghosts, monsters, allies) is

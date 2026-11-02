@@ -60,6 +60,7 @@ Run `/plugin configure quest-hud@quest-hud`, then `/reload-plugins`.
 |---|---|---|---|
 | `detail` | `off`, `status`, `band`, `pane` | `band` | nothing; dim bars on the hint line under the prompt (terminal only, so use `band` in the desktop app); the band above the prompt; or the band, with the Road opened when the session starts (placed from 144 columns) |
 | `bars` | `hpmp`, `all` | `hpmp` | `all` adds the 5-hour window (⚡) and the session cost (◉) |
+| `avatar` | `wizard`, `claude`, `octocat` | `wizard` | who the band's portrait shows: the wizard, Claude's mascot or GitHub's Octocat. The Road keeps its own cast |
 | `zones` | `name=zone, …` | empty | extra skill-to-zone rules, e.g. `quest=forge, triage=map` |
 | `graphics` | `auto`, `cells`, `images` | `auto` | how a terminal draws the Road's scene: found out once a session, or always cells, or always images |
 
@@ -214,7 +215,9 @@ in turn: the zone's landmarks from the left, keeping its last one, then the fox,
 the chest, then that last prop. Below 32 columns the pane draws no scene.
 
 **Animation.** While Claude works, the Road walks at four frames a second; in a fight the wizard
-stops and strikes, and a zone change slides the landscape. When Claude is idle, nothing is drawn.
+stops and strikes, and a zone change slides the landscape. The band's avatar moves with it, with or
+without the Road open: the wizard casts, Claude's mascot hops, the Octocat moves its tentacles. When
+Claude is idle, nothing is drawn.
 
 **Images or text cells.** Where the terminal shows images (kitty, Ghostty, iTerm2 3.5+), the scene
 is a small PNG. Everywhere else it is quadrant text cells (`▖▝▞`). `graphics = auto` tries the
