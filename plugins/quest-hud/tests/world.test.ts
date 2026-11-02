@@ -98,6 +98,13 @@ describe('the band\'s wizard', () => {
     expect(sparks.filter(spark => /[~w]/.test(spark.beside))).toEqual([])
   })
 
+  test('wears the hat grown to the left, its right edge where it was, in both frames', () => {
+    for (const [name, sprite] of [['icon', BAND_ICON], ['cast', BAND_CAST]] as const) {
+      const hat = (y: number) => sprite.rows[y]?.slice(0, 12)
+      expect([name, hat(0), hat(2)]).toEqual([name, '......(((...', '....((((((..'])
+    }
+  })
+
   test('casts by raising the whole staff a row: as long as at rest, its foot off the ground', () => {
     /** The rows the staff spans, orb to foot: the first and last row with its wood or orb in it. */
     const span = (sprite: Sprite): readonly [number, number] => {
