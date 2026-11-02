@@ -5,7 +5,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, Timer } from 'claude-code'
 
 import { gridToSvg } from '../src/avatar'
-import { commandKinds, endFights, fightKinds, fightOutcome, fightText, forgeEvent, lootText, NO_FOES, startFights, stdoutOf } from '../src/bash'
+import { commandKinds, endFights, fightKinds, fightOutcome, fightText, forgeEvent, holdsTheRoad, lootText, NO_FOES, startFights, stdoutOf } from '../src/bash'
 import { activeCompanions, sameCompanions } from '../src/companions'
 import { unknownText, usageText } from '../src/help'
 import { appendEntry, castText, scoutCounts, scoutText } from '../src/log'
@@ -201,12 +201,13 @@ async function animStep($: EngineInterface): Promise<void> {
   // A stop while the panes were being asked wins: it has drawn the frame at rest.
   if (anim.timer === undefined) return
 
-  // While Claude works the wizard walks; a zone change slides on whether he walks or not.
+  // While Claude works the wizard walks, unless a monster blocks the Road — fought, or
+  // standing after a lost run: then he holds his ground, striking at it. A zone change
+  // slides on either way.
   const isWalking = await read($, isWorking)
   if (isWalking) {
-    const isFighting = Object.values(await read($, foes)).includes('fighting')
     anim.tick += 1
-    anim.motion = nextMotion(anim.motion, anim.tick, isFighting)
+    anim.motion = nextMotion(anim.motion, anim.tick, holdsTheRoad(await read($, foes)))
   }
   if (anim.slide !== undefined) anim.slide = { ...anim.slide, step: anim.slide.step + 1 }
   await blitFrame($)
