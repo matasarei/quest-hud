@@ -165,22 +165,35 @@ export const bandModel = (quest: Quest | null, tasks: readonly Task[], meters: M
   return { head, meters: row }
 }
 
-/** The one-line form, for `$.ui.status`. */
-export const statusText = (quest: Quest | null, tasks: readonly Task[], meters: Meters | null, bars: Bars): string => {
-  const parts: string[] = []
+/** The pieces of the one-line forms, for each form to put in its own order. */
+const lineParts = (quest: Quest | null, tasks: readonly Task[], meters: Meters | null, bars: Bars) => {
   const { done, total } = progress(tasks)
-
-  if (quest) parts.push(`⚔ ${quest.title}${total > 0 ? ` ${done}/${total}` : ''}`)
-  else if (total > 0) parts.push(`task ${done}/${total}`)
-
   const hp = hpLeft(meters)
-  if (hp !== undefined) parts.push(`♥${bar(hp, 10, '▰', '▱')} ${hp}%`)
-
   const mp = mpLeft(meters)
-  parts.push(mp === undefined ? '✦ —' : `✦${bar(mp, 10, '▰', '▱')} ${mp}%`)
 
-  if (bars === 'all' && meters?.fiveHourUsed !== undefined) parts.push(`⚡${Math.round(meters.fiveHourUsed)}%`)
-  if (bars === 'all' && meters?.costUsd !== undefined) parts.push(`◉$${meters.costUsd.toFixed(2)}`)
+  return {
+    work: quest ? [`⚔ ${quest.title}${total > 0 ? ` ${done}/${total}` : ''}`] : total > 0 ? [`task ${done}/${total}`] : [],
+    gauges: [...(hp === undefined ? [] : [`♥${bar(hp, 10, '▰', '▱')} ${hp}%`]), mp === undefined ? '✦ —' : `✦${bar(mp, 10, '▰', '▱')} ${mp}%`],
+    extras: [
+      ...(bars === 'all' && meters?.fiveHourUsed !== undefined ? [`⚡${Math.round(meters.fiveHourUsed)}%`] : []),
+      ...(bars === 'all' && meters?.costUsd !== undefined ? [`◉$${meters.costUsd.toFixed(2)}`] : []),
+    ],
+  }
+}
 
-  return parts.join(' ')
+/** The one-line form, for /quest-hud:status. */
+export const statusText = (quest: Quest | null, tasks: readonly Task[], meters: Meters | null, bars: Bars): string => {
+  const { work, gauges, extras } = lineParts(quest, tasks, meters, bars)
+
+  return [...work, ...gauges, ...extras].join(' ')
+}
+
+/**
+ * The same figures for the prompt's hint line, the bars first: the row cuts from
+ * the right, and a quest's title can be long.
+ */
+export const hintText = (quest: Quest | null, tasks: readonly Task[], meters: Meters | null, bars: Bars): string => {
+  const { work, gauges, extras } = lineParts(quest, tasks, meters, bars)
+
+  return [...gauges, ...work, ...extras].join(' ')
 }

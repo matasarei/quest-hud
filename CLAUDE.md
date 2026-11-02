@@ -28,7 +28,9 @@ files only (`git grep -I`): perl dies on binary input.
 - **It costs nothing.** Never `$.model.*`, `prompt.compose`, `prompt.context`, or
   `$.session.usage({ breakdown })`; never `$.fs` writes. Nothing reaches the model.
 - **Every hook observes.** It returns what `next(e)` resolved, unchanged, and closes with
-  `.catch(($, e, next) => next(e))`. The HUD never rewrites or refuses anything.
+  `.catch(($, e, next) => next(e))`. The HUD never rewrites or refuses anything, with one
+  exception: `detail = status` adds `tail` to `PromptHint`, after the engine's line and never in
+  place of it. `$.ui.status` is not used: Claude Code draws it with a warning sign, in yellow.
 - **Commands are user-only skills the mod answers.** A registered name cannot hold a colon, so
   `skills/<name>/SKILL.md` gives each command its `/quest-hud:<name>`, and a `command.run` hook
   answers it before any model turn. `disable-model-invocation: true` keeps it out of the context.

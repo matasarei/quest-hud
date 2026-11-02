@@ -14,11 +14,11 @@ const session = { id: 's1' }
 const registered: string[] = []
 
 // Nothing sits beneath the plugin in a test: these hooks stand for the engine.
-const engine = (on: On, statuses: Array<string | undefined> = []) => {
+const engine = (on: On, statuses: Array<string | undefined> = [], store: Readonly<Record<string, unknown>> = {}) => {
   session.id = 's1'
   registered.length = 0
   mock.clock(on, { now: Date.parse('2026-11-01T10:00:00Z') })
-  mock.store(on)
+  mock.store(on, store)
   on('command.register', (_, e) => {
     registered.push(e.name)
     return { value: { command: e.name } }
@@ -35,9 +35,10 @@ const engine = (on: On, statuses: Array<string | undefined> = []) => {
   on('tool.call', (_, e) =>
     e.tool === 'TaskCreate' ? { result: { task: { id: `t-${e.subject}`, subject: e.subject } } } : { result: { success: true } },
   )
+  // Beneath the plugin, the hint line shows what it was handed, so a test can read it.
   on('ui.render', ($, e) => {
     const { Text } = $.ui.resolve(e)
-    return <Text>engine below</Text>
+    return <Text>{e.component === 'PromptHint' ? JSON.stringify({ hint: e.props.hint, tail: e.props.tail ?? null }) : 'engine below'}</Text>
   })
 }
 
@@ -162,6 +163,56 @@ describe('what the HUD leaves unchanged', () => {
   })
 })
 
+describe('the hint line', () => {
+  const hint = (tail?: string) => ({
+    plugin: 'quest-hud',
+    component: 'PromptHint',
+    surface: 'terminal',
+    props: { isDraft: false, isWorking: false, hint: '? for shortcuts', ...(tail === undefined ? {} : { tail }) },
+  }) as const
+
+  const shows = async ($: Engine, text: RegExp, props = hint()): Promise<boolean> => {
+    const ui = await $.ui.mount(props)
+    const found = await ui.find({ type: 'Text', text })
+    await ui.unmount()
+    return Boolean(found)
+  }
+
+  test('detail = status: the bars before the quest in tail, and the hint untouched', { options: { detail: 'status' } }, async ($, on) => {
+    engine(on)
+    await implementWithTasks($)
+    expect(await shows($, /^\{"hint":"\? for shortcuts","tail":"♥[▰▱]{10} 62% ✦[▰▱]{10} 59% ⚔ gku:implement 0\/2"\}$/)).toBe(true)
+  })
+
+  for (const detail of ['off', 'band', 'pane']) {
+    test(`detail = ${detail}: tail stays as it came`, { options: { detail } }, async ($, on) => {
+      engine(on)
+      await implementWithTasks($)
+      expect(await shows($, /"tail":null/)).toBe(true)
+    })
+  }
+
+  test('detail = status while off: tail stays as it came', { options: { detail: 'status' } }, async ($, on) => {
+    engine(on, [], { hidden: true })
+    await implementWithTasks($)
+    expect(await shows($, /"tail":null/)).toBe(true)
+  })
+
+  test('a tail another plugin set is kept, with ours after it', { options: { detail: 'status' } }, async ($, on) => {
+    engine(on)
+    await implementWithTasks($)
+    expect(await shows($, /"tail":"theirs ♥/, hint('theirs'))).toBe(true)
+  })
+
+  test('tail follows a new measurement', { options: { detail: 'status' } }, async ($, on) => {
+    engine(on)
+    await implementWithTasks($)
+    expect(await shows($, /✦[▰▱]{10} 59%/)).toBe(true)
+    await $.session.measure({ ...SUBSCRIBER, context: { tokens: 20_000, window: 200_000, percent: 10 } })
+    expect(await shows($, /✦[▰▱]{10} 90%/)).toBe(true)
+  })
+})
+
 describe('the detail option', () => {
   test('off: no band and no status', { options: { detail: 'off' } }, async ($, on) => {
     const statuses: Array<string | undefined> = []
@@ -169,31 +220,23 @@ describe('the detail option', () => {
     await implementWithTasks($)
     const ui = await $.ui.mount(band('terminal'))
     expect(await ui.find({ type: 'Text', text: /⚔/ })).toBeFalsy()
-    expect(statuses).toEqual([undefined])
+    expect(statuses).toEqual([])
     await ui.unmount()
   })
 
-  for (const detail of ['off', 'band', 'pane']) {
-    test(`${detail}: a start clears the entry a load with detail = status pinned`, { options: { detail } }, async ($, on) => {
+  for (const detail of ['off', 'status', 'band', 'pane']) {
+    test(`${detail}: no status entry, ever`, { options: { detail } }, async ($, on) => {
       const statuses: Array<string | undefined> = []
       engine(on, statuses)
-      await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
-      expect(statuses).toEqual([undefined])
+      await implementWithTasks($)
+      await $.session.measure(SUBSCRIBER)
+      expect(statuses).toEqual([])
     })
   }
 
-  test('band: with no start, the next measure clears it, as after an option change', async ($, on) => {
-    const statuses: Array<string | undefined> = []
-    engine(on, statuses)
-    await $.session.measure(SUBSCRIBER)
-    expect(statuses).toEqual([undefined])
-  })
-
-  test('status: the one-line entry, and no band', { options: { detail: 'status' } }, async ($, on) => {
-    const statuses: Array<string | undefined> = []
-    engine(on, statuses)
+  test('status: no band', { options: { detail: 'status' } }, async ($, on) => {
+    engine(on)
     await implementWithTasks($)
-    expect(statuses.at(-1)).toBe('⚔ gku:implement 0/2 ♥▰▰▰▰▰▰▱▱▱▱ 62% ✦▰▰▰▰▰▰▱▱▱▱ 59%')
     const ui = await $.ui.mount(band('terminal'))
     expect(await ui.find({ type: 'Text', text: /⚔/ })).toBeFalsy()
     await ui.unmount()

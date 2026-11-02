@@ -20,6 +20,18 @@ const showsBand = async ($: Engine): Promise<boolean> => {
   return Boolean(found)
 }
 
+const hintShows = async ($: Engine, text: RegExp): Promise<boolean> => {
+  const ui = await $.ui.mount({
+    plugin: 'quest-hud',
+    component: 'PromptHint',
+    surface: 'terminal',
+    props: { isDraft: false, isWorking: false, hint: '? for shortcuts' },
+  })
+  const found = await ui.find({ type: 'Text', text })
+  await ui.unmount()
+  return Boolean(found)
+}
+
 describe('/quest-hud:off', () => {
   test('hides the band at once, and a new session stays off', async ($, on) => {
     engine(on)
@@ -75,16 +87,17 @@ describe('/quest-hud:off', () => {
     expect(world.opened).toEqual(['quest-hud'])
   })
 
-  test('clears the status entry, and on draws it again', { options: { detail: 'status' } }, async ($, on) => {
+  test('takes the bars off the hint line at once, and on puts them back', { options: { detail: 'status' } }, async ($, on) => {
     engine(on)
     await start($)
-    const before = world.statuses.length
+    expect(await hintShows($, /^tail: ✦/)).toBe(true)
     await run($, 'quest-hud:off')
-    expect(world.statuses.slice(before)).toEqual([undefined])
+    expect(await hintShows($, /^tail: none$/)).toBe(true)
     await $.session.measure({ context: { window: 200_000, tokens: 10_000, percent: 5 }, rateLimits: [], changed: ['context'] })
-    expect(world.statuses.slice(before)).toEqual([undefined])
+    expect(await hintShows($, /^tail: none$/)).toBe(true)
     await run($, 'quest-hud:on')
-    expect(typeof world.statuses.at(-1)).toBe('string')
+    expect(await hintShows($, /^tail: ✦[▰▱]{10} 95%/)).toBe(true)
+    expect(world.statuses).toEqual([])
   })
 
   test('the Road will not open while off, and says why', async ($, on) => {
@@ -133,10 +146,11 @@ describe('a command whose hook fails', () => {
 })
 
 describe('a session started while off', () => {
-  test('draws no band and no status entry', { options: { detail: 'status' } }, async ($, on) => {
+  test('draws nothing on the hint line, and no status entry', { options: { detail: 'status' } }, async ($, on) => {
     engine(on, { hidden: true })
     await start($)
-    expect(world.statuses).toEqual([undefined])
+    expect(await hintShows($, /^tail: none$/)).toBe(true)
+    expect(world.statuses).toEqual([])
   })
 
   for (const detail of ['band', 'pane']) {

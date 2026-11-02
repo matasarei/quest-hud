@@ -125,7 +125,7 @@ export const engine = (on: On, store: Readonly<Record<string, unknown>> = {}) =>
   })
   on('ui.render', ($, e) => {
     const { Text } = $.ui.resolve(e)
-    return <Text>engine below</Text>
+    return <Text>{e.component === 'PromptHint' ? `tail: ${e.props.tail ?? 'none'}` : 'engine below'}</Text>
   })
   return clock
 }
