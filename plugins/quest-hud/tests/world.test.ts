@@ -9,7 +9,7 @@ import { GROUND, HEIGHT, landscape } from '../src/world/landscapes'
 const CAST: ReadonlyArray<readonly [string, Sprite, number, number]> = [
   ...POSES.map(pose => [`wizard ${pose}`, WIZARD[pose], 32, 32] as const),
   ['mascot', MASCOT.still, 20, 16], ['mascot hop', MASCOT.hop, 20, 16], ['ghost', GHOST, 32, 32], ['dragon', DRAGON, 32, 32],
-  ['spider', SPIDER, 32, 32], ['skeleton', SKELETON, 32, 32], ['golem', GOLEM, 32, 32], ['flying books', FLYING_BOOKS, 32, 32], ['octocat', OCTOCAT, 20, 20], ['fox', FOX, 20, 20], ['chest', CHEST, 32, 24],
+  ['spider', SPIDER, 32, 32], ['skeleton', SKELETON, 32, 32], ['golem', GOLEM, 32, 32], ['flying books', FLYING_BOOKS, 32, 32], ['octocat', OCTOCAT.still, 20, 16], ['octocat wiggle', OCTOCAT.hop, 20, 16], ['fox', FOX.still, 20, 16], ['fox hop', FOX.hop, 20, 16], ['chest', CHEST, 32, 24],
   ['flag done', FLAG.done, 16, 32], ['flag now', FLAG.now, 16, 32], ['flag todo', FLAG.todo, 16, 32],
   ['band icon', BAND_ICON, 20, 12],
   ['band cast', BAND_CAST, 20, 12],
@@ -24,7 +24,7 @@ describe('the cast', () => {
   })
 
   test('the figures stand on the bottom of their box', () => {
-    for (const [name, sprite] of CAST.filter(([n]) => !n.startsWith('mascot hop') && n !== 'ghost' && !n.startsWith('band'))) {
+    for (const [name, sprite] of CAST.filter(([n]) => !n.startsWith('mascot hop') && n !== 'fox hop' && n !== 'ghost' && !n.startsWith('band'))) {
       expect([name, /[^.]/.test(sprite.rows[sprite.rows.length - 1] ?? '')]).toEqual([name, true])
     }
   })
@@ -32,6 +32,8 @@ describe('the cast', () => {
   test('every pose differs from standing, the mascot hops, and the flags differ by state', () => {
     for (const pose of POSES.filter(p => p !== 'stand')) expect(WIZARD[pose].rows.join() === WIZARD.stand.rows.join()).toBe(false)
     expect(MASCOT.hop.rows.join() === MASCOT.still.rows.join()).toBe(false)
+    expect(OCTOCAT.hop.rows.join() === OCTOCAT.still.rows.join()).toBe(false)
+    expect(FOX.hop.rows.join() === FOX.still.rows.join()).toBe(false)
     expect(new Set([FLAG.done, FLAG.now, FLAG.todo].map(f => f.rows.join())).size).toBe(3)
   })
 })

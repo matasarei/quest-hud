@@ -338,6 +338,16 @@ describe('the allies', () => {
     expect(roadWidth(160, 'wilds', { loot: 1, allies: { octopus: true, fox: true } })).toBe(roadWidth(160, 'wilds') - (SIZE.extra + 2) - 2 * (10 + 2))
   })
 
+  test('they move on the mascot\'s hop: the Octocat wiggles its tentacles, the fox hops', () => {
+    const at = (hop: boolean) => scene({ columns: 160, zone: 'wilds', waypoints: [], companions: 0, loot: 1, allies: { octopus: true, fox: true }, motion: { step: 0, pose: 'stand', hop } })
+    const [down, up] = [at(false), at(true)]
+    const rowsOf = (grid: Scene, color: number) => grid.flatMap((line, y) => (line.includes(color) ? [y] : []))
+    // The fox's top row rises; the Octocat's face stays where it was.
+    expect(rowsOf(up, FOX)[0]! < rowsOf(down, FOX)[0]!).toBe(true)
+    expect(rowsOf(up, OCTOCAT)).toEqual(rowsOf(down, OCTOCAT))
+    expect(changed(up, down).length > 0).toBe(true)
+  })
+
   test('neither, until they came', () => {
     const grid = scene({ columns: 160, zone: 'wilds', waypoints: [], companions: 0, allies: { octopus: false, fox: false } })
     expect(columnsOf(grid, OCTOCAT)).toEqual([])
