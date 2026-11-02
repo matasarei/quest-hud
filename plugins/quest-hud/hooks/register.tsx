@@ -507,6 +507,17 @@ export const register: Register = (on, options) => {
         ? `${shortTokens(tokensBefore)} → ${shortTokens(tokensAfter)}`
         : 'context compacted'
       await addLog($, { kind: 'camp', text })
+
+      // The engine's fill is the last response's input, so until the next one
+      // it still reads the size before: take the size after in its place.
+      if (e.agentId === undefined && e.trigger !== 'precompute' && tokensAfter !== undefined) {
+        await update($, meters, current => current && {
+          ...current,
+          contextTokens: tokensAfter,
+          contextPercent: Math.round((tokensAfter / current.window) * 100),
+        })
+        await showStatus($, detail, bars)
+      }
     }
 
     return compacted

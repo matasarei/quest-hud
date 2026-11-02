@@ -93,6 +93,25 @@ describe('camp', () => {
     expect(await texts($)).toEqual(['164k → 38k'])
   })
 
+  test('a compaction refills the mana at once, before the next response measures it', async ($, on) => {
+    engine(on)
+    on('session.compact', () => ({ messages: [{ role: 'assistant', text: 'summary', toolUses: [] }], tokensBefore: 180_000, tokensAfter: 38_000 }))
+    await start($)
+    await $.session.measure({ context: { window: 200_000, tokens: 180_000, percent: 90 }, rateLimits: [], changed: ['context'] })
+    await $.session.compact({ trigger: 'manual', messages: [{ role: 'user', text: 'hi', toolUses: [] }] })
+    expect(await stateOf($, 'meters')).toEqual({ window: 200_000, contextTokens: 38_000, contextPercent: 19 })
+  })
+
+  test("a subagent's compaction, or one only precomputed, leaves the mana as measured", async ($, on) => {
+    engine(on)
+    on('session.compact', () => ({ messages: [{ role: 'assistant', text: 'summary', toolUses: [] }], tokensBefore: 180_000, tokensAfter: 38_000 }))
+    await start($)
+    await $.session.measure({ context: { window: 200_000, tokens: 180_000, percent: 90 }, rateLimits: [], changed: ['context'] })
+    await $.session.compact({ trigger: 'auto', agentId: 'a1', messages: [{ role: 'user', text: 'hi', toolUses: [] }] })
+    await $.session.compact({ trigger: 'precompute', messages: [{ role: 'user', text: 'hi', toolUses: [] }] })
+    expect(await stateOf($, 'meters')).toEqual({ window: 200_000, contextTokens: 180_000, contextPercent: 90 })
+  })
+
   test('a skipped compaction is no line', async ($, on) => {
     engine(on)
     on('session.compact', () => ({ skip: 'nothing to compact' }))
