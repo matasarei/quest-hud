@@ -7,6 +7,7 @@ import type { EngineInterface, Register, Timer } from 'claude-code'
 import { gridToSvg } from '../src/avatar'
 import { commandKinds, endFights, fightKinds, fightOutcome, fightText, forgeEvent, holdsTheRoad, lootText, NO_FOES, startFights, stdoutOf } from '../src/bash'
 import { activeCompanions, sameCompanions } from '../src/companions'
+import { boardOf, boardView, failedBoard, failureOf, NOTIFICATIONS_ARGV, parseNotifications, parseSweep, ridingBoard, SWEEP_ARGV } from '../src/github'
 import { asCard, cardOf, type Inventory } from '../src/harness'
 import { unknownText, usageText } from '../src/help'
 import { levelLogText, levelText, levelUpText, NO_LEVEL_YET, rereadingText, scoutRidesText, STILL_READING } from '../src/levelup'
@@ -22,6 +23,7 @@ import { ART_SCALE } from '../src/world/sprites'
 import { parseZones, zoneFor } from '../src/zones'
 import type { Allies, FightKind, Foes, LevelCard, LogEntry, Meters, Usage, Zone } from '../types'
 import { BOARD_ID, BOARD_TITLE, drawBoard } from './board'
+import { readHereRepo, runGh, SWEEP_MS } from './github'
 import { artCells, drawRoad, PANE_ID, PANE_TITLE, SCENE_IMAGE_KEY, SCENE_KEY, sceneImage, type PngSource, type SceneMode } from './pane'
 import { configDir, readHistory, readInventory, readProjects, scanTranscripts } from './survey'
 
@@ -43,6 +45,7 @@ const NO_ALLIES: Allies = { octopus: false, fox: false }
 const allies = atom({ plugin: 'quest-hud', key: 'allies' } as const, NO_ALLIES)
 const hidden = atom({ plugin: 'quest-hud', key: 'hidden' } as const, false)
 const level = atom({ plugin: 'quest-hud', key: 'level' } as const, null)
+const board = atom({ plugin: 'quest-hud', key: 'board' } as const, null)
 
 /** off, the bars on the hint line, the band, or the band and the Road pane opened at the start. */
 type Detail = 'off' | 'status' | 'band' | 'pane'
@@ -323,13 +326,45 @@ async function turnOn($: EngineInterface, detail: Detail): Promise<string> {
   return detail === 'off' ? 'Quest HUD is on, but the detail option is off: /plugin configure quest-hud@quest-hud changes it.' : 'Quest HUD is back.'
 }
 
-/** What /quest-hud:sync answers, at once: it opens the board. No outside text is ever in this answer. */
+/** One sync at a time; a reload starts this over. */
+const syncing: { isRunning: boolean } = { isRunning: false }
+
+/** Reads GitHub through gh in the background, and posts what came back. Only /quest-hud:sync calls it: never at a start, never on a timer. */
+async function readGitHub($: EngineInterface): Promise<void> {
+  const [swept, notified, here] = await Promise.all([runGh($, SWEEP_ARGV, SWEEP_MS), runGh($, NOTIFICATIONS_ARGV), readHereRepo($)])
+  const at = await $.clock.now()
+  const sweep = swept === undefined ? undefined : parseSweep(swept.stdout, at)
+
+  if (sweep === undefined) {
+    await update($, board, () => failedBoard(failureOf(swept?.exitCode), at))
+    return
+  }
+
+  const unread = notified === undefined ? undefined : parseNotifications(notified.stdout, at, new Set(sweep.repos))
+  await update($, board, () => boardOf({ phase: 'done', at, sweep, unread, here }))
+}
+
+/**
+ * What /quest-hud:sync answers, at once: it opens the board, and GitHub is read in
+ * the background. No outside text is ever in this answer: it may reach the model.
+ */
 async function syncCommand($: EngineInterface): Promise<string> {
   if (await read($, hidden)) return 'Quest HUD is off. /quest-hud:on brings it back.'
 
   const opened = await $.ui.open({ id: BOARD_ID, title: BOARD_TITLE, focus: true, closeOnEscape: true })
+  if (syncing.isRunning) return 'The herald is still out. The Quest Board fills when they return.'
 
-  return opened.isPlaced ? 'The Quest Board is open.' : `The Quest Board waits: ${opened.reason}`
+  const at = await $.clock.now()
+  syncing.isRunning = true
+  await update($, board, last => ridingBoard(last, at))
+  void readGitHub($)
+    .catch(() => update($, board, () => failedBoard('no-answer', at)))
+    .catch(() => undefined)
+    .finally(() => {
+      syncing.isRunning = false
+    })
+
+  return opened.isPlaced ? 'The herald rides to GitHub. The Quest Board fills when they return.' : `The Quest Board waits: ${opened.reason}`
 }
 
 /** One reading of the transcripts at a time; a reload starts this over, and the engine ends its child. */
@@ -503,6 +538,7 @@ export const register: Register = (on, options) => {
       await update($, foes, () => NO_FOES)
       await update($, loot, () => 0)
       await update($, allies, () => NO_ALLIES)
+      await update($, board, () => null)
       anim.tick = 0
       anim.motion = REST
       anim.zone = undefined
@@ -789,7 +825,7 @@ export const register: Register = (on, options) => {
     return next(e)
   }).catch(($, e, next) => next(e))
 
-  on('ui.render', { component: 'Pane', requestId: BOARD_ID }, async ($, e) => drawBoard($, e)).catch(($, e, next) => next(e))
+  on('ui.render', { component: 'Pane', requestId: BOARD_ID }, async ($, e) => drawBoard($, e, boardView(await read($, board), await $.clock.now()))).catch(($, e, next) => next(e))
 
   on('ui.render', { component: 'Pane', requestId: PANE_ID }, async ($, e) => {
     // The terminal draws images when they are forced, or in auto until the

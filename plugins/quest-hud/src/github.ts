@@ -1,7 +1,8 @@
 // What /quest-hud:sync shows: the person's open GitHub work and alerts, ranked on
 // WoW's creature ladder and linked. Pure. Titles come from strangers: they are
 // cleaned, drawn only on the board, and never reach a command's answer or the store.
-import type { BoardQuest, QuestRank } from '../types'
+import type { Board, BoardFailure, BoardQuest, QuestRank } from '../types'
+import { clockTime } from './log'
 import { cleanTitle } from './quest'
 
 /** What the board says before its first post, and after a /clear wipes it. */
@@ -368,4 +369,84 @@ export const parseNotifications = (stdout: string, now: number, readRepos: Reado
       ...(isItsOwnPage ? {} : { id: `${repo}|${url}|${text(note.title)}` }),
     }, now)]
   })
+}
+
+const REMOTE = /github\.com[:/]([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+?)(?:\.git)?\/?\s*$/
+
+/** The `owner/repo` of a git remote on github.com; undefined for any other. */
+export const repoOfRemote = (remote: string): string | undefined => REMOTE.exec(remote)?.[1]
+
+/** Why a sweep gave nothing: `exitCode` undefined means gh never ran; 4 is its own code for signing in. */
+export const failureOf = (exitCode: number | undefined): BoardFailure =>
+  exitCode === undefined ? 'no-gh' : exitCode === 4 ? 'no-login' : 'no-answer'
+
+/** What a failed sync says. Commands are printed for the person, never run. */
+export const FAILURE_TEXT: Readonly<Record<BoardFailure, string>> = {
+  'no-gh': 'gh could not run or took too long. Is it installed? See https://cli.github.com, then sync again.',
+  'no-login': 'gh is not signed in. Run gh auth login, then sync again.',
+  'no-answer': 'GitHub did not answer. Nothing here means an empty road: sync again.',
+}
+
+/** The board while a sync is out: the last rows stay up until the new ones come. */
+export const ridingBoard = (last: Board | null, at: number): Board => ({ phase: 'riding', at, quests: last?.quests ?? [], isPartial: false, notes: [] })
+
+/** A board with nothing read: why, and no rows. */
+export const failedBoard = (failure: BoardFailure, at: number): Board => ({ phase: 'done', at, quests: [], failure, isPartial: true, notes: [] })
+
+/** The board from what a sync has read so far. */
+export const boardOf = (parts: { phase: Board['phase']; at: number; sweep: Sweep; unread: readonly BoardQuest[] | undefined; here: string | undefined }): Board => {
+  const { sweep, unread } = parts
+  const { quests, left } = finishQuests([...sweep.quests, ...(unread ?? [])], parts.at, parts.here)
+  const notes = [
+    ...(sweep.refused > 0 ? [`GitHub refused ${sweep.refused} part${sweep.refused === 1 ? '' : 's'} of its answer, so this list may be short.`] : []),
+    ...(unread === undefined ? ['Notifications could not be read.'] : []),
+    ...(sweep.isCut ? ['Some lists were longer than a sync reads.'] : []),
+    ...(left > 0 ? [`${left} more quests did not fit.`] : []),
+  ]
+
+  return { phase: parts.phase, at: parts.at, quests, isPartial: sweep.refused > 0 || unread === undefined, notes }
+}
+
+/** The ladder's words, as the board heads its sections. */
+const RANK_HEAD: Readonly<Record<QuestRank, string>> = {
+  boss: 'BOSS',
+  rareElite: 'RARE ELITE',
+  elite: 'ELITE',
+  rare: 'RARE',
+  normal: 'NORMAL',
+  minion: 'MINION',
+  trivial: 'TRIVIAL',
+}
+
+export type BoardRow = { id: string; href?: string; label: string; text: string; age: string }
+export type BoardSection = { rank: QuestRank; head: string; rows: BoardRow[] }
+export type BoardView = { status: string; lines: string[]; sections: BoardSection[]; notes: string[] }
+
+const STATUS: Readonly<Record<Exclude<Board['phase'], 'done'>, string>> = {
+  riding: 'the herald rides…',
+  scanning: 'looking for alerts…',
+}
+
+/** What the board draws. */
+export const boardView = (board: Board | null, now: number): BoardView => {
+  if (board === null) return { status: '', lines: [NO_BOARD_TEXT], sections: [], notes: [] }
+
+  const sections = RANKS.flatMap(rank => {
+    const rows = board.quests.filter(quest => quest.rank === rank).map((quest): BoardRow => ({
+      id: quest.id,
+      ...(quest.href === undefined ? {} : { href: quest.href }),
+      label: quest.label,
+      text: `${quest.isUnread ? '● ' : ''}${quest.why === '' ? '' : `${quest.why}: `}${quest.title}`,
+      age: ageText(quest.at, now),
+    }))
+    return rows.length === 0 ? [] : [{ rank, head: `${RANK_HEAD[rank]} (${rows.length})`, rows }]
+  })
+  const isClear = board.phase === 'done' && board.quests.length === 0 && board.failure === undefined && !board.isPartial
+
+  return {
+    status: board.phase === 'done' ? `synced ${clockTime(board.at)}` : STATUS[board.phase],
+    lines: [...(board.failure === undefined ? [] : [FAILURE_TEXT[board.failure]]), ...(isClear ? ['The board is clear.'] : [])],
+    sections,
+    notes: board.notes,
+  }
 }

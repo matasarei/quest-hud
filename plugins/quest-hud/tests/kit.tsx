@@ -52,6 +52,11 @@ export const world: {
   /** Every command spawned, and every one run. */
   spawned: string[][]
   ran: string[][]
+  /** What gh answers a call; undefined, or no function, when it cannot start. A held call waits for `ghGate`. */
+  gh?: (argv: readonly string[]) => { exitCode: number; stdout: string; stderr: string } | undefined
+  ghGate?: Promise<void>
+  /** What `git remote get-url origin` prints; undefined when it fails. */
+  remote?: string
 } = {
   id: 's1',
   state: {},
@@ -112,6 +117,9 @@ export const engine = (on: On, store: Readonly<Record<string, unknown>> = {}) =>
   world.grepFailsAt = undefined
   world.spawned = []
   world.ran = []
+  world.gh = undefined
+  world.ghGate = undefined
+  world.remote = undefined
   // Every value the plugin stores, as the kit's own store accepted it.
   on('state.set', async (_, e, next) => {
     const stored = await next(e)
@@ -153,8 +161,17 @@ export const engine = (on: On, store: Readonly<Record<string, unknown>> = {}) =>
   on('fs.exists', (_, e) => ({ value: e.path in world.files || e.path in world.dirs }))
   on('settings.read', () => ({ value: world.settings }))
   on('command.list', () => ({ value: world.commands }))
-  on('process.run', (_, e) => {
+  on('process.run', async (_, e) => {
     world.ran.push([...e.argv])
+    if (e.argv[0] === 'gh') {
+      await world.ghGate
+      const answer = world.gh?.(e.argv)
+      if (answer === undefined) throw new Error('gh: not found')
+      return { value: { ...answer, isStdoutTruncated: false, isStderrTruncated: false } }
+    }
+    if (e.argv[0] === 'git') {
+      return { value: { exitCode: world.remote === undefined ? 1 : 0, stdout: world.remote ?? '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+    }
     return { value: { exitCode: 0, stdout: world.files[e.argv.at(-1) ?? ''] ?? '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
   })
   on('process.spawn', async function* (_, e) {
