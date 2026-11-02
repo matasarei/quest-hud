@@ -184,3 +184,26 @@ export const statusText = (quest: Quest | null, tasks: readonly Task[], meters: 
 
   return parts.join(' ')
 }
+
+/**
+ * The same figures for the prompt's hint line, the bars first: the row cuts from
+ * the right, and a quest's title can be long.
+ */
+export const hintText = (quest: Quest | null, tasks: readonly Task[], meters: Meters | null, bars: Bars): string => {
+  const parts: string[] = []
+  const { done, total } = progress(tasks)
+
+  const hp = hpLeft(meters)
+  if (hp !== undefined) parts.push(`♥${bar(hp, 10, '▰', '▱')} ${hp}%`)
+
+  const mp = mpLeft(meters)
+  parts.push(mp === undefined ? '✦ —' : `✦${bar(mp, 10, '▰', '▱')} ${mp}%`)
+
+  if (quest) parts.push(`⚔ ${quest.title}${total > 0 ? ` ${done}/${total}` : ''}`)
+  else if (total > 0) parts.push(`task ${done}/${total}`)
+
+  if (bars === 'all' && meters?.fiveHourUsed !== undefined) parts.push(`⚡${Math.round(meters.fiveHourUsed)}%`)
+  if (bars === 'all' && meters?.costUsd !== undefined) parts.push(`◉$${meters.costUsd.toFixed(2)}`)
+
+  return parts.join(' ')
+}

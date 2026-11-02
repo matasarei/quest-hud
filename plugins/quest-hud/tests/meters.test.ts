@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { bandModel, bar, fromMeasure, healsIn, hpLeft, mpLeft, shortTokens, statusText, ZONE_MEANING, zoneLine } from '../src/meters'
+import { bandModel, bar, fromMeasure, healsIn, hintText, hpLeft, mpLeft, shortTokens, statusText, ZONE_MEANING, zoneLine } from '../src/meters'
 import type { Meters, Quest, Task } from '../types'
 
 const NOW = Date.parse('2026-11-01T10:00:00Z')
@@ -136,6 +136,29 @@ describe('bandModel', () => {
     expect(band.head[0]).toEqual({ text: '⚔ gku:implement', tone: 'accent' })
     expect(band.meters.find(s => s.text.startsWith('♥'))?.tone).toBe('hp')
     expect(band.meters.find(s => s.text.startsWith('✦'))?.tone).toBe('mp')
+  })
+})
+
+describe('hintText', () => {
+  const quest = { title: 'gku:implement', zone: 'forge' as const, startedAt: 0 }
+
+  test('the bars come first, then the quest with its progress', () => {
+    const tasks = [{ id: 'a', subject: 'x', status: 'completed' as const }, { id: 'b', subject: 'y', status: 'pending' as const }]
+    expect(hintText(quest, tasks, fromMeasure(SUBSCRIBER), 'hpmp')).toMatch(/^♥[▰▱]{10} \d+% ✦[▰▱]{10} \d+% ⚔ gku:implement 1\/2$/)
+  })
+
+  test('before any figures: the waiting MP, and no quest or tasks', () => {
+    expect(hintText(null, [], null, 'hpmp')).toBe('✦ —')
+  })
+
+  test('tasks with no quest are counted after the bars', () => {
+    expect(hintText(null, [{ id: 'a', subject: 'x', status: 'pending' }], null, 'hpmp')).toBe('✦ — task 0/1')
+  })
+
+  test('all adds the 5-hour window and the cost at the end; hpmp does not', () => {
+    const meters = { window: 200_000, contextPercent: 0, fiveHourUsed: 12, costUsd: 1.5 }
+    expect(hintText(null, [], meters, 'all')).toBe('✦▰▰▰▰▰▰▰▰▰▰ 100% ⚡12% ◉$1.50')
+    expect(hintText(null, [], meters, 'hpmp')).toBe('✦▰▰▰▰▰▰▰▰▰▰ 100%')
   })
 })
 

@@ -9,7 +9,7 @@ import { commandKinds, endFights, fightKinds, fightOutcome, fightText, forgeEven
 import { activeCompanions, sameCompanions } from '../src/companions'
 import { unknownText, usageText } from '../src/help'
 import { appendEntry, castText, scoutCounts, scoutText } from '../src/log'
-import { bandModel, fromMeasure, shortTokens, statusText, TONE_COLOR, ZONE_LABEL, zoneLine, type Bars } from '../src/meters'
+import { bandModel, fromMeasure, hintText, shortTokens, statusText, TONE_COLOR, ZONE_LABEL, zoneLine, type Bars } from '../src/meters'
 import { downsample } from '../src/paint/pixels'
 import { afterPrompt, cleanTitle, fromSkill } from '../src/quest'
 import { road, roadArt, SCENE_MIN_COLUMNS, sceneZone } from '../src/road'
@@ -621,6 +621,16 @@ export const register: Register = (on, options) => {
 
     return { text: unknownText(e.args.trim(), settings) }
   })
+
+  // detail = status: dim text at the end of the engine's hint line, which keeps its own
+  // words and pills. Reading the atoms here redraws the line when one changes.
+  on('ui.render', { component: 'PromptHint' }, async ($, e, next) => {
+    if (detail !== 'status' || (await read($, hidden))) return next(e)
+
+    const text = hintText(await read($, quest), await read($, tasks), await read($, meters), bars)
+
+    return next({ ...e, props: { ...e.props, tail: e.props.tail === undefined ? text : `${e.props.tail} ${text}` } })
+  }).catch(($, e, next) => next(e))
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     const below = await next(e)
