@@ -306,6 +306,24 @@ export const foeX = (hero: number, width: number, count: number, index: number, 
 export const foesShown = <T>(hero: number, width: number, up: readonly T[]): T[] =>
   up.length <= 1 || hero + SIZE.wizard + (up.length - 1) * FOE_MIN_PEEK + SIZE.foe <= width ? [...up] : up.slice(0, 1)
 
+/** A monster on the road: which fight, and where it starts, in units. */
+export type FoeOnRoad = { kind: FightKind; x: number }
+
+/** The monsters a frame draws, nearest first: the ones that fit, each where `foeX` puts it. */
+const placeFoes = (hero: number, road: number, ahead: number, foes: Foes): FoeOnRoad[] => {
+  const shown = foesShown(hero, road, (['test', 'lint'] as const).filter(kind => foes[kind] !== 'none'))
+  return shown.map((kind, i) => ({ kind, x: foeX(hero, road, shown.length, i, Math.max(ahead, hero + SIZE.wizard)) }))
+}
+
+/** Where a scene's monsters stand, with the wizard and the road they stand on: what `sceneArt` draws. */
+export const foesOnRoad = (args: SceneArgs): { hero: number; road: number; shown: FoeOnRoad[] } => {
+  const width = Math.max(0, Math.floor(args.columns))
+  const kept = layout({ ...args, columns: width })
+  const placed = figures(fitWaypoints(args.waypoints, flagSlots(kept.flagRoad)), kept)
+  const hero = Math.max(placed.hero, FAMILIAR_BEHIND)
+  return { hero, road: kept.road, shown: placeFoes(hero, kept.road, placed.ahead, args.foes ?? NO_FOES) }
+}
+
 /**
  * The monster of a test run in a room, where a dragon would not fit; outdoors
  * it is the dragon. Each is drawn facing left, towards the wizard.
@@ -433,10 +451,7 @@ export const sceneArt = (args: SceneArgs): Grid => {
 
   // The monsters face the wizard from the right: the test's monster nearest, the
   // spider behind it, drawn first so the test's monster stands in front.
-  const up = (['test', 'lint'] as const).filter(kind => foes[kind] !== 'none')
-  for (let i = up.length - 1; i >= 0; i--) {
-    standAt(art, foeGrid(up[i] as FightKind, zone), foeX(hero, kept.road, up.length, i, Math.max(placed.ahead, hero + SIZE.wizard)))
-  }
+  for (const foe of [...placeFoes(hero, kept.road, placed.ahead, foes)].reverse()) standAt(art, foeGrid(foe.kind, zone), foe.x)
 
   standAt(art, spriteGrid(WIZARD[motion.pose]), hero)
 

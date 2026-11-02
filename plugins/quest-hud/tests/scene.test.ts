@@ -2,7 +2,7 @@ import { describe, expect, test } from 'claude-code/testing'
 
 import { downsample } from '../src/paint/pixels'
 import {
-  atRest, avatarX, BAND, bandPortrait, figures, foesShown, FLAG_SLOT, FLAG_WIDTH, fitWaypoints, flagSlots, foeX, GROUND_ROW, layout, MAX_FLAGS, MAX_GHOSTS, MIN_FLAGS, propsWidth,
+  atRest, avatarX, BAND, bandPortrait, figures, foesOnRoad, foesShown, FLAG_SLOT, FLAG_WIDTH, fitWaypoints, flagSlots, foeX, GROUND_ROW, layout, MAX_FLAGS, MAX_GHOSTS, MIN_FLAGS, propsWidth,
   nextMotion, REST, roadWidth, scene, sceneArt, SCENE_HEIGHT, SIZE, slide, slideShift, roadside, skyColor, waypointsOf, waypointX, ZONE_PROPS, type Waypoint,
 } from '../src/scene'
 import { PALETTE, PROPS } from '../src/world/sprites'
@@ -233,6 +233,40 @@ describe('the monsters', () => {
       expect(grid).toHaveLength(SCENE_HEIGHT)
       expect(grid.every(line => line.length === columns && line.every(c => c !== undefined))).toBe(true)
     }
+  })
+})
+
+describe('the monsters on a narrow road', () => {
+  const ZONES_ALL: readonly Zone[] = ['watchtower', 'harbour', 'dungeon', 'arena', 'forge', 'map', 'camp', 'wilds']
+  const TASKS: readonly Waypoint[] = ['done', 'done', 'now', 'todo', 'todo', 'todo']
+  const FOES = [{ test: 'standing', lint: 'none' }, { test: 'none', lint: 'standing' }, { test: 'standing', lint: 'standing' }] as const
+
+  test('every monster drawn stays inside the road, wherever the wizard leaves room for one', () => {
+    let checked = 0
+    for (const zone of ZONES_ALL) {
+      for (let columns = 40; columns <= 200; columns += 2) {
+        for (let n = 0; n <= 6; n++) {
+          for (const foes of FOES) {
+            for (const extras of [{}, { loot: 2, allies: { octopus: true, fox: true } }]) {
+              const { hero, road, shown } = foesOnRoad({ columns, zone, waypoints: TASKS.slice(0, n), companions: 1, foes, ...extras })
+              const wall = hero + SIZE.wizard
+              if (wall + SIZE.foe > road) continue
+              checked++
+              for (const { x } of shown) expect([zone, columns, n, x >= wall && x + SIZE.foe <= road]).toEqual([zone, columns, n, true])
+            }
+          }
+        }
+      }
+    }
+    expect(checked).toBeGreaterThan(1000)
+  })
+
+  test('60 columns, four tasks, both up: the test\'s monster whole, the spider not drawn', () => {
+    const args = { columns: 60, zone: 'dungeon', waypoints: TASKS.slice(0, 4), companions: 0, foes: { test: 'standing', lint: 'standing' } } as const
+    expect(foesOnRoad(args).shown).toEqual([{ kind: 'test', x: 40 }])
+    const grid = scene(args)
+    expect(columnsOf(grid, PALETTE[';'] as number)).toEqual([])
+    expect(columnsOf(grid, PALETTE['3'] as number).length).toBeGreaterThan(0)
   })
 })
 
