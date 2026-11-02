@@ -71,7 +71,9 @@ files only (`git grep -I`): perl dies on binary input.
   most two colours.
   The roadside (a zone's landmarks, and the chest) is scenery: it walks with the near layer
   and, in a zone change, slides with its own zone's backdrop by the same `slideShift`
-  (`roadside()`); the figures and the allies do neither.
+  (`roadside()`). The party (`party()`: flags, wizard, mascot, ghosts, monsters, allies) is
+  not scenery: in a zone change it glides from the old zone's layout to the new one
+  (`partyAt()`, `glide()`), and a set that differs between the two swaps at the halfway frame.
   GitHub's Octocat, GitLab's fox and Claude's mascot are our own drawings, never logo files.
 - **`resolve()` lists every element on every surface**; one a surface lacks draws as an empty
   fragment. Choose by `e.surface`, not by `'X' in elements`.
