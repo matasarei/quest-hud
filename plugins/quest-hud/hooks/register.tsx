@@ -483,7 +483,6 @@ export const register: Register = (on, options) => {
         const done = before.find(task => task.id === e.taskId && task.status !== 'completed')
         if (done) await addLog($, { kind: 'task', text: `✓ ${cleanTitle(done.subject)}` })
       }
-
     }
 
     const counts = scoutCounts(e.tool)
