@@ -80,8 +80,11 @@ changes nothing.
 **On a narrow pane** the road keeps room for the wizard, three task flags (the one in progress
 and one each side) and any monster. To make that room, things give way in turn: the zone's
 landmarks from the left, keeping its last one, then the fox, the Octocat and the chest, then that
-last prop. The header still counts the loot, and the log still names the allies. Below 32
-columns the pane draws no scene and gives its rows to the tasks and the log.
+last prop. The header still counts the loot, and the log still names the allies. If there is
+still no room, the monsters stand in front of the next task flags, the spider tucks in behind
+the test's monster, and with no room even for that it waits off the Road while the log still
+names its fight. Below 32 columns the pane draws no scene and gives its rows to the tasks and
+the log.
 
 **Animation.** While Claude works, the Road walks: four frames a second, slow and stepped as a
 terminal animates. The landscape steps past in layers at different speeds, the wizard takes

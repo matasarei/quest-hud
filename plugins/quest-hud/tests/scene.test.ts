@@ -2,7 +2,7 @@ import { describe, expect, test } from 'claude-code/testing'
 
 import { downsample } from '../src/paint/pixels'
 import {
-  atRest, avatarX, BAND, bandPortrait, figures, FLAG_SLOT, FLAG_WIDTH, fitWaypoints, flagSlots, foeX, GROUND_ROW, layout, MAX_FLAGS, MAX_GHOSTS, MIN_FLAGS, propsWidth,
+  atRest, avatarX, BAND, bandPortrait, figures, foesOnRoad, foesShown, FLAG_SLOT, FLAG_WIDTH, fitWaypoints, flagSlots, foeX, GROUND_ROW, layout, MAX_FLAGS, MAX_GHOSTS, MIN_FLAGS, propsWidth,
   nextMotion, REST, roadWidth, scene, sceneArt, SCENE_HEIGHT, SIZE, slide, slideShift, roadside, skyColor, waypointsOf, waypointX, ZONE_PROPS, type Waypoint,
 } from '../src/scene'
 import { PALETTE, PROPS } from '../src/world/sprites'
@@ -212,12 +212,64 @@ describe('the monsters', () => {
     expect(foeX(hero, 50, 2, 1)).toBe(hero + SIZE.wizard + 10)
   })
 
+  test('with no room past the flags ahead, they stand in front of them, never past the road\'s end', () => {
+    // Four tasks packed: the wizard at 21–37, the upcoming flags up to 47.
+    expect(foeX(21, 56, 1, 0, 47)).toBe(40)
+    expect([0, 1].map(i => foeX(21, 66, 2, i, 47))).toEqual([40, 50])
+    // Short by 3 for a 10 peek: the one behind closes up to what fits.
+    expect([0, 1].map(i => foeX(21, 60, 2, i, 47))).toEqual([37, 44])
+  })
+
+  test('foesShown: both while the one behind can peek out by 6, else only the nearest', () => {
+    expect(foesShown(21, 59, ['test', 'lint'])).toEqual(['test', 'lint'])
+    expect(foesShown(21, 58, ['test', 'lint'])).toEqual(['test'])
+    expect(foesShown(21, 40, ['lint'])).toEqual(['lint'])
+    expect(foesShown(21, 40, [])).toEqual([])
+  })
+
   test('narrow widths still give a full grid with both up', () => {
     for (const columns of [40, 20, 0]) {
       const grid = scene({ columns, zone: 'dungeon', waypoints: three, companions: 2, foes: { test: 'standing', lint: 'standing' }, motion: { step: 3, pose: 'walk1', hop: true } })
       expect(grid).toHaveLength(SCENE_HEIGHT)
       expect(grid.every(line => line.length === columns && line.every(c => c !== undefined))).toBe(true)
     }
+  })
+})
+
+describe('the monsters on a narrow road', () => {
+  const ZONES_ALL: readonly Zone[] = ['watchtower', 'harbour', 'dungeon', 'arena', 'forge', 'map', 'camp', 'wilds']
+  const TASKS: readonly Waypoint[] = ['done', 'done', 'now', 'todo', 'todo', 'todo']
+  const FOES = [{ test: 'standing', lint: 'none' }, { test: 'none', lint: 'standing' }, { test: 'standing', lint: 'standing' }] as const
+
+  test('every monster drawn stays inside the road, wherever the wizard leaves room for one', () => {
+    // Dense where the road runs short, a few wide panes past it: a sweep that stays well inside
+    // the 5-second test limit on a slow CI runner (the full 40–200 in steps of 2 took 12 s there).
+    const WIDTHS = [...Array.from({ length: 21 }, (_, i) => 40 + i * 4), 140, 170, 200]
+    let checked = 0
+    for (const zone of ZONES_ALL) {
+      for (const columns of WIDTHS) {
+        for (const n of [0, 1, 3, 4, 6]) {
+          for (const foes of FOES) {
+            for (const extras of [{}, { loot: 2, allies: { octopus: true, fox: true } }]) {
+              const { hero, road, shown } = foesOnRoad({ columns, zone, waypoints: TASKS.slice(0, n), companions: 1, foes, ...extras })
+              const wall = hero + SIZE.wizard
+              if (wall + SIZE.foe > road) continue
+              checked++
+              for (const { x } of shown) expect([zone, columns, n, x >= wall && x + SIZE.foe <= road]).toEqual([zone, columns, n, true])
+            }
+          }
+        }
+      }
+    }
+    expect(checked).toBeGreaterThan(500)
+  })
+
+  test('60 columns, four tasks, both up: the test\'s monster whole, the spider not drawn', () => {
+    const args = { columns: 60, zone: 'dungeon', waypoints: TASKS.slice(0, 4), companions: 0, foes: { test: 'standing', lint: 'standing' } } as const
+    expect(foesOnRoad(args).shown).toEqual([{ kind: 'test', x: 40 }])
+    const grid = scene(args)
+    expect(columnsOf(grid, PALETTE[';'] as number)).toEqual([])
+    expect(columnsOf(grid, PALETTE['3'] as number).length).toBeGreaterThan(0)
   })
 })
 
