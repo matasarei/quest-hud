@@ -22,7 +22,7 @@ const COMMANDS: ReadonlyArray<readonly [string, string]> = [
   ['/quest-hud:pane', 'open the Road beside the transcript, at any width'],
   ['/quest-hud:level', 'read your setup and sessions, as counts, and score the harness from 1 to 10'],
   ['/quest-hud:level-up', 'quests for the next level: what to add, from what you work on'],
-  ['/quest-hud:sync', 'post your open GitHub work and alerts on the Quest Board, ranked and linked'],
+  ['/quest-hud:quests', 'your open GitHub work and alerts as quests on the Quest Board, ranked and linked'],
   ['/quest-hud:statusline', 'set up the HP and MP bars where mods do not run'],
   ['/quest-hud:off', 'hide the HUD in every session, until on'],
   ['/quest-hud:on', 'bring it back'],

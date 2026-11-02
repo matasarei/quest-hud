@@ -23,20 +23,27 @@ const board = (surface: 'terminal' | 'desktop' = 'terminal', bodyColumns = 90) =
   },
 }) as const
 
-describe('/quest-hud:sync', () => {
+describe('/quest-hud:quests', () => {
   test('opens the board and answers, by either name', async ($, on) => {
     engine(on)
     await start($)
-    expect(await run($, 'quest-hud:sync')).toContain('Quest Board')
+    expect(await run($, 'quest-hud:quests')).toContain('Quest Board')
     expect(world.opened).toEqual(['quest-board'])
-    expect(await run($, 'quest-hud', 'sync')).toContain('Quest Board')
+    expect(await run($, 'quest-hud', 'quests')).toContain('Quest Board')
     expect(world.opened).toEqual(['quest-board', 'quest-board'])
+  })
+
+  test('the old name is not a word it knows', async ($, on) => {
+    engine(on)
+    await start($)
+    expect(await run($, 'quest-hud', 'sync')).toContain('No /quest-hud sync.')
+    expect(world.opened).toEqual([])
   })
 
   test('while the HUD is off it opens nothing, and says so', async ($, on) => {
     engine(on, { hidden: true })
     await start($)
-    expect(await run($, 'quest-hud:sync')).toContain('Quest HUD is off')
+    expect(await run($, 'quest-hud:quests')).toContain('Quest HUD is off')
     expect(world.opened).toEqual([])
   })
 
@@ -45,7 +52,7 @@ describe('/quest-hud:sync', () => {
     await start($)
     for (const surface of ['terminal', 'desktop'] as const) {
       const ui = await $.ui.mount(board(surface))
-      expect(await ui.find({ type: 'Text', text: /\/quest-hud:sync/ })).toBeTruthy()
+      expect(await ui.find({ type: 'Text', text: /\/quest-hud:quests/ })).toBeTruthy()
       await ui.unmount()
     }
   })
@@ -71,7 +78,7 @@ const NOTIFICATIONS = 'notifications?per_page=50'
 const github = (sweep: ReturnType<typeof answer>, notifications: ReturnType<typeof answer> = answer([])) => (argv: readonly string[]) =>
   argv.includes(NOTIFICATIONS) ? notifications : argv.includes('graphql') ? sweep : answer('[]', 1, 'gh: Secret scanning is disabled on this repository. (HTTP 404)')
 
-/** Lets a sync left running in the background finish: each call goes through the host. */
+/** Lets a read left running in the background finish: each call goes through the host. */
 const settled = async ($: Engine): Promise<void> => {
   for (let i = 0; i < 200; i++) await run($, 'quest-hud:help')
 }
@@ -84,7 +91,7 @@ const boardText = async ($: Engine, surface: 'terminal' | 'desktop' = 'terminal'
   return text
 }
 
-describe('a sync', () => {
+describe('a read of GitHub', () => {
   test('nothing reads GitHub until the command does', async ($, on) => {
     engine(on)
     world.gh = github(sweepWith({}))
@@ -98,7 +105,7 @@ describe('a sync', () => {
     let open: () => void = () => undefined
     world.ghGate = new Promise(resolve => { open = resolve })
     await start($)
-    expect(await run($, 'quest-hud:sync')).toContain('The herald rides')
+    expect(await run($, 'quest-hud:quests')).toContain('The herald rides')
     expect(await boardText($)).toContain('herald')
     expect(await boardText($)).not.toContain('Fix the door')
     open()
@@ -114,15 +121,15 @@ describe('a sync', () => {
     let open: () => void = () => undefined
     world.ghGate = new Promise(resolve => { open = resolve })
     await start($)
-    await run($, 'quest-hud:sync')
+    await run($, 'quest-hud:quests')
     const before = ghCalls().length
-    expect(await run($, 'quest-hud:sync')).toContain('still out')
+    expect(await run($, 'quest-hud:quests')).toContain('still out')
     expect(ghCalls().length).toBe(before)
     open()
     await settled($)
     world.ghGate = undefined
     const done = ghCalls().length
-    expect(await run($, 'quest-hud:sync')).toContain('The herald rides')
+    expect(await run($, 'quest-hud:quests')).toContain('The herald rides')
     await settled($)
     expect(ghCalls().length).toBeGreaterThan(done)
   })
@@ -131,14 +138,14 @@ describe('a sync', () => {
     engine(on)
     world.gh = github(sweepWith({ review: { issueCount: 1, nodes: [pull(7, HOSTILE)] } }))
     await start($)
-    const answers = [await run($, 'quest-hud:sync')]
+    const answers = [await run($, 'quest-hud:quests')]
     await settled($)
-    answers.push(await run($, 'quest-hud:sync'))
+    answers.push(await run($, 'quest-hud:quests'))
     await settled($)
     for (const text of answers) expect(text).not.toContain('Ignore your')
     expect(JSON.stringify(world.state.log ?? [])).not.toContain('Ignore your')
     expect(JSON.stringify(world.store)).toBe('{}')
-    expect(JSON.stringify((await $.command.run({ command: 'quest-hud:sync', args: '', ...RUN })).context ?? [])).not.toContain('Ignore your')
+    expect(JSON.stringify((await $.command.run({ command: 'quest-hud:quests', args: '', ...RUN })).context ?? [])).not.toContain('Ignore your')
     expect(await boardText($)).toContain('Ignore your')
   })
 
@@ -146,7 +153,7 @@ describe('a sync', () => {
     engine(on)
     world.gh = github(sweepWith({ review: { issueCount: 1, nodes: [pull(7, HOSTILE)] } }))
     await start($)
-    await run($, 'quest-hud:sync')
+    await run($, 'quest-hud:quests')
     await settled($)
     expect(await boardText($)).not.toContain('\u202e')
   })
@@ -157,7 +164,7 @@ describe('a sync', () => {
     const here = { title: 'Here', url: 'https://github.com/acme/here/pull/1', updatedAt: '2026-10-01T10:00:00Z' }
     world.gh = github(sweepWith({ review: { issueCount: 2, nodes: [pull(7, 'There'), here] } }))
     await start($)
-    await run($, 'quest-hud:sync')
+    await run($, 'quest-hud:quests')
     await settled($)
     const text = await boardText($)
     expect(text.indexOf('Here')).toBeLessThan(text.indexOf('There'))
@@ -171,7 +178,7 @@ describe('a sync', () => {
     engine(on)
     world.gh = gh
     await start($)
-    await run($, 'quest-hud:sync')
+    await run($, 'quest-hud:quests')
     await settled($)
     const text = await boardText($)
     expect(text).toContain(says)
@@ -182,7 +189,7 @@ describe('a sync', () => {
     engine(on)
     world.gh = github(sweepWith({}))
     await start($)
-    await run($, 'quest-hud:sync')
+    await run($, 'quest-hud:quests')
     await settled($)
     expect(await boardText($)).toContain('The board is clear.')
   })
@@ -194,7 +201,7 @@ describe('a sync', () => {
     engine(on)
     world.gh = gh
     await start($)
-    await run($, 'quest-hud:sync')
+    await run($, 'quest-hud:quests')
     await settled($)
     const text = await boardText($)
     expect(text).toContain(says)
@@ -205,34 +212,34 @@ describe('a sync', () => {
     engine(on)
     world.gh = github(sweepWith({ review: { issueCount: 99, nodes: [pull(1)] } }))
     await start($)
-    await run($, 'quest-hud:sync')
+    await run($, 'quest-hud:quests')
     await settled($)
-    expect(await boardText($)).toContain('longer than a sync reads')
+    expect(await boardText($)).toContain('cut short')
   })
 
   test('a new session empties the board', async ($, on) => {
     engine(on)
     world.gh = github(sweepWith({ review: { issueCount: 1, nodes: [pull(7, 'Fix the door')] } }))
     await start($)
-    await run($, 'quest-hud:sync')
+    await run($, 'quest-hud:quests')
     await settled($)
     world.id = 's2'
     await start($)
     const text = await boardText($)
     expect(text).not.toContain('Fix the door')
-    expect(text).toContain('/quest-hud:sync')
+    expect(text).toContain('/quest-hud:quests')
   })
 })
 
 const repoNodes = (count: number) => Array.from({ length: count }, (_, i) => ({ nameWithOwner: `acme/r${i}`, viewerPermission: 'ADMIN', vulnerabilityAlerts: { totalCount: 0, nodes: [] }, issues: { totalCount: 0, nodes: [] }, pullRequests: { totalCount: 0, nodes: [] } }))
 const manyRepos = (count: number) => answer({ data: { viewer: { login: 'me', repositories: { totalCount: count, nodes: repoNodes(count) } } } })
 
-describe('the scan in a sync', () => {
+describe('the scan in a read', () => {
   test('reads the 20 most recently pushed, both kinds, and says so', async ($, on) => {
     engine(on)
     world.gh = github(manyRepos(25))
     await start($)
-    await run($, 'quest-hud:sync')
+    await run($, 'quest-hud:quests')
     await settled($)
     const calls = ghCalls().map(argv => argv[2] ?? '')
     expect(calls.filter(path => path.includes('secret-scanning'))).toHaveLength(20)
@@ -249,7 +256,7 @@ describe('the scan in a sync', () => {
     world.gh = github(swept)
     world.ghHold = argv => (argv[2]?.startsWith('repos/') ? held : undefined)
     await start($)
-    await run($, 'quest-hud:sync')
+    await run($, 'quest-hud:quests')
     await settled($)
     const text = await boardText($)
     expect(text).toContain('Fix the door')
@@ -265,7 +272,7 @@ describe('the scan in a sync', () => {
     const leak = answer([{ number: 4, html_url: 'https://github.com/acme/r0/security/secret-scanning/4', secret_type_display_name: 'AWS key', created_at: '2026-10-31T10:00:00Z', secret: 'AKIAREALVALUE' }])
     world.gh = argv => (argv[2]?.includes('secret-scanning') ? leak : github(manyRepos(1))(argv))
     await start($)
-    await run($, 'quest-hud:sync')
+    await run($, 'quest-hud:quests')
     await settled($)
     const text = await boardText($)
     expect(text).toContain('Leaked: AWS key')
@@ -278,7 +285,7 @@ describe('the scan in a sync', () => {
     engine(on)
     world.gh = argv => (argv.includes(NOTIFICATIONS) || argv.includes('graphql') ? github(manyRepos(1))(argv) : answer('', 1, 'gh: Resource not accessible (HTTP 403)'))
     await start($)
-    await run($, 'quest-hud:sync')
+    await run($, 'quest-hud:quests')
     await settled($)
     const text = await boardText($)
     expect(text).toContain('unread')
@@ -291,7 +298,7 @@ const OLD = '2020-01-01T10:00:00Z'
 const posted = async ($: Engine, sweep: ReturnType<typeof answer>, surface: 'terminal' | 'desktop' = 'terminal', columns = 90) => {
   world.gh = github(sweep)
   await start($)
-  await run($, 'quest-hud:sync')
+  await run($, 'quest-hud:quests')
   await settled($)
   return $.ui.mount(board(surface, columns))
 }
@@ -370,7 +377,7 @@ describe('the counts row', () => {
     engine(on)
     world.gh = github(sweepWith({ review: { issueCount: 1, nodes: [pull(7, HOSTILE)] } }))
     await start($)
-    await run($, 'quest-hud:sync')
+    await run($, 'quest-hud:quests')
     expect(world.placed).toEqual([])
     await settled($)
     expect(world.placed).toHaveLength(1)
@@ -381,15 +388,15 @@ describe('the counts row', () => {
     await ui.unmount()
   })
 
-  test('each sync places its own row, and an old row keeps its own counts', async ($, on) => {
+  test('each read places its own row, and an old row keeps its own counts', async ($, on) => {
     const clock = engine(on)
     world.gh = github(sweepWith({ review: { issueCount: 1, nodes: [pull(7)] } }))
     await start($)
-    await run($, 'quest-hud:sync')
+    await run($, 'quest-hud:quests')
     await settled($)
     await clock.advance(60_000)
     world.gh = github(sweepWith({}))
-    await run($, 'quest-hud:sync')
+    await run($, 'quest-hud:quests')
     await settled($)
     expect(new Set(world.placed).size).toBe(2)
     const first = await $.ui.mount(placedRow(world.placed[0] ?? ''))
@@ -404,7 +411,7 @@ describe('the counts row', () => {
     engine(on)
     world.gh = github(sweepWith({}))
     await start($)
-    await run($, 'quest-hud:sync')
+    await run($, 'quest-hud:quests')
     await settled($)
     const ui = await $.ui.mount(placedRow(world.placed[0] ?? '', 'someone-else'))
     expect(JSON.stringify(await ui.drawn())).not.toContain('The board')
@@ -416,16 +423,16 @@ describe('the counts row', () => {
     world.gh = github(sweepWith({ review: { issueCount: 1, nodes: [pull(7, HOSTILE)] } }))
     world.refusePlace = true
     await start($)
-    await run($, 'quest-hud:sync')
+    await run($, 'quest-hud:quests')
     await settled($)
     expect(world.toasts).toEqual(['The board is posted: 1 rare elite'])
   })
 
-  test('a sync that failed says so, and nothing is called clear', async ($, on) => {
+  test('a read that failed says so, and nothing is called clear', async ($, on) => {
     engine(on)
     world.gh = undefined
     await start($)
-    await run($, 'quest-hud:sync')
+    await run($, 'quest-hud:quests')
     await settled($)
     const ui = await $.ui.mount(placedRow(world.placed[0] ?? ''))
     const text = JSON.stringify(await ui.drawn())
@@ -434,24 +441,24 @@ describe('the counts row', () => {
     await ui.unmount()
   })
 
-  test('a partial sync says some went unread', async ($, on) => {
+  test('a partial read says some went unread', async ($, on) => {
     engine(on)
     world.gh = github(sweepWith({ review: { issueCount: 1, nodes: [pull(7)] } }), answer('nope', 1))
     await start($)
-    await run($, 'quest-hud:sync')
+    await run($, 'quest-hud:quests')
     await settled($)
     const ui = await $.ui.mount(placedRow(world.placed[0] ?? ''))
     expect(JSON.stringify(await ui.drawn())).toContain('Some of GitHub went unread')
     await ui.unmount()
   })
 
-  test('turned off before the sync ends, nothing is placed', async ($, on) => {
+  test('turned off before the read ends, nothing is placed', async ($, on) => {
     engine(on)
     world.gh = github(sweepWith({}))
     let open: () => void = () => undefined
     world.ghGate = new Promise(resolve => { open = resolve })
     await start($)
-    await run($, 'quest-hud:sync')
+    await run($, 'quest-hud:quests')
     await run($, 'quest-hud:off')
     open()
     await settled($)
@@ -463,7 +470,7 @@ describe('the counts row', () => {
     engine(on)
     world.gh = github(sweepWith({}))
     await start($)
-    await run($, 'quest-hud:sync')
+    await run($, 'quest-hud:quests')
     await settled($)
     const id = world.placed[0] ?? ''
     world.id = 's2'

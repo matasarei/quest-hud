@@ -328,10 +328,10 @@ async function turnOn($: EngineInterface, detail: Detail): Promise<string> {
   return detail === 'off' ? 'Quest HUD is on, but the detail option is off: /plugin configure quest-hud@quest-hud changes it.' : 'Quest HUD is back.'
 }
 
-/** One sync at a time; a reload starts this over. */
-const syncing: { isRunning: boolean } = { isRunning: false }
+/** One read of GitHub at a time; a reload starts this over. */
+const reachingGitHub: { isRunning: boolean } = { isRunning: false }
 
-/** Reads GitHub through gh. Only /quest-hud:sync calls it, in the background: never at a start, never on a timer. */
+/** Reads GitHub through gh. Only /quest-hud:quests calls it, in the background: never at a start, never on a timer. */
 async function readGitHub($: EngineInterface): Promise<Board> {
   const [swept, notified, here] = await Promise.all([runGh($, SWEEP_ARGV, SWEEP_MS), runGh($, NOTIFICATIONS_ARGV), readHereRepo($)])
   const at = await $.clock.now()
@@ -346,7 +346,7 @@ async function readGitHub($: EngineInterface): Promise<Board> {
 }
 
 /**
- * Says what a sync came to, as a row in the transcript that only draws: the model
+ * Says what a read of GitHub came to, as a row in the transcript that only draws: the model
  * and the transcript file never read it, as they may a command's answer. Counts only.
  * Where no row can be placed, a toast; turned off meanwhile, nothing.
  */
@@ -360,30 +360,30 @@ async function postCounts($: EngineInterface, done: Board): Promise<void> {
   if (placed?.isPlaced !== true) $.ui.toast(text)
 }
 
-/** One sync, start to end. Whatever goes wrong, the board says so. */
-async function syncBoard($: EngineInterface, at: number): Promise<void> {
+/** One read of GitHub, start to end. Whatever goes wrong, the board says so. */
+async function postBoard($: EngineInterface, at: number): Promise<void> {
   const done = await readGitHub($).catch(() => failedBoard('no-answer', at))
   await update($, board, () => done)
   await postCounts($, done)
 }
 
 /**
- * What /quest-hud:sync answers, at once: it opens the board, and GitHub is read in
+ * What /quest-hud:quests answers, at once: it opens the board, and GitHub is read in
  * the background. No outside text is ever in this answer: it may reach the model.
  */
-async function syncCommand($: EngineInterface): Promise<string> {
+async function questsCommand($: EngineInterface): Promise<string> {
   if (await read($, hidden)) return 'Quest HUD is off. /quest-hud:on brings it back.'
 
   const opened = await $.ui.open({ id: BOARD_ID, title: BOARD_TITLE, focus: true, closeOnEscape: true })
-  if (syncing.isRunning) return 'The herald is still out. The Quest Board fills when they return.'
+  if (reachingGitHub.isRunning) return 'The herald is still out. The Quest Board fills when they return.'
 
   const at = await $.clock.now()
-  syncing.isRunning = true
+  reachingGitHub.isRunning = true
   await update($, board, last => ridingBoard(last, at))
-  void syncBoard($, at)
+  void postBoard($, at)
     .catch(() => undefined)
     .finally(() => {
-      syncing.isRunning = false
+      reachingGitHub.isRunning = false
     })
 
   return opened.isPlaced ? 'The herald rides to GitHub. The Quest Board fills when they return.' : `The Quest Board waits: ${opened.reason}`
@@ -764,7 +764,7 @@ export const register: Register = (on, options) => {
 
   on('command.run', { command: 'quest-hud:level-up' }, async $ => ({ text: await levelUpCommand($) })).catch(($, e, next) => next(e))
 
-  on('command.run', { command: 'quest-hud:sync' }, async $ => ({ text: await syncCommand($) })).catch(($, e, next) => next(e))
+  on('command.run', { command: 'quest-hud:quests' }, async $ => ({ text: await questsCommand($) })).catch(($, e, next) => next(e))
 
   on('command.run', { command: 'quest-hud:off' }, async $ => ({ text: await turnOff($) })).catch(($, e, next) => next(e))
 
@@ -781,7 +781,7 @@ export const register: Register = (on, options) => {
     if (word === 'statusline') return { text: help($.plugin.root) }
     if (word === 'level') return { text: await levelCommand($) }
     if (word === 'level-up') return { text: await levelUpCommand($) }
-    if (word === 'sync') return { text: await syncCommand($) }
+    if (word === 'quests') return { text: await questsCommand($) }
     if (word === 'off') return { text: await turnOff($) }
     if (word === 'on') return { text: await turnOn($, detail) }
 

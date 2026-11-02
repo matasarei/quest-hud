@@ -1,4 +1,4 @@
-// How /quest-hud:sync reaches GitHub: through the person's own gh, so the mod never
+// How /quest-hud:quests reaches GitHub: through the person's own gh, so the mod never
 // holds a token. It holds no state and draws nothing; src/github.ts reads what comes back.
 import type { EngineInterface, ProcessRunResult } from 'claude-code'
 

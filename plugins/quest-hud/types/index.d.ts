@@ -117,10 +117,10 @@ export type BoardQuest = {
   isSecurity: boolean
 }
 
-/** Why a sync came back with nothing: gh would not run, is not signed in, or GitHub gave nothing to read. */
+/** Why a read of GitHub came back with nothing: gh would not run, is not signed in, or GitHub gave nothing to read. */
 export type BoardFailure = 'no-gh' | 'no-login' | 'no-answer'
 
-/** The Quest Board, as the last /quest-hud:sync left it. Kept for the session only, never in `$.store`. */
+/** The Quest Board, as the last /quest-hud:quests left it. Kept for the session only, never in `$.store`. */
 export type Board = {
   phase: 'riding' | 'scanning' | 'done'
   at: number
@@ -128,7 +128,7 @@ export type Board = {
   failure?: BoardFailure
   /** Some part of GitHub went unread, so a short list may not mean a clear road. */
   isPartial: boolean
-  /** What the sync could not do or read, in the HUD's own words. */
+  /** What the read could not do or read, in the HUD's own words. */
   notes: string[]
 }
 
@@ -163,11 +163,11 @@ declare module 'claude-code' {
       hidden: boolean
       /** What /quest-hud:level last worked out; kept in `$.store`, loaded at each start. Null before the first run. */
       level: LevelCard | null
-      /** What the last /quest-hud:sync posted; null before the first. */
+      /** What the last /quest-hud:quests posted; null before the first. */
       board: Board | null
       /** The board's Trivial rows are unfolded. */
       isTrivialOpen: boolean
-      /** The counts each sync placed in the transcript, by row id: counts only, never a title. */
+      /** The counts each read placed in the transcript, by row id: counts only, never a title. */
       posted: Record<string, string>
     }
   }

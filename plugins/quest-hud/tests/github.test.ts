@@ -68,7 +68,7 @@ describe('questOf', () => {
     expect(quest.title.endsWith('…')).toBe(true)
   })
 
-  test('a date that cannot be read leaves the quest undated, at the time of the sync', () => {
+  test('a date that cannot be read leaves the quest undated, at the time of the read', () => {
     expect(questOf(input('normal', 'https://github.com/a/b/issues/1', { at: Number.NaN }), NOW).at).toBe(NOW)
   })
 })

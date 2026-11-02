@@ -25,7 +25,7 @@ play. Quest HUD is a Claude Code mod that draws your session that way, above the
 It costs nothing: no model calls, nothing added to the context, and nothing written into your
 project. It reads your past sessions only if you ask it to, with
 [`/quest-hud:level`](#your-level), and then keeps counts, not what they said. It uses the network
-only if you ask it to, with [`/quest-hud:sync`](#the-quest-board), through your own `gh`.
+only if you ask it to, with [`/quest-hud:quests`](#the-quest-board), through your own `gh`.
 
 [Install](#install) · [Update](#update) · [Settings](#settings) · [Commands](#commands) · [Your level](#your-level) · [The Quest Board](#the-quest-board) · [The Road](#the-road) · [Without mods](#without-mods) · [Art](#art) · [Development](#development) · [License](#license)
 
@@ -74,7 +74,7 @@ is a skill's full name (`gku:plan`) or the part after the plugin prefix (`plan`)
 | `/quest-hud:pane` | opens the Road at any width |
 | `/quest-hud:level` | reads your setup and sessions, as counts, and [scores the harness](#your-level) from 1 to 10 |
 | `/quest-hud:level-up` | quests for the next level: what to add, picked from what you work on |
-| `/quest-hud:sync` | posts your open GitHub work and alerts on [the Quest Board](#the-quest-board), ranked and linked |
+| `/quest-hud:quests` | your open GitHub work and alerts as quests on [the Quest Board](#the-quest-board), ranked and linked |
 | `/quest-hud:statusline` | prints the setup for [the status line](#without-mods) |
 | `/quest-hud:off` | hides the band, the hint-line bars and the Road in every session, until `on`; it comes back up to date |
 | `/quest-hud:on` | brings them back, with the Road if `off` closed it |
@@ -124,7 +124,7 @@ Checks and Delegation are left out of the score rather than counted as zero.
 
 ## The Quest Board
 
-`/quest-hud:sync` opens a pane of what is waiting for you on GitHub, highest first, each row a link
+`/quest-hud:quests` opens a pane of what is waiting for you on GitHub, highest first, each row a link
 to its page. It answers at once and reads in the background: the rows come in about ten seconds,
 and the security scan about seven more. When it ends, a line in the conversation gives the counts.
 

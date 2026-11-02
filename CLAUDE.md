@@ -57,7 +57,7 @@ files only (`git grep -I`): perl dies on binary input.
   Road's meters row.
 - **Logic lives in `src/`, pure and tested**; `register.tsx` is wiring and layout. A new rule
   is a new function with its test.
-- **The board reads GitHub on command, through `gh`, and only reads.** `/quest-hud:sync` runs
+- **The board reads GitHub on command, through `gh`, and only reads.** `/quest-hud:quests` runs
   `gh api` with `$.process.run` in the background: never at a session start, never on a timer, and
   the mod never holds a token (no `$.http.fetch`). Every call is a read on github.com, as
   `tests/github.test.ts` pins: no `-X`, no `--method`, no fields on a REST path, nothing marked read.

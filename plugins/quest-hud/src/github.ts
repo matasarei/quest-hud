@@ -1,4 +1,4 @@
-// What /quest-hud:sync shows: the person's open GitHub work and alerts, ranked on
+// What /quest-hud:quests shows: the person's open GitHub work and alerts, ranked on
 // WoW's creature ladder and linked. Pure. Titles come from strangers: they are
 // cleaned, drawn only on the board, and never reach a command's answer or the store.
 import type { Board, BoardFailure, BoardQuest, QuestRank } from '../types'
@@ -6,7 +6,7 @@ import { clockTime } from './log'
 import { cleanTitle } from './quest'
 
 /** What the board says before its first post, and after a /clear wipes it. */
-export const NO_BOARD_TEXT = 'The board is bare. /quest-hud:sync posts your GitHub quests here.'
+export const NO_BOARD_TEXT = 'The board is bare. /quest-hud:quests posts your GitHub quests here.'
 
 /** The ladder, highest first. */
 export const RANKS: readonly QuestRank[] = ['boss', 'rareElite', 'elite', 'rare', 'normal', 'minion', 'trivial']
@@ -383,27 +383,27 @@ export const repoOfRemote = (remote: string): string | undefined => REMOTE.exec(
 export const failureOf = (exitCode: number | undefined): BoardFailure =>
   exitCode === undefined ? 'no-gh' : exitCode === 4 ? 'no-login' : 'no-answer'
 
-/** What a failed sync says. Commands are printed for the person, never run. */
+/** What a failed read says. Commands are printed for the person, never run. */
 export const FAILURE_TEXT: Readonly<Record<BoardFailure, string>> = {
-  'no-gh': 'gh could not run or took too long. Is it installed? See https://cli.github.com, then sync again.',
-  'no-login': 'gh is not signed in. Run gh auth login, then sync again.',
-  'no-answer': 'GitHub did not answer. Nothing here means an empty road: sync again.',
+  'no-gh': 'gh could not run or took too long. Is it installed? See https://cli.github.com, then run /quest-hud:quests again.',
+  'no-login': 'gh is not signed in. Run gh auth login, then run /quest-hud:quests again.',
+  'no-answer': 'GitHub did not answer. Nothing here means an empty road: run /quest-hud:quests again.',
 }
 
-/** The board while a sync is out: the last rows stay up until the new ones come. */
+/** The board while the herald is out: the last rows stay up until the new ones come. */
 export const ridingBoard = (last: Board | null, at: number): Board => ({ phase: 'riding', at, quests: last?.quests ?? [], isPartial: false, notes: [] })
 
 /** A board with nothing read: why, and no rows. */
 export const failedBoard = (failure: BoardFailure, at: number): Board => ({ phase: 'done', at, quests: [], failure, isPartial: true, notes: [] })
 
-/** The board from what a sync has read so far. */
+/** The board from what has been read so far. */
 export const boardOf = (parts: { phase: Board['phase']; at: number; sweep: Sweep; unread: readonly BoardQuest[] | undefined; here: string | undefined; scan?: ScanTally }): Board => {
   const { sweep, unread, scan } = parts
   const { quests, left } = finishQuests([...sweep.quests, ...(unread ?? []), ...(scan?.quests ?? [])], parts.at, parts.here)
   const notes = [
     ...(sweep.refused > 0 ? [`GitHub refused ${sweep.refused} part${sweep.refused === 1 ? '' : 's'} of its answer, so this list may be short.`] : []),
     ...(unread === undefined ? ['Notifications could not be read.'] : []),
-    ...(sweep.isCut ? ['Some lists were longer than a sync reads.'] : []),
+    ...(sweep.isCut ? ['Some lists were cut short.'] : []),
     ...(left > 0 ? [`${left} more quests did not fit.`] : []),
     ...(scan === undefined || scan.scanned === 0 ? [] : [scanNote(scan, sweep.repoTotal)]),
   ]
@@ -411,7 +411,7 @@ export const boardOf = (parts: { phase: Board['phase']; at: number; sweep: Sweep
   return { phase: parts.phase, at: parts.at, quests, isPartial: sweep.refused > 0 || unread === undefined || (scan?.unread ?? 0) > 0, notes }
 }
 
-/** What the counts row says when a sync ends. Counts and the HUD's own words: no title, no repository. */
+/** What the counts row says when a read ends. Counts and the HUD's own words: no title, no repository. */
 export const postedText = (board: Board): string => {
   if (board.failure !== undefined) return 'The board could not be posted. The Quest Board says why.'
   if (!board.isPartial) return countsText(board.quests)
@@ -469,7 +469,7 @@ export const boardView = (board: Board | null, now: number, isTrivialOpen = fals
   const isClear = board.phase === 'done' && board.quests.length === 0 && board.failure === undefined && !board.isPartial
 
   return {
-    status: board.phase === 'done' ? `synced ${clockTime(board.at)}` : STATUS[board.phase],
+    status: board.phase === 'done' ? `posted ${clockTime(board.at)}` : STATUS[board.phase],
     lines: [...(board.failure === undefined ? [] : [FAILURE_TEXT[board.failure]]), ...(isClear ? ['The board is clear.'] : [])],
     sections,
     notes: board.notes,
@@ -477,7 +477,7 @@ export const boardView = (board: Board | null, now: number, isTrivialOpen = fals
   }
 }
 
-/** How many repositories a sync scans for secret and code alerts, the most recently pushed: GitHub has no account-wide read of either. */
+/** How many repositories a read scans for secret and code alerts, the most recently pushed: GitHub has no account-wide read of either. */
 export const SCAN_REPOS = 20
 export const SCAN_AT_ONCE = 4
 const MAX_ALERTS_PER_SCAN = 50
