@@ -4,7 +4,7 @@
 import type { Allies, Companion, Foes, LevelCard, LogEntry, Meters, Quest, Task, Zone } from '../types'
 import type { Grid } from './avatar'
 import { clockTime } from './log'
-import { bar, hpLeft, mpLeft, zoneLine, type Bars, type Segment } from './meters'
+import { bar, hpLeft, hpTone, mpLeft, zoneLine, type Bars, type Segment } from './meters'
 import { cleanTitle } from './quest'
 import { downsample } from './paint/pixels'
 import { MAX_GHOSTS, sceneArt, SCENE_HEIGHT, waypointsOf, type Motion, type Transition } from './scene'
@@ -101,7 +101,7 @@ const meterSegments = (meters: Meters | null, bars: Bars): Segment[] => {
   const hp = hpLeft(meters)
   const mp = mpLeft(meters)
 
-  if (hp !== undefined) segments.push({ text: `♥ ${bar(hp, BAR_WIDTH)} ${hp}%   `, tone: 'hp' })
+  if (hp !== undefined) segments.push({ text: `♥ ${bar(hp, BAR_WIDTH)} ${hp}%   `, tone: hpTone(hp) })
   segments.push({ text: `✦ ${bar(mp, BAR_WIDTH)} ${mp}%`, tone: 'mp' })
   if (bars === 'all' && meters?.fiveHourUsed !== undefined) segments.push({ text: `   ⚡${Math.round(meters.fiveHourUsed)}%`, tone: 'five' })
   if (bars === 'all' && meters?.costUsd !== undefined) segments.push({ text: `   ◉ $${meters.costUsd.toFixed(2)}`, tone: 'gold' })
