@@ -469,6 +469,14 @@ describe('a card kept from before', () => {
     expect(world.spawned).toEqual([])
   })
 
+  // Left by an older mod: no version in plugin.json means every commit is an update.
+  test('a card of another shape asks for a new reading, and does not fail', async ($, on) => {
+    engine(on, { level: { level: 3, title: 'Initiate', points: 5, outOf: 21, parts: [], usage: { isRead: true } } })
+    machine()
+    await start($)
+    expect(await run($, 'quest-hud:level-up')).toContain('No level yet')
+  })
+
   test('what is no card loads as none', async ($, on) => {
     engine(on, { level: 'level 8' })
     await start($)

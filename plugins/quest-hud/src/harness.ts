@@ -223,6 +223,17 @@ export const cardOf = (inventory: Inventory, usage: Usage): LevelCard => {
   return { level, title: TITLES[level - 1] ?? '', points, outOf, parts, usage }
 }
 
+/** The counts in a card's usage: what the score and the quests read, each a number. */
+const USAGE_COUNTS: ReadonlyArray<keyof Usage> = ['sessions', 'days', 'editingSessions', 'checkedSessions', 'testRuns', 'lintRuns', 'skillSessions', 'allSessions', 'agentCalls', 'agentSessions', 'mcpCalls', 'mcpServers', 'browserCalls', 'webCalls', 'ghRuns']
+
+const isUsage = (value: unknown): value is Usage =>
+  isRecord(value) && typeof value.isRead === 'boolean' && isRecord(value.skillRuns) && isRecord(value.edits)
+  && USAGE_COUNTS.every(count => typeof value[count] === 'number')
+
+const isPart = (value: unknown): value is HarnessPart =>
+  isRecord(value) && typeof value.name === 'string' && typeof value.note === 'string'
+  && (value.score === undefined || typeof value.score === 'number')
+
 /** A card as `$.store` gave it back, or null for anything else: an older mod may have written it. */
 export const asCard = (value: unknown): LevelCard | null => {
   if (!isRecord(value)) return null
@@ -230,7 +241,7 @@ export const asCard = (value: unknown): LevelCard | null => {
   const { level, title, points, outOf, parts, usage } = value
   const isCard = typeof level === 'number' && level >= 1 && level <= TITLES.length
     && typeof title === 'string' && typeof points === 'number' && typeof outOf === 'number'
-    && Array.isArray(parts) && isRecord(usage) && typeof usage.isRead === 'boolean'
+    && Array.isArray(parts) && parts.every(isPart) && isUsage(usage)
 
   return isCard ? (value as LevelCard) : null
 }

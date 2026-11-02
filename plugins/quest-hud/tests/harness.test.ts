@@ -212,6 +212,11 @@ describe('notes', () => {
 })
 
 describe('a card from the store', () => {
+  test('a part that could not be read has no score, and is still a part', () => {
+    const card = cardOf(inventory(), usage({ isRead: false }))
+    expect(asCard(JSON.parse(JSON.stringify(card)))).toEqual(card)
+  })
+
   test('a card comes back as it went in', () => {
     const card = cardOf(inventory(), usage())
     expect(asCard(JSON.parse(JSON.stringify(card)))).toEqual(card)
@@ -224,6 +229,12 @@ describe('a card from the store', () => {
     ['no parts', { level: 3, title: 'x', points: 1, outOf: 21, usage: {} }],
     ['a level off the scale', { level: 11, title: 'x', points: 1, outOf: 21, parts: [], usage: { isRead: true } }],
     ['no usage', { level: 3, title: 'x', points: 1, outOf: 21, parts: [] }],
+    ['usage with nothing in it', { level: 3, title: 'x', points: 1, outOf: 21, parts: [], usage: { isRead: true } }],
+    ['usage with a count that is no number', { ...cardOf(inventory(), usage()), usage: { ...usage(), sessions: '9' } }],
+    ['usage with no skill runs', { ...cardOf(inventory(), usage()), usage: { ...usage(), skillRuns: null } }],
+    ['usage with no edits', { ...cardOf(inventory(), usage()), usage: { ...usage(), edits: 'x' } }],
+    ['a part that is no part', { ...cardOf(inventory(), usage()), parts: [{ name: 'x' }] }],
+    ['a score that is no number', { ...cardOf(inventory(), usage()), parts: [{ name: 'x', score: '3', note: 'y' }] }],
   ]
   for (const [what, value] of BAD) {
     test(`${what} is no card`, () => expect(asCard(value)).toBeNull())
