@@ -76,7 +76,8 @@ describe('the level', () => {
   test('how many points to the next level; none at the top', () => {
     expect(pointsToNext(16, 21)).toBe(2)
     expect(pointsToNext(0, 21)).toBe(2)
-    expect(pointsToNext(20, 21)).toBe(1)
+    expect(pointsToNext(19, 21)).toBe(1)
+    expect(pointsToNext(20, 21)).toBeUndefined()
     expect(pointsToNext(21, 21)).toBeUndefined()
   })
 })
