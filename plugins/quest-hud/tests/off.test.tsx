@@ -173,7 +173,7 @@ describe('a session started while off', () => {
   test('on with detail = off says the option still hides it', { options: { detail: 'off' } }, async ($, on) => {
     engine(on, { hidden: true })
     await start($)
-    expect(await run($, 'quest-hud:on')).toContain('detail option')
+    expect(await run($, 'quest-hud:on')).toContain('/plugin configure quest-hud@quest-hud')
   })
 
   test('on, when not off, says so', async ($, on) => {

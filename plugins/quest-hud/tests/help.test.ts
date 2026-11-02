@@ -8,7 +8,7 @@ describe('/quest-hud:help', () => {
   test('lists the commands, and each option with its values, the value in force and its default', () => {
     const text = usageText(IN_FORCE)
     for (const command of ['/quest-hud:status', '/quest-hud:pane', '/quest-hud:statusline', '/quest-hud:help']) expect(text).toContain(command)
-    expect(text).toContain('set in /config')
+    expect(text).toContain('set with /plugin configure quest-hud@quest-hud')
     expect(text).toContain('detail    off | status | band | pane')
     expect(text).toContain('now cells (default auto)')
     expect(text).toContain('now all (default hpmp)')

@@ -304,7 +304,7 @@ async function turnOn($: EngineInterface, detail: Detail): Promise<string> {
   await update($, hidden, () => false)
   if (wasOpen || detail === 'pane') await $.ui.open({ id: PANE_ID, title: PANE_TITLE })
 
-  return detail === 'off' ? 'Quest HUD is on, but the detail option in /config is off.' : 'Quest HUD is back.'
+  return detail === 'off' ? 'Quest HUD is on, but the detail option is off: /plugin configure quest-hud@quest-hud changes it.' : 'Quest HUD is back.'
 }
 
 /** One more line in the pane's log, stamped with the time now. */
