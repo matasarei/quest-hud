@@ -317,11 +317,8 @@ const placeFoes = (hero: number, road: number, ahead: number, foes: Foes): FoeOn
 
 /** Where a scene's monsters stand, with the wizard and the road they stand on: what `sceneArt` draws. */
 export const foesOnRoad = (args: SceneArgs): { hero: number; road: number; shown: FoeOnRoad[] } => {
-  const width = Math.max(0, Math.floor(args.columns))
-  const kept = layout({ ...args, columns: width })
-  const placed = figures(fitWaypoints(args.waypoints, flagSlots(kept.flagRoad)), kept)
-  const hero = Math.max(placed.hero, FAMILIAR_BEHIND)
-  return { hero, road: kept.road, shown: placeFoes(hero, kept.road, placed.ahead, args.foes ?? NO_FOES) }
+  const { hero, road, foes } = party(args)
+  return { hero, road, shown: foes.map(({ kind, x }) => ({ kind, x })) }
 }
 
 /**
@@ -410,6 +407,57 @@ export const roadside = (args: SceneArgs): Roadside[] => {
   ]
 }
 
+/**
+ * Where the party stands in a frame, in units: the allies by the roadside,
+ * the ghosts behind, the flags, the mascot, the monsters (nearest first, each
+ * with its sprite) and the wizard — everything `sceneArt` draws after the
+ * roadside, for one zone's layout.
+ */
+export type Party = {
+  hero: number
+  road: number
+  allies: Array<{ grid: Grid; x: number }>
+  ghosts: number[]
+  flags: Array<{ state: Waypoint; x: number }>
+  mascot: number
+  foes: Array<FoeOnRoad & { grid: Grid }>
+}
+
+/** The party as a zone lays it out: `layout`, `figures` and `placeFoes`, in the scene's own order. */
+export const party = (args: SceneArgs): Party => {
+  const { zone, waypoints, companions, foes = NO_FOES, motion = REST } = args
+  const width = Math.max(0, Math.floor(args.columns))
+  const kept = layout({ ...args, columns: width })
+
+  // GitHub's Octocat and GitLab's fox joined the party: they keep their places as it walks.
+  let right = roadsideOf(kept, width, motion.step).right
+  const allies = allyGrids(kept.extras).map(grid => {
+    right -= (grid[0]?.length ?? 0) / ART_SCALE + EXTRA_GAP
+    return { grid, x: right }
+  })
+
+  const flags = fitWaypoints(waypoints, flagSlots(kept.flagRoad))
+  const placed = figures(flags, kept)
+  const hero = Math.max(placed.hero, FAMILIAR_BEHIND)
+
+  // Ghosts behind everything on the road, the farthest first; one with no room is not drawn: the pane's text names it.
+  const ghosts: number[] = []
+  for (let k = Math.min(companions, MAX_GHOSTS); k >= 1; k--) {
+    const x = hero - FAMILIAR_BEHIND - GHOST_STEP * k
+    if (x >= -4) ghosts.push(x)
+  }
+
+  return {
+    hero,
+    road: kept.road,
+    allies,
+    ghosts,
+    flags: flags.map((state, i) => ({ state, x: placed.flagXs[i] ?? 0 })),
+    mascot: hero - FAMILIAR_BEHIND,
+    foes: placeFoes(hero, kept.road, placed.ahead, foes).map(foe => ({ ...foe, grid: foeGrid(foe.kind, zone) })),
+  }
+}
+
 /** Paints a sprite's grid with its feet on the ground, its left edge at `x` units. */
 const standAt = (art: Canvas, grid: Grid, x: number): void => stamp(art, grid, x * ART_SCALE, GROUND_ROW * ART_SCALE - grid.length)
 
@@ -419,43 +467,28 @@ const standAt = (art: Canvas, grid: Grid, x: number): void => stamp(art, grid, x
  * steps along, the wizard in his pose, the mascot hopping or not.
  */
 export const sceneArt = (args: SceneArgs): Grid => {
-  const { columns, zone, waypoints, companions, foes = NO_FOES, motion = REST, transition, cells = false } = args
+  const { columns, zone, motion = REST, transition, cells = false } = args
   const width = Math.max(0, Math.floor(columns))
   const backdrop = (z: Zone): Grid => rgbToGrid(rasterize(landscape(z, width, motion.step), width, SCENE_HEIGHT, ART_SCALE, 0, { pixel: true, bands: 5, ditherRows: cells ? 2 : 1 }))
   const art: Canvas = transition !== undefined && transition.from !== zone && transition.progress < 1
     ? slide(backdrop(transition.from), backdrop(zone), transition.progress)
     : backdrop(zone).map(row => [...row])
-  const kept = layout({ ...args, columns: width })
   for (const thing of roadside(args)) stamp(art, thing.grid, thing.x, GROUND_ROW * ART_SCALE - thing.grid.length, thing.from, thing.to)
-  let right = roadsideOf(kept, width, motion.step).right
-
-  // GitHub's Octocat and GitLab's fox joined the party: they keep their places as it walks.
-  for (const grid of allyGrids(kept.extras)) {
-    right -= (grid[0]?.length ?? 0) / ART_SCALE + EXTRA_GAP
-    standAt(art, grid, right)
-  }
-
-  const flags = fitWaypoints(waypoints, flagSlots(kept.flagRoad))
-  const placed = figures(flags, kept)
-  const hero = Math.max(placed.hero, FAMILIAR_BEHIND)
-
-  // Ghosts first, behind everything on the road; one with no room is not drawn: the pane's text names it.
-  for (let k = Math.min(companions, MAX_GHOSTS); k >= 1; k--) {
-    const x = hero - FAMILIAR_BEHIND - GHOST_STEP * k
-    if (x >= -4) standAt(art, spriteGrid(GHOST), x)
-  }
-
-  flags.forEach((state, i) => standAt(art, spriteGrid(FLAG[state]), placed.flagXs[i] ?? 0))
-
-  standAt(art, spriteGrid(motion.hop ? MASCOT.hop : MASCOT.still), hero - FAMILIAR_BEHIND)
-
-  // The monsters face the wizard from the right: the test's monster nearest, the
-  // spider behind it, drawn first so the test's monster stands in front.
-  for (const foe of [...placeFoes(hero, kept.road, placed.ahead, foes)].reverse()) standAt(art, foeGrid(foe.kind, zone), foe.x)
-
-  standAt(art, spriteGrid(WIZARD[motion.pose]), hero)
+  drawParty(art, party(args), motion)
 
   return art
+}
+
+/** Paints the party over the scene, back to front: allies, ghosts, flags, the mascot, the monsters (the far one first), the wizard. */
+const drawParty = (art: Canvas, at: Party, motion: Motion): void => {
+  for (const ally of at.allies) standAt(art, ally.grid, ally.x)
+  for (const x of at.ghosts) standAt(art, spriteGrid(GHOST), x)
+  for (const flag of at.flags) standAt(art, spriteGrid(FLAG[flag.state]), flag.x)
+  standAt(art, spriteGrid(motion.hop ? MASCOT.hop : MASCOT.still), at.mascot)
+  // The monsters face the wizard from the right: the test's monster nearest, the
+  // spider behind it, drawn first so the test's monster stands in front.
+  for (const foe of [...at.foes].reverse()) standAt(art, foe.grid, foe.x)
+  standAt(art, spriteGrid(WIZARD[motion.pose]), at.hero)
 }
 
 /**
