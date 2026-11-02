@@ -56,7 +56,7 @@ export const engine = (on: On) => {
     return stored
   })
   const clock = mock.clock(on, { now: NOW })
-  on('command.register', () => ({ value: { command: 'hud' } }))
+  on('command.register', () => ({ value: { command: 'quest-hud' } }))
   on('session.id', () => ({ value: world.id }))
   on('session.usage', () => ({ value: { startedAt: 0, context: { window: 200_000 }, rateLimits: [] } }))
   on('session.start', (_, e) => ({ cwd: e.cwd }))

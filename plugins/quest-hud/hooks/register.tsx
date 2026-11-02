@@ -71,6 +71,25 @@ const help = (root: string): string =>
     'It needs jq.',
   ].join('\n')
 
+/** What /quest-hud:pane answers: it opens the Road, at any width. */
+async function openRoad($: EngineInterface): Promise<string> {
+  const opened = await $.ui.open({ id: PANE_ID, title: PANE_TITLE })
+
+  return opened.isPlaced ? 'The Road is open.' : `The Road waits: ${opened.reason}`
+}
+
+/** What /quest-hud:status answers: the quest, what its zone means, the tasks. */
+async function statusLines($: EngineInterface): Promise<string> {
+  const current = await read($, quest)
+  const list = await read($, tasks)
+
+  return [
+    statusText(current, list, await read($, meters), 'all'),
+    `  ${zoneLine(current?.zone ?? 'wilds')}`,
+    ...list.map(task => `  ${task.status === 'completed' ? '✓' : task.status === 'in_progress' ? '▸' : '·'} ${cleanTitle(task.subject)}`),
+  ].join('\n')
+}
+
 /** The one-line entry, drawn only when the detail option asks for it. */
 async function showStatus($: EngineInterface, detail: Detail, bars: Bars): Promise<void> {
   if (detail === 'status') {
@@ -325,7 +344,7 @@ export const register: Register = (on, options) => {
   // session id: the quest in progress is kept. A new id (/clear, a resume of
   // another session) starts everything over.
   on('session.start', async ($, e, next) => {
-    await $.command.register({ name: 'hud', description: 'Show the Quest HUD state; "/hud help" lists the rest' })
+    await $.command.register({ name: 'quest-hud', description: "List Quest HUD's commands and its options" })
     const id = await $.session.id()
 
     if ((await read($, sessionId)) !== id) {
@@ -532,39 +551,27 @@ export const register: Register = (on, options) => {
 
   const settings = { detail, bars, graphics, zones: typeof options.zones === 'string' ? options.zones.trim() : '' }
 
-  // A skill file gives the command its /quest-hud: name; the mod answers it, so
+  // A skill file gives each command its /quest-hud: name; the mod answers it, so
   // no model turn runs. If a hook fails, the skill's text says the mod is not running.
   on('command.run', { command: 'quest-hud:help' }, async () => ({ text: usageText(settings) })).catch(($, e, next) => next(e))
 
-  on('command.run', { command: 'hud' }, async ($, e) => {
-    const word = e.args.trim()
+  on('command.run', { command: 'quest-hud:statusline' }, async $ => ({ text: help($.plugin.root) })).catch(($, e, next) => next(e))
 
-    if (word.toLowerCase() === 'help') {
-      return { text: usageText(settings) }
-    }
+  on('command.run', { command: 'quest-hud:pane' }, async $ => ({ text: await openRoad($) })).catch(($, e, next) => next(e))
 
-    if (word === 'statusline') {
-      return { text: help($.plugin.root) }
-    }
+  on('command.run', { command: 'quest-hud:status' }, async $ => ({ text: await statusLines($) })).catch(($, e, next) => next(e))
 
-    if (word === 'pane') {
-      const opened = await $.ui.open({ id: PANE_ID, title: PANE_TITLE })
-      return { text: opened.isPlaced ? 'The Road is open.' : `The Road waits: ${opened.reason}` }
-    }
+  // The bare name takes the same words after a space, and any other word gets a
+  // free answer: a typo after the colon goes to the model, one after the space stops here.
+  on('command.run', { command: 'quest-hud' }, async ($, e) => {
+    const word = e.args.trim().toLowerCase()
 
-    if (word !== '') {
-      return { text: unknownText(word, settings) }
-    }
+    if (word === '' || word === 'help') return { text: usageText(settings) }
+    if (word === 'status') return { text: await statusLines($) }
+    if (word === 'pane') return { text: await openRoad($) }
+    if (word === 'statusline') return { text: help($.plugin.root) }
 
-    const current = await read($, quest)
-    const list = await read($, tasks)
-    const lines = [
-      statusText(current, list, await read($, meters), 'all'),
-      `  ${zoneLine(current?.zone ?? 'wilds')}`,
-      ...list.map(task => `  ${task.status === 'completed' ? '✓' : task.status === 'in_progress' ? '▸' : '·'} ${cleanTitle(task.subject)}`),
-    ]
-
-    return { text: lines.join('\n') }
+    return { text: unknownText(e.args.trim(), settings) }
   })
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {

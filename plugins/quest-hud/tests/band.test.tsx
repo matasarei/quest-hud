@@ -10,12 +10,18 @@ import { bandPortrait } from '../src/scene'
 
 // The session id the engine answers; a test changes it to stand for /clear.
 const session = { id: 's1' }
+// The names the plugin registered, as the engine was asked.
+const registered: string[] = []
 
 // Nothing sits beneath the plugin in a test: these hooks stand for the engine.
 const engine = (on: On, statuses: Array<string | undefined> = []) => {
   session.id = 's1'
+  registered.length = 0
   mock.clock(on, { now: Date.parse('2026-11-01T10:00:00Z') })
-  on('command.register', () => ({ value: { command: 'hud' } }))
+  on('command.register', (_, e) => {
+    registered.push(e.name)
+    return { value: { command: e.name } }
+  })
   on('session.id', () => ({ value: session.id }))
   on('session.usage', () => ({ value: { startedAt: 0, context: { window: 200_000 }, rateLimits: [] } }))
   on('session.start', (_, e) => ({ cwd: e.cwd }))
@@ -177,41 +183,57 @@ describe('the detail option', () => {
   })
 })
 
-describe('/hud help and the options', () => {
+describe('/quest-hud:help and the options', () => {
   for (const option of OPTIONS.filter(o => o.values.length > 0)) {
     for (const value of [...option.values, 'nonsense']) {
       const expected = option.values.includes(value) ? value : option.fallback
       test(`${option.name} = ${value}: help says now ${expected}`, { options: { [option.name]: value } }, async ($, on) => {
         engine(on)
         await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
-        const text = (await $.command.run({ command: 'hud', args: 'help', ...RUN })).text ?? ''
+        const text = (await $.command.run({ command: 'quest-hud:help', args: '', ...RUN })).text ?? ''
         const line = text.split('\n').find(l => l.trimStart().startsWith(`${option.name} `)) ?? ''
         expect(line).toContain(`now ${expected} (default ${option.fallback})`)
       })
     }
   }
 
-  test('/quest-hud:help answers the same list', async ($, on) => {
+  test('/quest-hud answers the same list', async ($, on) => {
     engine(on)
     await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
     const text = (await $.command.run({ command: 'quest-hud:help', args: '', ...RUN })).text ?? ''
-    expect(text).toBe((await $.command.run({ command: 'hud', args: 'help', ...RUN })).text ?? '')
+    expect(text).toBe((await $.command.run({ command: 'quest-hud', args: '', ...RUN })).text ?? '')
     expect(text).toContain('now band (default band)')
   })
 
   test('zones: the rules in force, or none', { options: { zones: 'quest=forge' } }, async ($, on) => {
     engine(on)
     await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
-    const text = (await $.command.run({ command: 'hud', args: 'help', ...RUN })).text ?? ''
+    const text = (await $.command.run({ command: 'quest-hud:help', args: '', ...RUN })).text ?? ''
     expect(text).toContain('now quest=forge')
   })
 })
 
-describe('/hud', () => {
+describe('the /quest-hud: commands', () => {
+  test('the session registers /quest-hud, and no /hud', async ($, on) => {
+    engine(on)
+    await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+    expect(registered).toEqual(['quest-hud'])
+  })
+
+  test('after a space, the same words give the same answers', async ($, on) => {
+    engine(on)
+    await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+    for (const word of ['status', 'statusline', 'help']) {
+      const spaced = await $.command.run({ command: 'quest-hud', args: word, ...RUN })
+      const named = await $.command.run({ command: `quest-hud:${word}`, args: '', ...RUN })
+      expect(spaced.text).toBe(named.text)
+    }
+  })
+
   test('statusline prints the copy command and the setting', async ($, on) => {
     engine(on)
     await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
-    const result = await $.command.run({ command: 'hud', args: 'statusline', ...RUN })
+    const result = await $.command.run({ command: 'quest-hud:statusline', args: '', ...RUN })
     expect(result.text).toContain('/scripts/hud-line.sh" ~/.claude/hud-line.sh')
     expect(result.text).toContain('"statusLine": { "type": "command", "command": "~/.claude/hud-line.sh" }')
   })
@@ -220,35 +242,35 @@ describe('/hud', () => {
     engine(on)
     await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
     await $.tool.call({ tool: 'TaskCreate', subject: 'two\nlines \u202eevil', description: '' })
-    const result = await $.command.run({ command: 'hud', args: '', ...RUN })
+    const result = await $.command.run({ command: 'quest-hud:status', args: '', ...RUN })
     expect(result.text).toContain('· two lines evil')
     expect((result.text ?? '').split('\n')).toHaveLength(3)
   })
 
-  test('help lists the subcommands and the options, with the values in force', async ($, on) => {
+  test('help lists the commands and the options, with the values in force', async ($, on) => {
     engine(on)
     await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
     for (const args of ['help', ' HELP ']) {
-      const text = (await $.command.run({ command: 'hud', args, ...RUN })).text ?? ''
-      expect(text).toContain('/hud pane')
-      expect(text).toContain('/hud statusline')
+      const text = (await $.command.run({ command: 'quest-hud', args, ...RUN })).text ?? ''
+      expect(text).toContain('/quest-hud:pane')
+      expect(text).toContain('/quest-hud:statusline')
       expect(text).toContain('set in /config')
       expect(text).toContain('now auto (default auto)')
     }
   })
 
-  test('a word /hud does not know says so, then the help', async ($, on) => {
+  test('a word /quest-hud does not know says so, then the help', async ($, on) => {
     engine(on)
     await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
-    const text = (await $.command.run({ command: 'hud', args: 'pan', ...RUN })).text ?? ''
-    expect(text.split('\n')[0]).toBe('No /hud pan.')
-    expect(text).toContain('/hud pane')
+    const text = (await $.command.run({ command: 'quest-hud', args: 'pan', ...RUN })).text ?? ''
+    expect(text.split('\n')[0]).toBe('No /quest-hud pan.')
+    expect(text).toContain('/quest-hud:pane')
   })
 
-  test('with no argument prints the state and the task list', async ($, on) => {
+  test('status prints the state and the task list', async ($, on) => {
     engine(on)
     await implementWithTasks($)
-    const result = await $.command.run({ command: 'hud', args: '', ...RUN })
+    const result = await $.command.run({ command: 'quest-hud:status', args: '', ...RUN })
     expect(result.text).toContain('⚔ gku:implement 0/2')
     expect(result.text).toContain('▸ Write the tests')
     expect(result.text).toContain('◉$1.84')
@@ -371,19 +393,19 @@ describe('skills run by subagents', () => {
   })
 })
 
-describe('/hud says what the zone means', () => {
+describe('/quest-hud:status says what the zone means', () => {
   test('a planning skill is the Map room, planning and research', async ($, on) => {
     engine(on)
     await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
     await $.skill.prompt({ skill: 'plan', pluginName: 'gku', text: 'x', frontmatter: { description: 'Turn a request into a plan' } })
-    const result = await $.command.run({ command: 'hud', args: '', ...RUN })
+    const result = await $.command.run({ command: 'quest-hud:status', args: '', ...RUN })
     expect(result.text).toContain('  Map room — planning and research')
   })
 
   test('with no skill running, the Wilds', async ($, on) => {
     engine(on)
     await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
-    const result = await $.command.run({ command: 'hud', args: '', ...RUN })
+    const result = await $.command.run({ command: 'quest-hud:status', args: '', ...RUN })
     expect(result.text).toContain('  Wilds — no skill running')
   })
 })

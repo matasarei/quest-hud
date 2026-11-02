@@ -83,10 +83,18 @@ describe('the Road pane', () => {
 })
 
 describe('opening the pane', () => {
-  test('/hud pane opens it', async ($, on) => {
+  test('/quest-hud:pane opens it', async ($, on) => {
     engine(on)
     await start($)
-    const result = await $.command.run({ command: 'hud', args: 'pane', ...RUN })
+    const result = await $.command.run({ command: 'quest-hud:pane', args: '', ...RUN })
+    expect(world.opened).toEqual(['quest-hud'])
+    expect(result.text).toBe('The Road is open.')
+  })
+
+  test('/quest-hud pane opens it too', async ($, on) => {
+    engine(on)
+    await start($)
+    const result = await $.command.run({ command: 'quest-hud', args: 'pane', ...RUN })
     expect(world.opened).toEqual(['quest-hud'])
     expect(result.text).toBe('The Road is open.')
   })
