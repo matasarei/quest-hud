@@ -382,20 +382,22 @@ async function levelCommand($: EngineInterface): Promise<string> {
 
   if (changed.length > 0) {
     reading.isRunning = true
-    void readSessions($, transcripts, changed, cached, history, inventory)
+    // This card goes first, so the reading's lands on top of it. On a first run there is none to show yet.
+    void (hasLevel ? keepCard($, card) : Promise.resolve(true))
+      .then(() => readSessions($, transcripts, changed, cached, history, inventory))
       .catch(() => undefined)
       .finally(() => {
         reading.isRunning = false
       })
 
-    if (!hasLevel) return scout
-  } else if (Object.keys(cached).length !== Object.keys(kept).length) {
-    await $.store.set('survey', cached).catch(() => undefined)
+    return hasLevel ? `${levelText(card)}\n${rereadingText(changed.length)}` : scout
   }
+
+  if (Object.keys(cached).length !== Object.keys(kept).length) await $.store.set('survey', cached).catch(() => undefined)
 
   await keepCard($, card)
 
-  return changed.length > 0 ? `${levelText(card)}\n${rereadingText(changed.length)}` : levelText(card)
+  return levelText(card)
 }
 
 /** What /quest-hud:level-up answers: quests from the usage last read and a fresh look at the setup. No transcript is read. */

@@ -130,6 +130,27 @@ describe('when the transcripts are read', () => {
     expect((await stored($))?.usage.sessions).toBe(1)
   })
 
+  test('the card a command writes never lands on top of the reading that follows it', async ($, on) => {
+    engine(on)
+    machine()
+    await start($)
+    await run($, 'quest-hud:level')
+    await settled($)
+    let release = (): void => {}
+    world.levelWriteGate = new Promise<void>(resolve => {
+      release = resolve
+    })
+    world.dirs[DIR] = [file('s1.jsonl'), file('s2.jsonl'), file('s3.jsonl'), dir('memory')]
+    world.grep = grepLine('s3', 'c', 'Read')
+    const answer = run($, 'quest-hud:level')
+    await settled($)
+    release()
+    await answer
+    await settled($)
+    expect((world.state.level as LevelCard | undefined)?.usage.sessions).toBe(3)
+    expect((await stored($))?.usage.sessions).toBe(3)
+  })
+
   test('a long machine is read in batches', async ($, on) => {
     engine(on)
     machine()

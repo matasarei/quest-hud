@@ -30,6 +30,8 @@ export const world: {
   /** What the plugin kept with `$.store.set`, this test, and the keys it may not. */
   store: Record<string, unknown>
   storeRefuses: string[]
+  /** The next write of the level waits for this, as a slow disk would. */
+  levelWriteGate?: Promise<void>
   /** Files by path: what `$.fs.read` and `$.fs.exists` answer. */
   files: Record<string, string>
   /** Directories by path: what `$.fs.list` and `$.fs.exists` answer. */
@@ -97,6 +99,7 @@ export const engine = (on: On, store: Readonly<Record<string, unknown>> = {}) =>
   world.statuses = []
   world.state = {}
   world.storeRefuses = []
+  world.levelWriteGate = undefined
   world.files = {}
   world.dirs = {}
   world.tooBig = []
@@ -118,7 +121,12 @@ export const engine = (on: On, store: Readonly<Record<string, unknown>> = {}) =>
   // The store: mock.store takes the same events and shows a test nothing of what was kept.
   world.store = JSON.parse(JSON.stringify(store)) as Record<string, unknown>
   on('store.get', (_, e) => ({ value: world.store[e.key] }))
-  on('store.set', (_, e) => {
+  on('store.set', async (_, e) => {
+    if (e.key === 'level' && world.levelWriteGate !== undefined) {
+      const gate = world.levelWriteGate
+      world.levelWriteGate = undefined
+      await gate
+    }
     if (world.storeRefuses.includes(e.key)) return { deny: 'the store is full' }
     world.store[e.key] = JSON.parse(JSON.stringify(e.value)) as unknown
     return { value: undefined }
