@@ -18,6 +18,7 @@ const engine = (on: On, statuses: Array<string | undefined> = []) => {
   session.id = 's1'
   registered.length = 0
   mock.clock(on, { now: Date.parse('2026-11-01T10:00:00Z') })
+  mock.store(on)
   on('command.register', (_, e) => {
     registered.push(e.name)
     return { value: { command: e.name } }

@@ -21,6 +21,8 @@ const COMMANDS: ReadonlyArray<readonly [string, string]> = [
   ['/quest-hud:status', 'the quest, its zone and its tasks'],
   ['/quest-hud:pane', 'open the Road beside the transcript, at any width'],
   ['/quest-hud:statusline', 'set up the HP and MP bars where mods do not run'],
+  ['/quest-hud:off', 'hide the HUD in every session, until on'],
+  ['/quest-hud:on', 'bring it back'],
   ['/quest-hud:help', 'this list'],
 ]
 

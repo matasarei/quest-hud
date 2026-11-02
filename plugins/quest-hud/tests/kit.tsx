@@ -20,6 +20,10 @@ export const world: {
   /** The monsters as the plugin had stored them when each Bash call ran. */
   foesDuringBash: unknown[]
   panes: Array<{ id: string; isShown: boolean }>
+  /** The panes the plugin closed. */
+  closed: string[]
+  /** Every status entry the plugin set, undefined when it cleared one. */
+  statuses: Array<string | undefined>
   state: Record<string, unknown>
 } = {
   id: 's1',
@@ -33,11 +37,13 @@ export const world: {
   bash: {},
   foesDuringBash: [],
   panes: [],
+  closed: [],
+  statuses: [],
 }
 
 export const NOW = Date.parse('2026-11-01T10:00:00Z')
 
-export const engine = (on: On) => {
+export const engine = (on: On, store: Readonly<Record<string, unknown>> = {}) => {
   world.id = 's1'
   world.agents = []
   world.blits = []
@@ -48,6 +54,8 @@ export const engine = (on: On) => {
   world.bash = {}
   world.foesDuringBash = []
   world.panes = []
+  world.closed = []
+  world.statuses = []
   world.state = {}
   // Every value the plugin stores, as the kit's own store accepted it.
   on('state.set', async (_, e, next) => {
@@ -55,6 +63,7 @@ export const engine = (on: On) => {
     if (stored.value?.isSet) world.state[e.key] = e.value
     return stored
   })
+  mock.store(on, store)
   const clock = mock.clock(on, { now: NOW })
   on('command.register', () => ({ value: { command: 'quest-hud' } }))
   on('session.id', () => ({ value: world.id }))
@@ -65,7 +74,15 @@ export const engine = (on: On) => {
   on('agent.list', () => ({ value: world.agents }))
   on('turn.start', (_, e) => ({ turnId: e.turnId }))
   on('turn.complete', () => ({ text: '' }))
-  on('ui.status', () => ({ value: undefined }))
+  on('ui.status', (_, e) => {
+    world.statuses.push(e.text)
+    return { value: undefined }
+  })
+  on('ui.close', (_, e) => {
+    world.closed.push(e.id)
+    world.panes = world.panes.filter(pane => pane.id !== e.id)
+    return { value: undefined }
+  })
   on('ui.open', (_, e) => {
     world.opened.push(e.id)
     return { value: { isPlaced: true } }

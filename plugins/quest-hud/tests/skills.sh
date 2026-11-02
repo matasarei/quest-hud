@@ -18,17 +18,20 @@ frontmatter() {
   awk 'NR == 1 && $0 == "---" { inside = 1; next } inside && $0 == "---" { exit } inside { print }' "$1"
 }
 
-for name in status pane statusline help; do
+for name in status pane statusline off on help; do
   [ -f "$skills/$name/SKILL.md" ] || fail "$name: no skills/$name/SKILL.md"
 done
 
 for file in "$skills"/*/SKILL.md; do
   name="$(basename "$(dirname "$file")")"
   front="$(frontmatter "$file")"
+  before="$failed"
+  failed=0
   grep -qx "name: $name" <<< "$front" || fail "$name: its name is not $name"
   grep -q '^description: .' <<< "$front" || fail "$name: no description"
   grep -qx 'disable-model-invocation: true' <<< "$front" || fail "$name: the model can invoke it"
   [ "$failed" -eq 0 ] && echo "ok   $name"
+  [ "$before" -eq 0 ] || failed=1
 done
 
 exit "$failed"
