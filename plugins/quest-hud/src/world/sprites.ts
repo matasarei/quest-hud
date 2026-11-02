@@ -307,11 +307,13 @@ export const WIZARD: Readonly<Record<Pose, Sprite>> = {
  * Claude's mascot, the agent at the wizard's side: still, and mid-hop. Drawn
  * for the text cells, like the allies: each row doubled, at most two colours
  * in each 2 × 2 quadrant cell — an edge in its own darker shade, with the
- * wizard's dark down the left of its body and arm alone, for volume (all round,
- * it read as hair; on the leg, a hop would need a third colour in a cell), one
- * pixel wide, the left arm's tip dark as well (lit, its cell would hold a third
- * colour), two tall eyes, side arms, four short legs, 10 rows tall in its 16-row
- * box. The hop lifts it a row, half a cell, legs and all.
+ * wizard's dark down the left of its body alone, for volume (all round, it read
+ * as hair; on the leg, a hop would need a third colour in a cell), one pixel
+ * wide. The left arm's tip is the body's colour, so the dark stops short of the
+ * cell it shares with the tip, which would otherwise hold a third colour: above
+ * the arm when still, below it on the hop. Two tall eyes, side arms, four short
+ * legs, 10 rows tall in its 16-row box. The hop lifts it a row, half a cell, legs
+ * and all.
  */
 export const MASCOT = {
   still: sprite([
@@ -323,10 +325,10 @@ export const MASCOT = {
     '....................',
     '.odddddddddddddddd..',
     '.odddddddddddddddd..',
-    '.odaaa11aaaa11aaad..',
-    '.odaaa11aaaa11aaad..',
-    'ooaaaa11aaaa11aaaaaa',
-    'ooaaaa11aaaa11aaaaaa',
+    '..daaa11aaaa11aaad..',
+    '..daaa11aaaa11aaad..',
+    'aaaaaa11aaaa11aaaaaa',
+    'aaaaaa11aaaa11aaaaaa',
     '.odddddddddddddddd..',
     '.odddddddddddddddd..',
     '...dd.dd....dd.dd...',
@@ -341,10 +343,10 @@ export const MASCOT = {
     '.odddddddddddddddd..',
     '.odaaa11aaaa11aaad..',
     '.odaaa11aaaa11aaad..',
-    'ooaaaa11aaaa11aaaaaa',
-    'ooaaaa11aaaa11aaaaaa',
-    '.odddddddddddddddd..',
-    '.odddddddddddddddd..',
+    'aaaaaa11aaaa11aaaaaa',
+    'aaaaaa11aaaa11aaaaaa',
+    '..dddddddddddddddd..',
+    '..dddddddddddddddd..',
     '...dd.dd....dd.dd...',
     '...dd.dd....dd.dd...',
     '....................',
@@ -1570,10 +1572,10 @@ export const PROPS: Readonly<Record<PropName, Sprite>> = {
  * in at most two colours, as a quadrant cell shows no more.
  */
 export const BAND_ICON = sprite([
-  '.......((...........',
-  '.......((...........',
-  '......((((....~~....',
-  '......((((....~~....',
+  '......(((...........',
+  '......(((...........',
+  '....((((((....~~....',
+  '....((((((....~~....',
   '..))))))))))..ww....',
   '..))))))))))..ww....',
   '..]]ssssss]]..w.....',
@@ -1586,17 +1588,19 @@ export const BAND_ICON = sprite([
 
 /**
  * The band's portrait casting: his hand raises the staff a row, whole — orb,
- * head and foot together, as long as at rest — with gold sparks by the orb.
- * The head is two pixels wide so the orb can sit on it in one cell: a
- * one-pixel staff under the orb would be a third colour there.
+ * head and foot together, as long as at rest — with three gold sparks loose
+ * around the orb, a column clear of it and on both sides of the staff: beside
+ * the orb on one side alone, they read as a flag. The head is two pixels wide
+ * so the orb can sit on it in one cell: a one-pixel staff under the orb would
+ * be a third colour there.
  */
 export const BAND_CAST = sprite([
-  '.......((.....~~{...',
-  '.......((.....~~{...',
-  '......((((....ww.{..',
-  '......((((....ww.{..',
-  '..))))))))))..w.....',
-  '..))))))))))..w.....',
+  '......(((.....~~.{..',
+  '......(((.....~~.{..',
+  '....((((((..{.ww....',
+  '....((((((..{.ww....',
+  '..))))))))))..w..{..',
+  '..))))))))))..w..{..',
   '..]]ssssss]]ssw.....',
   '..]]ssssss]]ssw.....',
   '..]]]]]]]]]]..w.....',

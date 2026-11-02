@@ -18,27 +18,31 @@ const CAST: ReadonlyArray<readonly [string, Sprite, number, number]> = [
 ]
 
 describe("Claude's mascot's left side", () => {
-  for (const [name, frame] of [['still', MASCOT.still], ['hop', MASCOT.hop]] as const) {
-    test(`${name}: the wizard's dark on the left of the body and arm, and on no right edge`, () => {
-      const rows = spriteGrid(frame).filter(cells => cells.some(pixel => pixel !== undefined))
-      // The last two rows are the legs, which keep their own shade.
-      for (const row of rows.slice(0, -2)) {
-        const filled = row.filter(pixel => pixel !== undefined)
-        expect(filled[0]).toBe(PALETTE.o)
-        expect(filled.at(-1)).not.toBe(PALETTE.o)
-      }
-    })
+  /** The body's rows, without the empty ones and the two of the legs, which keep their own shade. */
+  const body = (frame: Sprite) => spriteGrid(frame).filter(cells => cells.some(pixel => pixel !== undefined)).slice(0, -2)
 
-    test(`${name}: that dark is one pixel wide, with the arm's tip alone beyond it`, () => {
-      const rows = spriteGrid(frame).filter(cells => cells.some(pixel => pixel !== undefined))
-      for (const row of rows.slice(0, -2)) {
+  for (const [name, frame] of [['still', MASCOT.still], ['hop', MASCOT.hop]] as const) {
+    test(`${name}: the arm's tip is the body's colour, and no right edge is dark`, () => {
+      const rows = body(frame)
+      for (const row of rows) {
         const hasArm = row.at(-1) !== undefined
-        expect([row[0] === PALETTE.o, row[0] === undefined]).toEqual([hasArm, !hasArm])
-        expect(row[1]).toBe(PALETTE.o)
-        expect(row[2]).not.toBe(PALETTE.o)
+        expect(row[0]).toBe(hasArm ? PALETTE.a : undefined)
+        if (hasArm) expect(row[1]).toBe(PALETTE.a)
+        expect(row.filter(pixel => pixel !== undefined).at(-1)).not.toBe(PALETTE.o)
       }
+      expect(rows.filter(row => row.at(-1) !== undefined).length).toBe(2)
     })
   }
+
+  // One pixel wide, stopping short of the cell it shares with the arm's tip: lit
+  // beside the dark, that cell would hold a third colour, the background's.
+  test('still: the dark runs above the arm and below it, a row short of the arm above', () => {
+    expect(body(MASCOT.still).map(row => row[1] === PALETTE.o)).toEqual([true, true, false, false, false, false, true, true])
+  })
+
+  test('hop: the dark runs above the arm, and stops short of the arm below', () => {
+    expect(body(MASCOT.hop).map(row => row[1] === PALETTE.o)).toEqual([true, true, true, true, false, false, false, false])
+  })
 })
 
 describe('the cast', () => {
@@ -82,6 +86,22 @@ describe('the band\'s wizard', () => {
     for (const [name, sprite] of [['icon', BAND_ICON], ['cast', BAND_CAST]] as const) {
       expect([name, sprite.rows.every((row, y) => y % 2 === 1 || row === sprite.rows[y + 1])]).toEqual([name, true])
       expect([name, blocks(sprite).filter(block => new Set(block).size > 2)]).toEqual([name, []])
+    }
+  })
+
+  test('casts with loose sparks on both sides of the staff, none touching the orb or the wood', () => {
+    /** Each gold pixel's column, with what lies either side of it on its row. */
+    const sparks = BAND_CAST.rows.flatMap(row => [...row].flatMap((pixel, x) => (pixel === '{' ? [{ x, beside: `${row[x - 1] ?? '.'}${row[x + 1] ?? '.'}` }] : [])))
+    const staff = BAND_CAST.rows[0]?.indexOf('~') ?? -1
+    expect(sparks.some(spark => spark.x < staff)).toBe(true)
+    expect(sparks.some(spark => spark.x > staff + 1)).toBe(true)
+    expect(sparks.filter(spark => /[~w]/.test(spark.beside))).toEqual([])
+  })
+
+  test('wears the hat grown to the left, its right edge where it was, in both frames', () => {
+    for (const [name, sprite] of [['icon', BAND_ICON], ['cast', BAND_CAST]] as const) {
+      const hat = (y: number) => sprite.rows[y]?.slice(0, 12)
+      expect([name, hat(0), hat(2)]).toEqual([name, '......(((...', '....((((((..'])
     }
   })
 
