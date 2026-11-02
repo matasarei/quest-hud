@@ -87,7 +87,7 @@ const merged = (quests: readonly BoardQuest[]): BoardQuest[] => {
 }
 
 const isHere = (quest: BoardQuest, here: string | undefined): boolean =>
-  here !== undefined && quest.href !== undefined && `${quest.href}/`.startsWith(`https://github.com/${here}/`)
+  here !== undefined && quest.href !== undefined && `${quest.href}/`.toLowerCase().startsWith(`https://github.com/${here}/`.toLowerCase())
 
 /** The board's rows: one per quest, the idle sunk, in ladder order; and how many did not fit. */
 export const finishQuests = (quests: readonly BoardQuest[], now: number, here?: string): { quests: BoardQuest[]; left: number } => {

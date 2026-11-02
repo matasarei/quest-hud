@@ -129,6 +129,14 @@ describe('finishQuests', () => {
     expect(quests.map(q => q.href?.split('/').at(-1))).toEqual(['11', '12', '13', '2', '3', '4', '5', '6', '7', '8', '9'])
   })
 
+  test('this repository is found whatever the case of its remote: GitHub ignores it', () => {
+    const { quests } = finishQuests([
+      questOf(input('normal', 'https://github.com/other/one/issues/1', { at: NOW - DAY })),
+      questOf(input('normal', 'https://github.com/acme/here/issues/2', { at: NOW - 2 * DAY })),
+    ], NOW, 'Acme/Here')
+    expect(quests.map(q => q.href?.split('/').at(-1))).toEqual(['2', '1'])
+  })
+
   test('a repo whose name begins with this one is not this one', () => {
     const { quests } = finishQuests([
       questOf(input('normal', 'https://github.com/acme/here2/issues/1', { at: NOW - DAY })),
