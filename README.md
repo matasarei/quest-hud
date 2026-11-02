@@ -158,7 +158,7 @@ is early access and may change between releases.
 | `/quest-hud:status` | prints the current state, what the zone means, and the task list |
 | `/quest-hud:pane` | opens the Road at any width |
 | `/quest-hud:statusline` | prints the setup for [the status line](#without-mods) |
-| `/quest-hud:off` | hides the band, the status entry and the Road in every session, until `on`; the HUD keeps following along, so it comes back up to date |
+| `/quest-hud:off` | hides the band, the hint-line bars and the Road in every session, until `on`; the HUD keeps following along, so it comes back up to date |
 | `/quest-hud:on` | brings them back, with the Road if `off` closed it |
 | `/quest-hud:help` | lists the commands and the options, with the values in force |
 
@@ -172,7 +172,7 @@ Set them in `/config`; a change reloads the mod.
 
 | Option | Values | Default | What it does |
 |---|---|---|---|
-| `detail` | `off`, `status`, `band`, `pane` | `band` | nothing, one status-line entry, the band above the prompt, or the band and the Road opened when the session starts (placed from 144 columns) |
+| `detail` | `off`, `status`, `band`, `pane` | `band` | nothing, dim bars on the hint line under the prompt (terminal only; the desktop app shows nothing for `status`, so use `band` there), the band above the prompt, or the band and the Road opened when the session starts (placed from 144 columns) |
 | `bars` | `hpmp`, `all` | `hpmp` | `all` adds the 5-hour window (⚡) and the session cost (◉) |
 | `zones` | `name=zone, …` | empty | extra skill-to-zone rules, e.g. `quest=forge, triage=map` |
 | `graphics` | `auto`, `cells`, `images` | `auto` | how the Road's scene is drawn in a terminal: found out once a session, or always text cells, or always images |

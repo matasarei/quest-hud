@@ -38,7 +38,7 @@ const NO_ALLIES: Allies = { octopus: false, fox: false }
 const allies = atom({ plugin: 'quest-hud', key: 'allies' } as const, NO_ALLIES)
 const hidden = atom({ plugin: 'quest-hud', key: 'hidden' } as const, false)
 
-/** off, a status entry, the band, or the band and the Road pane opened at the start. */
+/** off, the bars on the hint line, the band, or the band and the Road pane opened at the start. */
 type Detail = 'off' | 'status' | 'band' | 'pane'
 /** How the terminal's scene is drawn: found out (`auto`), or forced. */
 type Graphics = 'auto' | 'cells' | 'images'
