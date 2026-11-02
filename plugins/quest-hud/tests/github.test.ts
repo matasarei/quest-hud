@@ -62,8 +62,8 @@ describe('questOf', () => {
   })
 
   test('a hostile title is cleaned: control and bidirectional marks go, and it is cut', () => {
-    const quest = questOf(input('normal', 'https://github.com/a/b/issues/1', { title: `Fix‮\u0007 **this**\n[x](https://evil.example) ${'y'.repeat(60)}` }))
-    expect(quest.title).not.toMatch(/[\u0000-\u001f‮]/)
+    const quest = questOf(input('normal', 'https://github.com/a/b/issues/1', { title: `Fix\u202e\u0007 **this**\n[x](https://evil.example) ${'y'.repeat(60)}` }))
+    expect(quest.title).not.toMatch(/[\u0000-\u001f\u202e]/)
     expect([...quest.title].length).toBeLessThanOrEqual(48)
     expect(quest.title.endsWith('…')).toBe(true)
   })
