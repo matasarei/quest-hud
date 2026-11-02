@@ -54,6 +54,48 @@ export type LogEntry = {
   counts?: ScoutCounts
 }
 
+/** What the sessions on this machine came to, as counts: never a prompt, a command or a path. */
+export type Usage = {
+  /** Transcripts were read and held tool calls; false when they could not be, or their format changed. */
+  isRead: boolean
+  /** Transcripts read, and the days from the oldest of them to now. */
+  sessions: number
+  days: number
+  /** Sessions that edited a file, and those of them that ran a test or a linter. */
+  editingSessions: number
+  checkedSessions: number
+  testRuns: number
+  lintRuns: number
+  /** Sessions that ran a skill, out of every session the transcripts and the prompt history know. */
+  skillSessions: number
+  allSessions: number
+  /** Runs per skill, typed or called. */
+  skillRuns: Record<string, number>
+  agentCalls: number
+  agentSessions: number
+  mcpCalls: number
+  mcpServers: number
+  browserCalls: number
+  webCalls: number
+  ghRuns: number
+  /** Files edited or written, by extension. */
+  edits: Record<string, number>
+}
+
+/** One part of the harness, as scored. `score` is absent when it could not be read at all. */
+export type HarnessPart = { name: string; score?: number; note: string }
+
+/** What /quest-hud:level last worked out; the Road draws its level and title. */
+export type LevelCard = {
+  level: number
+  title: string
+  points: number
+  /** What the points are out of: less than the whole when a part could not be read. */
+  outOf: number
+  parts: HarnessPart[]
+  usage: Usage
+}
+
 /** A subagent at work, drawn as a ghost behind the avatar. */
 export type Companion = { id: string; type: string }
 
