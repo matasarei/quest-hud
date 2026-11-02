@@ -306,10 +306,10 @@ export const WIZARD: Readonly<Record<Pose, Sprite>> = {
 /**
  * Claude's mascot, the agent at the wizard's side: still, and mid-hop. Drawn
  * for the text cells, like the allies: each row doubled, at most two colours
- * in each 2 × 2 quadrant cell — an edge in its own darker shade (black there
- * read as hair, and it has none), two tall eyes, side arms, four short legs,
- * 10 rows tall in its 16-row box. The hop lifts it a row, half a cell, legs
- * and all.
+ * in each 2 × 2 quadrant cell — an edge in its own darker shade, with the
+ * wizard's dark down the left of its body and arm alone, for volume (all round,
+ * it read as hair; on the leg, a hop would need a third colour in a cell), two tall eyes, side arms, four short legs, 10 rows tall in its 16-row
+ * box. The hop lifts it a row, half a cell, legs and all.
  */
 export const MASCOT = {
   still: sprite([
@@ -319,14 +319,14 @@ export const MASCOT = {
     '....................',
     '....................',
     '....................',
-    '..dddddddddddddddd..',
-    '..dddddddddddddddd..',
-    '..daaa11aaaa11aaad..',
-    '..daaa11aaaa11aaad..',
-    'aaaaaa11aaaa11aaaaaa',
-    'aaaaaa11aaaa11aaaaaa',
-    '..dddddddddddddddd..',
-    '..dddddddddddddddd..',
+    '.odddddddddddddddd..',
+    '.odddddddddddddddd..',
+    'oodaaa11aaaa11aaad..',
+    'oodaaa11aaaa11aaad..',
+    'oaaaaa11aaaa11aaaaaa',
+    'oaaaaa11aaaa11aaaaaa',
+    'oodddddddddddddddd..',
+    'oodddddddddddddddd..',
     '...dd.dd....dd.dd...',
     '...dd.dd....dd.dd...',
   ]),
@@ -335,14 +335,14 @@ export const MASCOT = {
     '....................',
     '....................',
     '....................',
-    '..dddddddddddddddd..',
-    '..dddddddddddddddd..',
-    '..daaa11aaaa11aaad..',
-    '..daaa11aaaa11aaad..',
-    'aaaaaa11aaaa11aaaaaa',
-    'aaaaaa11aaaa11aaaaaa',
-    '..dddddddddddddddd..',
-    '..dddddddddddddddd..',
+    '.odddddddddddddddd..',
+    '.odddddddddddddddd..',
+    'oodaaa11aaaa11aaad..',
+    'oodaaa11aaaa11aaad..',
+    'oaaaaa11aaaa11aaaaaa',
+    'oaaaaa11aaaa11aaaaaa',
+    'oodddddddddddddddd..',
+    'oodddddddddddddddd..',
     '...dd.dd....dd.dd...',
     '...dd.dd....dd.dd...',
     '....................',
