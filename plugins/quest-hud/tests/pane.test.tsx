@@ -324,7 +324,7 @@ describe('the monsters on the Road', () => {
     await $.tool.call({ tool: 'Bash', command: 'claude plugin test plugins/quest-hud', description: '' })
   }
 
-  test('a lost test run puts the dragon on the desktop scene, and a passing one takes it away', async ($, on) => {
+  test('a lost test run puts the Forge\'s golem on the desktop scene, and a passing one takes it away', async ($, on) => {
     engine(on)
     await implementing($)
     const svg = async () => {
@@ -333,12 +333,13 @@ describe('the monsters on the Road', () => {
       await ui.unmount()
       return source
     }
-    expect((await svg()).includes('#d0803f')).toBe(false)
+    // The golem's glowing core: the Forge's test monster, where outdoors it is the dragon.
+    expect((await svg()).includes('#ffe08a')).toBe(false)
     await lose($)
-    expect((await svg()).includes('#d0803f')).toBe(true)
+    expect((await svg()).includes('#ffe08a')).toBe(true)
     world.bash = { stdout: ' 232 pass\n 0 fail\n' }
     await $.tool.call({ tool: 'Bash', command: 'claude plugin test plugins/quest-hud', description: '' })
-    expect((await svg()).includes('#d0803f')).toBe(false)
+    expect((await svg()).includes('#ffe08a')).toBe(false)
   })
 
   const drawn = async ($: Engine, find: { type: 'Raster' | 'Image'; key: string }) => {
