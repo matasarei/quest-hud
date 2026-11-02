@@ -93,11 +93,18 @@ async function statusLines($: EngineInterface): Promise<string> {
   ].join('\n')
 }
 
-/** The one-line entry, drawn only when the detail option asks for it. */
+// The engine keeps a plugin's status line until told otherwise, across a reload, so a line an
+// earlier load pinned may still be up. register sets this, since it runs again when an option changes.
+let mayHoldOldStatus = true
+
+/** The one-line entry, drawn only when the detail option asks for it; otherwise the first call of a load clears any left over. */
 async function showStatus($: EngineInterface, detail: Detail, bars: Bars): Promise<void> {
   if (detail === 'status' && !(await read($, hidden))) {
     $.ui.status(statusText(await read($, quest), await read($, tasks), await read($, meters), bars))
+  } else if (mayHoldOldStatus) {
+    $.ui.status(undefined)
   }
+  mayHoldOldStatus = false
 }
 
 /** Milliseconds between the animation's frames: four a second, slow and stepped, as a terminal animates. */
@@ -360,6 +367,7 @@ async function refreshCompanions($: EngineInterface): Promise<void> {
 }
 
 export const register: Register = (on, options) => {
+  mayHoldOldStatus = true
   const detail = pick<Detail>(options.detail, ['off', 'status', 'band', 'pane'], 'band')
   const hasBand = detail === 'band' || detail === 'pane'
   const bars = pick<Bars>(options.bars, ['hpmp', 'all'], 'hpmp')

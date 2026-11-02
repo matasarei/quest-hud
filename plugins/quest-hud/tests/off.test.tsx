@@ -136,7 +136,7 @@ describe('a session started while off', () => {
   test('draws no band and no status entry', { options: { detail: 'status' } }, async ($, on) => {
     engine(on, { hidden: true })
     await start($)
-    expect(world.statuses).toEqual([])
+    expect(world.statuses).toEqual([undefined])
   })
 
   for (const detail of ['band', 'pane']) {
