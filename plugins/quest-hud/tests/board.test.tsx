@@ -546,3 +546,25 @@ describe('a state write that fails', () => {
     expect(text).not.toContain('did not answer')
   })
 })
+
+describe('a full page of notifications', () => {
+  const unread = (count: number) => answer(Array.from({ length: count }, (_, i) => ({ reason: 'subscribed', updated_at: '2026-10-31T10:00:00Z', title: `Note ${i}`, type: 'Issue', url: `https://api.github.com/repos/acme/api/issues/${i}`, repo: 'acme/api' })))
+
+  test('says the list was cut short', async ($, on) => {
+    engine(on)
+    world.gh = github(sweepWith({}), unread(50))
+    await start($)
+    await run($, 'quest-hud:quests')
+    await settled($)
+    expect(await boardText($)).toContain('cut short')
+  })
+
+  test('one short of it does not', async ($, on) => {
+    engine(on)
+    world.gh = github(sweepWith({}), unread(49))
+    await start($)
+    await run($, 'quest-hud:quests')
+    await settled($)
+    expect(await boardText($)).not.toContain('cut short')
+  })
+})

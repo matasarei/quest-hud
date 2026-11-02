@@ -182,9 +182,11 @@ export const SWEEP_QUERY = `query {
 /** The sweep, as gh runs it. A graphql read, though gh sends it by POST. */
 export const SWEEP_ARGV: readonly string[] = ['gh', 'api', 'graphql', '--hostname', 'github.com', '-f', `query=${SWEEP_QUERY}`]
 
+const NOTIFICATIONS_PAGE = 50
+
 /** The unread notifications, as gh runs them; the fields kept are the ones parseNotifications reads. */
 export const NOTIFICATIONS_ARGV: readonly string[] = [
-  'gh', 'api', 'notifications?per_page=50', '--hostname', 'github.com',
+  'gh', 'api', `notifications?per_page=${NOTIFICATIONS_PAGE}`, '--hostname', 'github.com',
   '--jq', '[.[] | {reason, updated_at, title: .subject.title, type: .subject.type, url: .subject.url, repo: .repository.full_name}]',
 ]
 
@@ -343,6 +345,12 @@ const subjectPage = (repo: string, url: string, type: string): string => {
   return type === 'Discussion' ? `${home}/discussions` : home
 }
 
+/** A whole page came back, so there may be more than a read holds. */
+export const isFullPage = (stdout: string): boolean => {
+  const answer = parsed(stdout)
+  return Array.isArray(answer) && answer.length >= NOTIFICATIONS_PAGE
+}
+
 /** The unread notifications; undefined when they could not be read. A security alert the sweep read is its own row already. */
 export const parseNotifications = (stdout: string, now: number, readRepos: ReadonlySet<string>): BoardQuest[] | undefined => {
   const answer = parsed(stdout)
@@ -397,13 +405,13 @@ export const ridingBoard = (last: Board | null, at: number): Board => ({ phase: 
 export const failedBoard = (failure: BoardFailure, at: number): Board => ({ phase: 'done', at, quests: [], failure, isPartial: true, notes: [] })
 
 /** The board from what has been read so far. */
-export const boardOf = (parts: { phase: Board['phase']; at: number; sweep: Sweep; unread: readonly BoardQuest[] | undefined; here: string | undefined; scan?: ScanTally }): Board => {
+export const boardOf = (parts: { phase: Board['phase']; at: number; sweep: Sweep; unread: readonly BoardQuest[] | undefined; isUnreadCut?: boolean; here: string | undefined; scan?: ScanTally }): Board => {
   const { sweep, unread, scan } = parts
   const { quests, left } = finishQuests([...sweep.quests, ...(unread ?? []), ...(scan?.quests ?? [])], parts.at, parts.here)
   const notes = [
     ...(sweep.refused > 0 ? [`GitHub refused ${sweep.refused} part${sweep.refused === 1 ? '' : 's'} of its answer, so this list may be short.`] : []),
     ...(unread === undefined ? ['Notifications could not be read.'] : []),
-    ...(sweep.isCut ? ['Some lists were cut short.'] : []),
+    ...(sweep.isCut || parts.isUnreadCut === true ? ['Some lists were cut short.'] : []),
     ...(left > 0 ? [`${left} more quests did not fit.`] : []),
     ...(scan === undefined || scan.scanned === 0 ? [] : [scanNote(scan, sweep.repoTotal)]),
   ]

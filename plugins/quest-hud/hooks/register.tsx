@@ -7,7 +7,7 @@ import type { EngineInterface, Register, Timer } from 'claude-code'
 import { gridToSvg } from '../src/avatar'
 import { commandKinds, endFights, fightKinds, fightOutcome, fightText, forgeEvent, holdsTheRoad, lootText, NO_FOES, startFights, stdoutOf } from '../src/bash'
 import { activeCompanions, sameCompanions } from '../src/companions'
-import { boardOf, boardView, failedBoard, failureOf, NOTIFICATIONS_ARGV, parseNotifications, parseSweep, postedText, ridingBoard, SCAN_REPOS, SWEEP_ARGV, tallyScan } from '../src/github'
+import { boardOf, boardView, failedBoard, failureOf, isFullPage, NOTIFICATIONS_ARGV, parseNotifications, parseSweep, postedText, ridingBoard, SCAN_REPOS, SWEEP_ARGV, tallyScan } from '../src/github'
 import { asCard, cardOf, type Inventory } from '../src/harness'
 import { unknownText, usageText } from '../src/help'
 import { levelLogText, levelText, levelUpText, NO_LEVEL_YET, rereadingText, scoutRidesText, STILL_READING } from '../src/levelup'
@@ -339,11 +339,12 @@ async function readGitHub($: EngineInterface, session: string): Promise<Board> {
   if (sweep === undefined) return failedBoard(failureOf(swept?.exitCode), at)
 
   const unread = notified === undefined ? undefined : parseNotifications(notified.stdout, at, new Set(sweep.repos))
+  const isUnreadCut = notified !== undefined && isFullPage(notified.stdout)
   // Only a sight of the rows while the scan runs: a write that fails costs that, and not the sweep.
-  if ((await $.session.id()) === session) await update($, board, () => boardOf({ phase: 'scanning', at, sweep, unread, here })).catch(() => undefined)
+  if ((await $.session.id()) === session) await update($, board, () => boardOf({ phase: 'scanning', at, sweep, unread, isUnreadCut, here })).catch(() => undefined)
   const scan = tallyScan(await scanRepos($, sweep.repos.slice(0, SCAN_REPOS)), at)
 
-  return boardOf({ phase: 'done', at, sweep, unread, here, scan })
+  return boardOf({ phase: 'done', at, sweep, unread, isUnreadCut, here, scan })
 }
 
 /**
