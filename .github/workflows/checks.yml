@@ -43,6 +43,7 @@ jobs:
       - uses: actions/checkout@v4
       # ubuntu-latest ships jq and shellcheck.
       - run: bash plugins/quest-hud/tests/hud-line.sh
+      - run: bash plugins/quest-hud/tests/skills.sh
       - run: shellcheck --severity=warning plugins/quest-hud/scripts/*.sh plugins/quest-hud/tests/*.sh
 
   source-text:
