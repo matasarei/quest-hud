@@ -143,7 +143,8 @@ Zones: `watchtower`, `harbour`, `dungeon`, `arena`, `forge`, `map`, `camp`, `wil
 is a skill's full name (`gku:plan`) or the part after the plugin prefix (`plan`).
 
 `/hud` prints the current state, what the zone means, and the task list. `/hud pane` opens the
-Road at any width.
+Road at any width. `/hud help` lists the subcommands and the options, with the values in force;
+a word `/hud` does not know shows the same list.
 
 ## Without mods
 

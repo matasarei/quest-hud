@@ -4,6 +4,7 @@ import type { Engine } from 'claude-code/testing'
 
 import { artCells } from '../hooks/pane'
 import { QUADRANT, quadrantWords } from '../src/avatar'
+import { OPTIONS } from '../src/help'
 import { downsample } from '../src/paint/pixels'
 import { bandPortrait } from '../src/scene'
 
@@ -176,6 +177,28 @@ describe('the detail option', () => {
   })
 })
 
+describe('/hud help and the options', () => {
+  for (const option of OPTIONS.filter(o => o.values.length > 0)) {
+    for (const value of [...option.values, 'nonsense']) {
+      const expected = option.values.includes(value) ? value : option.fallback
+      test(`${option.name} = ${value}: help says now ${expected}`, { options: { [option.name]: value } }, async ($, on) => {
+        engine(on)
+        await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+        const text = (await $.command.run({ command: 'hud', args: 'help', ...RUN })).text ?? ''
+        const line = text.split('\n').find(l => l.trimStart().startsWith(`${option.name} `)) ?? ''
+        expect(line).toContain(`now ${expected} (default ${option.fallback})`)
+      })
+    }
+  }
+
+  test('zones: the rules in force, or none', { options: { zones: 'quest=forge' } }, async ($, on) => {
+    engine(on)
+    await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+    const text = (await $.command.run({ command: 'hud', args: 'help', ...RUN })).text ?? ''
+    expect(text).toContain('now quest=forge')
+  })
+})
+
 describe('/hud', () => {
   test('statusline prints the copy command and the setting', async ($, on) => {
     engine(on)
@@ -192,6 +215,26 @@ describe('/hud', () => {
     const result = await $.command.run({ command: 'hud', args: '', ...RUN })
     expect(result.text).toContain('· two lines evil')
     expect((result.text ?? '').split('\n')).toHaveLength(3)
+  })
+
+  test('help lists the subcommands and the options, with the values in force', async ($, on) => {
+    engine(on)
+    await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+    for (const args of ['help', ' HELP ']) {
+      const text = (await $.command.run({ command: 'hud', args, ...RUN })).text ?? ''
+      expect(text).toContain('/hud pane')
+      expect(text).toContain('/hud statusline')
+      expect(text).toContain('set in /config')
+      expect(text).toContain('now auto (default auto)')
+    }
+  })
+
+  test('a word /hud does not know says so, then the help', async ($, on) => {
+    engine(on)
+    await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+    const text = (await $.command.run({ command: 'hud', args: 'pan', ...RUN })).text ?? ''
+    expect(text.split('\n')[0]).toBe('No /hud pan.')
+    expect(text).toContain('/hud pane')
   })
 
   test('with no argument prints the state and the task list', async ($, on) => {
