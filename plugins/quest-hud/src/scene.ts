@@ -26,7 +26,7 @@ export const MAX_GHOSTS = 4
 const units = (sprite: Sprite): number => (sprite.rows[0]?.length ?? 0) / ART_SCALE
 
 /** The figures' widths in units. */
-export const SIZE = { wizard: units(WIZARD.stand), foe: units(DRAGON), familiar: units(MASCOT.still), extra: units(CHEST) } as const
+export const SIZE = { wizard: units(WIZARD.stand), foe: units(DRAGON.still), familiar: units(MASCOT.still), extra: units(CHEST) } as const
 /** A flag's width in units. */
 export const FLAG_WIDTH = units(FLAG.done)
 /** Units a flag takes, with the gap to the next one. */
@@ -331,16 +331,21 @@ export const foesOnRoad = (args: SceneArgs): { hero: number; road: number; shown
  * The monster of a test run in a room, where a dragon would not fit; outdoors
  * it is the dragon. Each is drawn facing left, towards the wizard.
  */
-const ROOM_FOE: Readonly<Partial<Record<Zone, Sprite>>> = { dungeon: SKELETON, forge: GOLEM, map: FLYING_BOOKS }
+const ROOM_FOE: Readonly<Partial<Record<Zone, Monster>>> = { dungeon: SKELETON, forge: GOLEM, map: FLYING_BOOKS }
+
+/** A monster's two frames: at rest, and lunging as the wizard stands between his strikes. */
+type Monster = { still: Sprite; lunge: Sprite }
 
 /**
- * A monster facing left, towards the wizard: a lint run's spider anywhere; a
- * test run's the room's own monster, or outdoors the dragon, drawn facing right.
+ * A monster facing left, towards the wizard, at rest or `lunge`-ing: a lint
+ * run's spider anywhere; a test run's the room's own monster, or outdoors the
+ * dragon, drawn facing right.
  */
-const foeGrid = (kind: FightKind, zone: Zone): Grid => {
-  if (kind === 'lint') return spriteGrid(SPIDER)
+const foeGrid = (kind: FightKind, zone: Zone, lunge = false): Grid => {
+  const frame = (monster: Monster): Sprite => (lunge ? monster.lunge : monster.still)
+  if (kind === 'lint') return spriteGrid(frame(SPIDER))
   const room = ROOM_FOE[zone]
-  return room === undefined ? mirrorGrid(spriteGrid(DRAGON)) : spriteGrid(room)
+  return room === undefined ? mirrorGrid(spriteGrid(frame(DRAGON))) : spriteGrid(frame(room))
 }
 
 /**
@@ -460,7 +465,7 @@ export const party = (args: SceneArgs): Party => {
     ghosts,
     flags: flags.map((state, i) => ({ state, x: placed.flagXs[i] ?? 0 })),
     mascot: hero - FAMILIAR_BEHIND,
-    foes: placeFoes(hero, kept.road, placed.ahead, foes).map(foe => ({ ...foe, grid: foeGrid(foe.kind, zone) })),
+    foes: placeFoes(hero, kept.road, placed.ahead, foes).map(foe => ({ ...foe, grid: foeGrid(foe.kind, zone, motion.lunge === true) })),
   }
 }
 
