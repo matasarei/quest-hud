@@ -19,7 +19,7 @@ import { road, roadArt, SCENE_MIN_COLUMNS, sceneZone } from '../src/road'
 import { atRest, BAND, bandPortrait, nextMotion, REST, TRANSITION_STEPS, type Motion, type Transition } from '../src/scene'
 import { asSurvey, changedFiles, mergeSurvey, talliesOf, usageFrom, type History, type Surveyed, type Transcript } from '../src/survey'
 import { applyTaskCall } from '../src/tasks'
-import { ART_SCALE } from '../src/world/sprites'
+import { ART_SCALE, AVATARS, BAND_AVATARS, type Avatar } from '../src/world/sprites'
 import { parseZones, zoneFor } from '../src/zones'
 import type { Allies, Board, FightKind, Foes, LevelCard, LogEntry, Meters, Usage, Zone } from '../types'
 import { BOARD_ID, BOARD_TITLE, drawBoard } from './board'
@@ -116,8 +116,9 @@ async function statusLines($: EngineInterface): Promise<string> {
 /** Milliseconds between the animation's frames: four a second, slow and stepped, as a terminal animates. */
 export const ANIM_MS = 250
 
-// The scene's animation: one timer at most, running only while a main turn
-// runs and the pane's scene is drawn in a terminal, as cells or as an image.
+// The animation: one timer at most, running only while a main turn runs and
+// the pane's scene is drawn in a terminal, as cells or as an image, or the
+// band's portrait is drawn as a Raster, with or without the pane.
 // `tick` counts its frames, `motion` is where the walk got to; `columns` and
 // `mode` are how the pane was last drawn. A reload starts this over, and the
 // engine drops its timers.
@@ -134,7 +135,10 @@ const anim: {
   slide?: { from: Zone; step: number }
   /** The band's draw, when its portrait is a Raster the animation can step too. */
   band?: string
+  /** Who the band's portrait shows: the `avatar` option. */
+  avatar: Avatar
 } = {
+  avatar: 'wizard',
   isStarting: false,
   generation: 0,
   tick: 0,
@@ -187,10 +191,23 @@ const isPaneShown = async ($: EngineInterface): Promise<boolean> =>
 const transition = (): { transition?: Transition } =>
   anim.slide === undefined ? {} : { transition: { from: anim.slide.from, progress: anim.slide.step / TRANSITION_STEPS } }
 
-/** Repaints the scene with the animation's frame — the Raster's cells, or the Image's picture — and stops it if nothing takes it. */
-async function blitFrame($: EngineInterface): Promise<void> {
-  if (anim.columns === undefined || (anim.mode !== 'raster' && anim.mode !== 'image')) return
+/**
+ * Repaints the animation's frame: the scene when it is shown — the Raster's
+ * cells, or the Image's picture — and the band's portrait. A scene that nothing
+ * takes stops the animation, unless the band still has frames to show.
+ */
+async function blitFrame($: EngineInterface, isSceneShown = true): Promise<void> {
+  if (isSceneShown && anim.columns !== undefined && (anim.mode === 'raster' || anim.mode === 'image')) await blitScene($, anim.columns, anim.mode)
 
+  // A band no longer drawn just stops taking frames.
+  if (anim.band !== undefined) {
+    const band = await $.ui.blit({ requestId: anim.band, key: BAND_KEY, cells: artCells(bandPortrait(anim.motion.pose, anim.avatar)) })
+    if (band.deny !== undefined) anim.band = undefined
+  }
+}
+
+/** Repaints the scene, at the size and in the mode the pane was last drawn. */
+async function blitScene($: EngineInterface, columns: number, mode: 'raster' | 'image'): Promise<void> {
   const art = roadArt({
     quest: await read($, quest),
     tasks: await read($, tasks),
@@ -199,22 +216,16 @@ async function blitFrame($: EngineInterface): Promise<void> {
     foes: await read($, foes),
     loot: await read($, loot),
     allies: await read($, allies),
-    columns: anim.columns,
+    columns,
     motion: anim.motion,
     ...transition(),
-    cells: anim.mode === 'raster',
+    cells: mode === 'raster',
   })
-  const blitted = anim.mode === 'image'
+  const blitted = mode === 'image'
     ? await $.ui.blit({ requestId: PANE_ID, key: SCENE_IMAGE_KEY, source: sceneImage(art) })
     : await $.ui.blit({ requestId: PANE_ID, key: SCENE_KEY, cells: artCells(art) })
 
-  if (blitted.deny !== undefined) stopTimer()
-
-  // The band's wizard steps with the Road's; a band no longer drawn just stops taking frames.
-  if (anim.band !== undefined) {
-    const band = await $.ui.blit({ requestId: anim.band, key: BAND_KEY, cells: artCells(bandPortrait(anim.motion.pose)) })
-    if (band.deny !== undefined) anim.band = undefined
-  }
+  if (blitted.deny !== undefined && anim.band === undefined) stopTimer()
 }
 
 /** Cancels the animation, and any start still waiting to make its timer; the figures come to rest where the walk got to. */
@@ -226,9 +237,12 @@ function stopTimer(): void {
   anim.slide = undefined
 }
 
-/** One frame of the animation, while the pane is still shown: a step of the walk, or a blow while a fight is on. */
+/** One frame of the animation, while the pane is still shown or Claude works under a drawn band: a step of the walk, or a blow while a fight is on. */
 async function animStep($: EngineInterface): Promise<void> {
-  if (!(await isPaneShown($))) {
+  const isShown = await isPaneShown($)
+  const isWalking = await read($, isWorking)
+
+  if (!isShown && !(isWalking && anim.band !== undefined)) {
     stopTimer()
     return
   }
@@ -236,16 +250,18 @@ async function animStep($: EngineInterface): Promise<void> {
   // A stop while the panes were being asked wins: it has drawn the frame at rest.
   if (anim.timer === undefined) return
 
+  // No slide goes on out of sight: the next draw shows the new zone.
+  if (!isShown) anim.slide = undefined
+
   // While Claude works the wizard walks, unless a monster blocks the Road — fought, or
   // standing after a lost run: then he holds his ground, striking at it. A zone change
   // slides on either way.
-  const isWalking = await read($, isWorking)
   if (isWalking) {
     anim.tick += 1
     anim.motion = nextMotion(anim.motion, anim.tick, holdsTheRoad(await read($, foes)))
   }
   if (anim.slide !== undefined) anim.slide = { ...anim.slide, step: anim.slide.step + 1 }
-  await blitFrame($)
+  await blitFrame($, isShown)
 
   // The slide's last frame is the new zone: done, and with Claude idle, so is the timer.
   if (anim.slide !== undefined && anim.slide.step >= TRANSITION_STEPS) {
@@ -263,6 +279,8 @@ async function noteZone($: EngineInterface): Promise<void> {
   const before = anim.zone
   anim.zone = zone
   if (before === undefined || before === zone || (anim.mode !== 'raster' && anim.mode !== 'image')) return
+  // A hidden pane slides nothing, or the band's timer would run on for it.
+  if (!(await isPaneShown($))) return
   anim.slide = { from: before, step: 0 }
   await startAnim($)
   // No timer could start (the pane is hidden): no slide either, or the next draw would show it stuck at the old zone.
@@ -271,21 +289,24 @@ async function noteZone($: EngineInterface): Promise<void> {
 
 /**
  * Starts the animation when the pane's scene is drawn in a terminal (cells or
- * an image) and shown, and none runs yet; the desktop's Svg stays still.
- * Two paths call it (a main turn's start, and a draw while a turn runs), and
+ * an image) and shown, or the band's portrait is drawn as a Raster, and none
+ * runs yet; the desktop's Svg stays still.
+ * Three paths call it (a main turn's start, a draw while a turn runs, and the
+ * Road closing while a turn runs), and
  * either can meet a stop across the await. The slot is claimed before it, so
  * a second start returns; and a stop during it (turn.complete, a session
  * start, a close) moves the generation on, so this start makes no timer.
  */
 async function startAnim($: EngineInterface): Promise<void> {
-  if (anim.timer !== undefined || anim.isStarting || (anim.mode !== 'raster' && anim.mode !== 'image')) return
+  const hasScene = anim.mode === 'raster' || anim.mode === 'image'
+  if (anim.timer !== undefined || anim.isStarting || (!hasScene && anim.band === undefined)) return
   anim.isStarting = true
   const generation = anim.generation
 
   try {
-    const isShown = await isPaneShown($)
+    const isShown = hasScene && (await isPaneShown($))
 
-    if (isShown && anim.timer === undefined && anim.generation === generation) {
+    if ((isShown || anim.band !== undefined) && anim.timer === undefined && anim.generation === generation) {
       anim.timer = $.clock.every(ANIM_MS, () => void animStep($))
     }
   } finally {
@@ -297,7 +318,8 @@ async function startAnim($: EngineInterface): Promise<void> {
 async function stopAnim($: EngineInterface): Promise<void> {
   const wasRunning = anim.timer !== undefined
   stopTimer()
-  if (wasRunning) await blitFrame($)
+  // The band may have kept it running past a hidden pane: its scene takes no frame.
+  if (wasRunning) await blitFrame($, await isPaneShown($))
 }
 
 /** What /quest-hud:off answers: stored, so it holds in every session; the hooks go on observing, and only the drawing stops. */
@@ -309,6 +331,8 @@ async function turnOff($: EngineInterface): Promise<string> {
   await $.store.set('roadWasOpen', wasOpen)
   await update($, hidden, () => true)
   stopTimer()
+  // The band is about to be gone, and the Road's close below must not restart the animation for it.
+  anim.band = undefined
   await $.ui.close({ id: PANE_ID })
   if ((await $.ui.panes()).some(pane => pane.id === BOARD_ID)) await $.ui.close({ id: BOARD_ID })
 
@@ -538,6 +562,9 @@ export const register: Register = (on, options) => {
   const bars = pick<Bars>(options.bars, ['hpmp', 'all'], 'hpmp')
   const overrides = parseZones(typeof options.zones === 'string' ? options.zones : '')
   const graphics = pick<Graphics>(options.graphics, ['auto', 'cells', 'images'], 'auto')
+  anim.avatar = pick<Avatar>(options.avatar, AVATARS, 'wizard')
+  // A new load has no band drawn yet.
+  anim.band = undefined
   // Skills a subagent's Skill call is running right now, counted (two
   // subagents may run the same one): their skill.prompt fires inside that
   // call, and must not become the session's quest.
@@ -754,7 +781,7 @@ export const register: Register = (on, options) => {
     return next(e)
   }).catch(($, e, next) => next(e))
 
-  const settings = { detail, bars, graphics, zones: typeof options.zones === 'string' ? options.zones.trim() : '' }
+  const settings = { detail, bars, avatar: anim.avatar, graphics, zones: typeof options.zones === 'string' ? options.zones.trim() : '' }
 
   // A skill file gives each command its /quest-hud: name; the mod answers it, so
   // no model turn runs. If a hook fails, the skill's text says the mod is not running.
@@ -808,6 +835,7 @@ export const register: Register = (on, options) => {
     const below = await next(e)
 
     if (!hasBand || e.props.hasSurvey || (await read($, hidden))) {
+      anim.band = undefined
       return below
     }
 
@@ -828,12 +856,14 @@ export const register: Register = (on, options) => {
     // draws as an empty fragment: the surface decides, not the table.
     const isRaster = hasRoom && e.surface === 'terminal' && 'Raster' in elements
     anim.band = isRaster ? e.requestId : undefined
+    // A turn that began before the band's first draw: the draw starts it, as the pane's draw does.
+    if (anim.band !== undefined && (await read($, isWorking))) startAnim($).catch(() => stopTimer())
     const avatar = !hasRoom
       ? null
       : isRaster && 'Raster' in elements
-        ? <elements.Raster key={BAND_KEY} columns={BAND.columns} rows={BAND.rows} cells={artCells(bandPortrait(anim.motion.pose))} />
+        ? <elements.Raster key={BAND_KEY} columns={BAND.columns} rows={BAND.rows} cells={artCells(bandPortrait(anim.motion.pose, anim.avatar))} />
         : 'Svg' in elements
-          ? <elements.Svg source={gridToSvg(downsample(bandPortrait(), ART_SCALE))} alt="the wizard" width={BAND.columns * 4} height={BAND.rows * 8} />
+          ? <elements.Svg source={gridToSvg(downsample(bandPortrait('stand', anim.avatar), ART_SCALE))} alt={BAND_AVATARS[anim.avatar].alt} width={BAND.columns * 4} height={BAND.rows * 8} />
           : null
 
     return (
@@ -851,7 +881,13 @@ export const register: Register = (on, options) => {
   })
 
   on('ui.close', async ($, e, next) => {
-    if (e.id === PANE_ID) stopTimer()
+    if (e.id === PANE_ID) {
+      stopTimer()
+      anim.mode = undefined
+      // The band goes on without the Road.
+      if (await read($, isWorking)) await startAnim($)
+    }
+
     return next(e)
   }).catch(($, e, next) => next(e))
 
@@ -885,8 +921,8 @@ export const register: Register = (on, options) => {
     // The first draw learns the zone; a later change of it slides (noteZone).
     anim.zone ??= sceneZone(await read($, quest), await read($, activity))
 
-    // The desktop's Svg does not animate, nor a pane too narrow for a scene: one left running stops here.
-    if ((mode === 'svg' || !hasScene) && anim.timer !== undefined) stopTimer()
+    // The desktop's Svg does not animate, nor a pane too narrow for a scene: one left running stops here, unless the band is stepping.
+    if ((mode === 'svg' || !hasScene) && anim.timer !== undefined && anim.band === undefined) stopTimer()
 
     // A turn that began before the pane's first draw had no surface to animate on:
     // the draw starts it. startAnim does nothing if one already runs.

@@ -21,6 +21,13 @@
       "options": ["hpmp", "all"],
       "default": "hpmp"
     },
+    "avatar": {
+      "type": "string",
+      "title": "Avatar",
+      "description": "Who the band's portrait shows, above the prompt: the wizard, Claude's mascot or GitHub's Octocat. The Road keeps its own cast.",
+      "options": ["wizard", "claude", "octocat"],
+      "default": "wizard"
+    },
     "graphics": {
       "type": "string",
       "title": "Graphics",

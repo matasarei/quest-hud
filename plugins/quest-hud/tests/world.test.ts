@@ -2,7 +2,7 @@ import { describe, expect, test } from 'claude-code/testing'
 
 import { bounds } from '../src/paint/picture'
 import { spriteGrid, type Sprite } from '../src/paint/pixels'
-import { BAND_CAST, BAND_ICON, CHEST, DRAGON, FLAG, FLYING_BOOKS, FOX, GHOST, GOLEM, MASCOT, OCTOCAT, PALETTE, POSES, PROPS, SKELETON, SPIDER, WIZARD } from '../src/world/sprites'
+import { AVATARS, BAND_AVATARS, BAND_CAST, BAND_ICON, CHEST, DRAGON, FLAG, FLYING_BOOKS, FOX, GHOST, GOLEM, MASCOT, OCTOCAT, PALETTE, POSES, PROPS, SKELETON, SPIDER, WIZARD } from '../src/world/sprites'
 import { GROUND, HEIGHT, landscape } from '../src/world/landscapes'
 
 // Each sprite and the size it must be, in art pixels: two a unit, so a 16-unit figure is 32 × 32.
@@ -15,6 +15,7 @@ const CAST: ReadonlyArray<readonly [string, Sprite, number, number]> = [
   ['oak', PROPS.oak, 32, 43], ['mushrooms', PROPS.mushrooms, 16, 32], ['crystal', PROPS.crystal, 16, 32],
   ['band icon', BAND_ICON, 20, 12],
   ['band cast', BAND_CAST, 20, 12],
+  ...AVATARS.flatMap(avatar => [[`band ${avatar}`, BAND_AVATARS[avatar].rest, 20, 12], [`band ${avatar} active`, BAND_AVATARS[avatar].active, 20, 12]] as const),
 ]
 
 describe("Claude's mascot's left side", () => {
@@ -115,6 +116,58 @@ describe('the band\'s wizard', () => {
     expect(foot).toBe(BAND_ICON.rows.length - 1)
     // One cell-pixel row up is two art rows.
     expect(span(BAND_CAST)).toEqual([top - 2, foot - 2])
+  })
+})
+
+describe('the band\'s avatars', () => {
+  test('the wizard is his own two frames', () => {
+    expect(BAND_AVATARS.wizard.rest).toBe(BAND_ICON)
+    expect(BAND_AVATARS.wizard.active).toBe(BAND_CAST)
+  })
+
+  for (const avatar of AVATARS) {
+    const { rest, active, alt } = BAND_AVATARS[avatar]
+
+    test(`${avatar}: its frames differ, it is named, and each cell holds two colours`, () => {
+      expect(rest.rows.join() === active.rows.join()).toBe(false)
+      expect(alt).not.toBe('')
+      for (const [name, sprite] of [['rest', rest], ['active', active]] as const) {
+        const rows = sprite.rows.filter((_, y) => y % 2 === 0)
+        const crowded: string[] = []
+        for (let y = 0; y + 1 < rows.length; y += 2) {
+          for (let x = 0; x + 1 < (rows[0]?.length ?? 0); x += 2) {
+            const block = new Set([rows[y]?.[x], rows[y]?.[x + 1], rows[y + 1]?.[x], rows[y + 1]?.[x + 1]])
+            if (block.size > 2) crowded.push(`${x},${y}`)
+          }
+        }
+        expect([name, crowded]).toEqual([name, []])
+      }
+    })
+  }
+
+  test('Claude is the Road\'s mascot, from the row its hop reaches', () => {
+    expect(BAND_AVATARS.claude.rest.rows).toEqual(MASCOT.still.rows.slice(4))
+    expect(BAND_AVATARS.claude.active.rows).toEqual(MASCOT.hop.rows.slice(4))
+  })
+
+  describe('the Octocat', () => {
+    const { rest, active } = BAND_AVATARS.octocat
+    const asRoad = (row: string | undefined) => row?.replaceAll('L', 'l')
+
+    test('only its tentacles move', () => {
+      expect(rest.rows.slice(0, 10)).toEqual(active.rows.slice(0, 10))
+      expect(rest.rows[10] === active.rows[10]).toBe(false)
+    })
+
+    test('has the Road\'s tentacles, ears, head and chin, in a body one shade up', () => {
+      expect(asRoad(rest.rows[11])).toBe(OCTOCAT.still.rows[15])
+      expect(asRoad(active.rows[11])).toBe(OCTOCAT.hop.rows[15])
+      expect(asRoad(rest.rows[0])).toBe(OCTOCAT.still.rows[2])
+      expect(asRoad(rest.rows[2])).toBe(OCTOCAT.still.rows[4])
+      expect(asRoad(rest.rows[8])).toBe(OCTOCAT.still.rows[12])
+      expect(rest.rows.join('')).not.toContain('l')
+      expect(spriteGrid(rest).flat()).toContain(PALETTE.L)
+    })
   })
 })
 

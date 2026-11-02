@@ -1,8 +1,10 @@
 import { describe, expect, test } from 'claude-code/testing'
 import type { Engine } from 'claude-code/testing'
 
+import { artCells } from '../hooks/pane'
 import { imageScale, QUADRANT } from '../src/avatar'
-import { sceneArt } from '../src/scene'
+import { bandPortrait, sceneArt } from '../src/scene'
+import { AVATARS } from '../src/world/sprites'
 import { engine, RUN, start, world } from './kit'
 import type { LevelCard } from '../types'
 import { striping } from './measure'
@@ -597,6 +599,211 @@ describe('the band\'s wizard', () => {
     expect(world.bandBlits).toHaveLength(5)
     await portrait.unmount()
     await road.unmount()
+  })
+})
+
+describe('the band\'s own animation', () => {
+  const band = (surface: 'terminal' | 'desktop' = 'terminal', maxRows = 6, hasSurvey = false) => ({ plugin: 'quest-hud', component: 'AbovePrompt', surface, props: { hasSurvey, isWorking: false, maxRows, bodyColumns: 140, scroll: { offset: 0, bodyRows: 6 }, view: {} } }) as const
+  const review = { skill: 'review', pluginName: 'gku', text: 'x', frontmatter: { description: 'Review a change' } }
+  const go = { text: 'go', turnId: 'turn-1' }
+  const done = { turnId: 'turn-1', answer: '', durationMs: 1, isAborted: false, reason: 'answer' } as const
+  const CLAUDE = { options: { graphics: 'cells', avatar: 'claude' } }
+
+  for (const avatar of AVATARS) {
+    test(`${avatar}, with no Road: four frames a second while Claude works, then at rest, then nothing`, { options: { graphics: 'cells', avatar } }, async ($, on) => {
+      const clock = engine(on)
+      await implementing($)
+      const portrait = await $.ui.mount(band())
+      await $.turn.start(go)
+      await clock.advance(1000)
+      expect(world.bandBlits).toHaveLength(4)
+      expect(new Set(world.bandBlits).size).toBe(2)
+      expect(world.bandBlits).toContain(artCells(bandPortrait('walk1', avatar)))
+      expect(world.blits).toHaveLength(0)
+      await $.turn.complete(done)
+      expect(world.bandBlits).toHaveLength(5)
+      expect(world.bandBlits[4]).toBe(artCells(bandPortrait('stand', avatar)))
+      await clock.advance(2000)
+      expect(world.bandBlits).toHaveLength(5)
+      await portrait.unmount()
+    })
+
+    test(`${avatar}, with the Road shown: one timer steps both, a blit of each a tick`, { options: { graphics: 'cells', avatar } }, async ($, on) => {
+      const clock = engine(on)
+      world.panes = [{ id: 'quest-hud', isShown: true }]
+      await implementing($)
+      const road = await $.ui.mount(pane('terminal'))
+      const portrait = await $.ui.mount(band())
+      await $.turn.start(go)
+      await clock.advance(1000)
+      expect([world.blits.length, world.bandBlits.length]).toEqual([4, 4])
+      await portrait.unmount()
+      await road.unmount()
+    })
+  }
+
+  test('nothing runs while Claude is idle', CLAUDE, async ($, on) => {
+    const clock = engine(on)
+    await implementing($)
+    const portrait = await $.ui.mount(band())
+    await clock.advance(2000)
+    expect(world.bandBlits).toHaveLength(0)
+    await portrait.unmount()
+  })
+
+  test('a subagent\'s turn does not start it', CLAUDE, async ($, on) => {
+    const clock = engine(on)
+    await implementing($)
+    const portrait = await $.ui.mount(band())
+    await $.turn.start({ text: 'explore', turnId: 'sub-1', agentId: 'a1' })
+    await clock.advance(1000)
+    expect(world.bandBlits).toHaveLength(0)
+    await portrait.unmount()
+  })
+
+  // The engine refuses a test's hook $.ui.close (its scan lists no calls there), so a Road gone from the panes stands for one closed.
+  test('with the Road gone mid-turn the band keeps stepping, and the scene stops', CLAUDE, async ($, on) => {
+    const clock = engine(on)
+    world.panes = [{ id: 'quest-hud', isShown: true }]
+    await implementing($)
+    const road = await $.ui.mount(pane('terminal'))
+    const portrait = await $.ui.mount(band())
+    await $.turn.start(go)
+    await clock.advance(250)
+    expect([world.blits.length, world.bandBlits.length]).toEqual([1, 1])
+    world.panes = []
+    await clock.advance(1000)
+    expect([world.blits.length, world.bandBlits.length]).toEqual([1, 5])
+    await $.turn.complete(done)
+    expect([world.blits.length, world.bandBlits.length]).toEqual([1, 6])
+    await portrait.unmount()
+    await road.unmount()
+  })
+
+  test('hiding the Road mid-turn keeps the band stepping, and stops the scene', CLAUDE, async ($, on) => {
+    const clock = engine(on)
+    world.panes = [{ id: 'quest-hud', isShown: true }]
+    await implementing($)
+    const road = await $.ui.mount(pane('terminal'))
+    const portrait = await $.ui.mount(band())
+    await $.turn.start(go)
+    await clock.advance(250)
+    world.panes = [{ id: 'quest-hud', isShown: false }]
+    await clock.advance(1000)
+    expect([world.blits.length, world.bandBlits.length]).toEqual([1, 5])
+    await portrait.unmount()
+    await road.unmount()
+  })
+
+  test('a zone change while the Road is hidden and Claude is idle runs no timer', CLAUDE, async ($, on) => {
+    const clock = engine(on)
+    world.panes = [{ id: 'quest-hud', isShown: true }]
+    await implementing($)
+    const road = await $.ui.mount(pane('terminal'))
+    const portrait = await $.ui.mount(band())
+    world.panes = [{ id: 'quest-hud', isShown: false }]
+    await $.skill.prompt(review)
+    await clock.advance(2000)
+    expect([world.blits.length, world.bandBlits.length]).toEqual([0, 0])
+    await portrait.unmount()
+    await road.unmount()
+  })
+
+  test('a slide with Claude idle ends when the Road is hidden, and the band does not keep its timer', CLAUDE, async ($, on) => {
+    const clock = engine(on)
+    world.panes = [{ id: 'quest-hud', isShown: true }]
+    await implementing($)
+    const road = await $.ui.mount(pane('terminal'))
+    const portrait = await $.ui.mount(band())
+    await $.skill.prompt(review)
+    await clock.advance(250)
+    const shown = world.bandBlits.length
+    world.panes = [{ id: 'quest-hud', isShown: false }]
+    await clock.advance(5000)
+    expect(world.bandBlits).toHaveLength(shown)
+    await portrait.unmount()
+    await road.unmount()
+  })
+
+  test('a Road too narrow for a scene does not stop the band', CLAUDE, async ($, on) => {
+    const clock = engine(on)
+    world.panes = [{ id: 'quest-hud', isShown: true }]
+    await implementing($)
+    const portrait = await $.ui.mount(band())
+    await $.turn.start(go)
+    // Drawn again and again, sooner than a frame: a draw that stopped the timer would leave none to land.
+    for (let draw = 0; draw < 4; draw += 1) {
+      const road = await $.ui.mount(pane('terminal', 30))
+      await road.unmount()
+      await clock.advance(200)
+    }
+    expect(world.bandBlits).toHaveLength(3)
+    expect(world.blits).toEqual([])
+    await portrait.unmount()
+  })
+
+  test('a turn that started before the band was first drawn animates once it is drawn', CLAUDE, async ($, on) => {
+    const clock = engine(on)
+    await implementing($)
+    await $.turn.start(go)
+    await clock.advance(500)
+    expect(world.bandBlits).toHaveLength(0)
+    const portrait = await $.ui.mount(band())
+    await clock.advance(1000)
+    expect(world.bandBlits).toHaveLength(4)
+    await portrait.unmount()
+  })
+
+  for (const [why, gone] of [['its slot is too short', band('terminal', 2)], ['a survey holds it', band('terminal', 6, true)]] as const) {
+    test(`stops when ${why}`, CLAUDE, async ($, on) => {
+      const clock = engine(on)
+      await implementing($)
+      const portrait = await $.ui.mount(band())
+      await $.turn.start(go)
+      await clock.advance(250)
+      expect(world.bandBlits).toHaveLength(1)
+      await portrait.unmount()
+      const without = await $.ui.mount(gone)
+      await clock.advance(2000)
+      expect(world.bandBlits).toHaveLength(1)
+      await without.unmount()
+    })
+  }
+
+  test('/quest-hud:off mid-turn stops it, and a turn while off starts nothing', CLAUDE, async ($, on) => {
+    const clock = engine(on)
+    await implementing($)
+    const portrait = await $.ui.mount(band())
+    await $.turn.start(go)
+    await clock.advance(250)
+    await $.command.run({ command: 'quest-hud:off', args: '', ...RUN })
+    await clock.advance(1000)
+    expect(world.bandBlits).toHaveLength(1)
+    await $.turn.complete(done)
+    await $.turn.start({ text: 'again', turnId: 'turn-2' })
+    await clock.advance(1000)
+    expect(world.bandBlits).toHaveLength(1)
+    await portrait.unmount()
+  })
+
+  test('detail = status draws no band, so nothing steps', { options: { graphics: 'cells', avatar: 'claude', detail: 'status' } }, async ($, on) => {
+    const clock = engine(on)
+    await implementing($)
+    const portrait = await $.ui.mount(band())
+    await $.turn.start(go)
+    await clock.advance(1000)
+    expect(world.bandBlits).toHaveLength(0)
+    await portrait.unmount()
+  })
+
+  test('the desktop\'s Svg never animates', CLAUDE, async ($, on) => {
+    const clock = engine(on)
+    await implementing($)
+    const portrait = await $.ui.mount(band('desktop'))
+    await $.turn.start(go)
+    await clock.advance(1000)
+    expect(world.bandBlits).toHaveLength(0)
+    await portrait.unmount()
   })
 })
 
