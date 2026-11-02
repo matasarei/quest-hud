@@ -3,7 +3,7 @@
 # Reads the status-line JSON on stdin and prints the HP and MP bars on one line:
 #   ♥▰▰▰▰▰▰▱▱▱▱ 62% ✦▰▰▰▰▰▰▱▱▱▱ 59%
 # HP is what is left of the 7-day window (absent without a subscription), MP
-# what is left of the context window (— until the first response).
+# what is left of the context window (full until the first response fills it).
 # Setup: /quest-hud:statusline in a session where the mod runs, or the README.
 
 if ! command -v jq >/dev/null 2>&1; then
@@ -19,7 +19,7 @@ jq -r '
 
   [ (.rate_limits.seven_day.used_percentage // null
       | if . == null then empty else left | "♥\(bar) \(.)%" end),
-    (.context_window.used_percentage // null
-      | if . == null then "✦ —" else left | "✦\(bar) \(.)%" end)
+    (.context_window.used_percentage // 0
+      | left | "✦\(bar) \(.)%")
   ] | join(" ")
 ' 2>/dev/null || true

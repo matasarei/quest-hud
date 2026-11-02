@@ -198,8 +198,8 @@ Where the mod runs, `/quest-hud:statusline` prints both steps. Otherwise, copy
 "statusLine": { "type": "command", "command": "~/.claude/hud-line.sh" }
 ```
 
-It needs `jq`. HP appears only on a Pro, Max or Ultra subscription; MP shows `—` until the first
-response.
+It needs `jq`. HP appears only on a Pro, Max or Ultra subscription; MP is full until the first
+response reports the fill.
 
 ## Art
 
