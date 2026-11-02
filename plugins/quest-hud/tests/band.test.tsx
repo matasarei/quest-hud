@@ -314,7 +314,7 @@ describe('the /quest-hud: commands', () => {
       const text = (await $.command.run({ command: 'quest-hud', args, ...RUN })).text ?? ''
       expect(text).toContain('/quest-hud:pane')
       expect(text).toContain('/quest-hud:statusline')
-      expect(text).toContain('set in /config')
+      expect(text).toContain('set with /plugin configure quest-hud@quest-hud')
       expect(text).toContain('now auto (default auto)')
     }
   })

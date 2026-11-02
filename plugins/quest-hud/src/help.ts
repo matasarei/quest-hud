@@ -40,7 +40,7 @@ export const usageText = (settings: Settings): string => {
     'Quest HUD',
     ...COMMANDS.map(([command, what]) => `  ${command.padEnd(commandWidth)}  ${what}`),
     '',
-    'Options, set in /config (a change reloads the mod):',
+    'Options, set with /plugin configure quest-hud@quest-hud, then /reload-plugins:',
     ...OPTIONS.flatMap(option => {
       const now = `now ${shown(settings[option.name])}`
       const fallback = option.fallback === '' ? '' : ` (default ${option.fallback})`
