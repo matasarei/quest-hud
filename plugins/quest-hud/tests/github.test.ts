@@ -421,6 +421,10 @@ describe('repoOfRemote', () => {
     ['https://github.com/acme/api', 'acme/api'],
     ['ssh://git@github.com/acme/my.repo.git', 'acme/my.repo'],
     ['git@gitlab.com:acme/api.git', undefined],
+    ['git@notgithub.com:acme/api.git', undefined],
+    ['https://attacker-github.com/acme/api', undefined],
+    ['https://evil.example/github.com/acme/api', undefined],
+    ['https://github.com.evil.example/acme/api', undefined],
     ['', undefined],
   ] as const) test(`${JSON.stringify(remote)} is ${String(repo)}`, () => expect(repoOfRemote(remote)).toBe(repo))
 })

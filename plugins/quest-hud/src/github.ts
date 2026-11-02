@@ -382,7 +382,7 @@ export const parseNotifications = (stdout: string, now: number, readRepos: Reado
   })
 }
 
-const REMOTE = /github\.com[:/]([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+?)(?:\.git)?\/?\s*$/
+const REMOTE = /^(?:https?:\/\/|ssh:\/\/)?(?:[^/@\s]+@)?github\.com[:/]([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+?)(?:\.git)?\/?\s*$/
 
 /** The `owner/repo` of a git remote on github.com; undefined for any other. */
 export const repoOfRemote = (remote: string): string | undefined => REMOTE.exec(remote)?.[1]
