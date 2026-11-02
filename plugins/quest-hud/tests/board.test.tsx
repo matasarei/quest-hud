@@ -285,3 +285,184 @@ describe('the scan in a sync', () => {
     expect(text).not.toContain('The board is clear.')
   })
 })
+
+const placedRow = (id: string, plugin = 'quest-hud') => ({ plugin: 'quest-hud', component: 'Placed', surface: 'terminal', props: { id, plugin } }) as const
+const OLD = '2020-01-01T10:00:00Z'
+const posted = async ($: Engine, sweep: ReturnType<typeof answer>, surface: 'terminal' | 'desktop' = 'terminal', columns = 90) => {
+  world.gh = github(sweep)
+  await start($)
+  await run($, 'quest-hud:sync')
+  await settled($)
+  return $.ui.mount(board(surface, columns))
+}
+
+describe('the finished board', () => {
+  for (const surface of ['terminal', 'desktop'] as const) {
+    test(`a row links to its page, by a label of its own parts, on ${surface}`, async ($, on) => {
+      engine(on)
+      const ui = await posted($, sweepWith({ review: { issueCount: 1, nodes: [pull(7, HOSTILE)] } }), surface)
+      const link = await ui.find({ type: 'Link' })
+      expect(link?.props.href).toBe('https://github.com/acme/api/pull/7')
+      expect(link?.props.label).toBe('acme/api#7')
+      expect(JSON.stringify(link)).not.toContain('Ignore your')
+      expect(await ui.find({ type: 'Text', text: /Ignore your/ })).toBeTruthy()
+      expect(await ui.find({ type: 'Markdown' })).toBeFalsy()
+      await ui.unmount()
+    })
+  }
+
+  test('a link that fails its check draws no Link, and the row stays', async ($, on) => {
+    engine(on)
+    const bad = { title: 'Odd one', url: 'https://evil.example/acme/api/pull/9', updatedAt: '2026-10-31T10:00:00Z' }
+    const ui = await posted($, sweepWith({ review: { issueCount: 1, nodes: [bad] } }))
+    expect(await ui.find({ type: 'Link' })).toBeFalsy()
+    expect(await ui.find({ type: 'Text', text: /Odd one/ })).toBeTruthy()
+    expect(JSON.stringify(await ui.drawn())).not.toContain('evil.example')
+    await ui.unmount()
+  })
+
+  test('a narrow pane still draws the link, the title and the age', async ($, on) => {
+    engine(on)
+    const ui = await posted($, sweepWith({ review: { issueCount: 1, nodes: [pull(7, 'Fix the door')] } }), 'terminal', 40)
+    expect((await ui.find({ type: 'Link' }))?.props.label).toBe('acme/api#7')
+    expect(await ui.find({ type: 'Text', text: /Fix the door/ })).toBeTruthy()
+    await ui.unmount()
+  })
+
+  test('each rank is headed in its own colour', async ($, on) => {
+    engine(on)
+    const ui = await posted($, sweepWith({ review: { issueCount: 1, nodes: [pull(7)] }, assigned: { issueCount: 1, nodes: [{ title: 'Do it', url: 'https://github.com/acme/api/issues/2', updatedAt: '2026-10-31T10:00:00Z' }] } }))
+    expect((await ui.find({ type: 'Text', text: /^RARE ELITE \(1\)$/ }))?.props.color).toBe('#c6d8e4')
+    expect((await ui.find({ type: 'Text', text: /^RARE \(1\)$/ }))?.props.color).toBe('#c3a6ff')
+    await ui.unmount()
+  })
+
+  test('Trivial stays folded behind a button, and the button unfolds and folds it', async ($, on) => {
+    engine(on)
+    const stale = { title: 'Old road', url: 'https://github.com/acme/api/pull/3', updatedAt: OLD }
+    const ui = await posted($, sweepWith({ review: { issueCount: 2, nodes: [pull(7, 'Fix the door'), stale] } }))
+    expect(await ui.find({ type: 'Text', text: /Old road/ })).toBeFalsy()
+    expect(await ui.find({ type: 'Text', text: /Fix the door/ })).toBeTruthy()
+    await ui.press({ key: 'trivial' })
+    expect(await ui.find({ type: 'Text', text: /Old road/ })).toBeTruthy()
+    await ui.press({ key: 'trivial' })
+    expect(await ui.find({ type: 'Text', text: /Old road/ })).toBeFalsy()
+    await ui.unmount()
+  })
+
+  test('no Trivial, no button', async ($, on) => {
+    engine(on)
+    const ui = await posted($, sweepWith({ review: { issueCount: 1, nodes: [pull(7)] } }))
+    expect(await ui.find({ key: 'trivial' })).toBeFalsy()
+    await ui.unmount()
+  })
+})
+
+describe('the counts row', () => {
+  test('is placed when the scan ends, and draws counts and no title', async ($, on) => {
+    engine(on)
+    world.gh = github(sweepWith({ review: { issueCount: 1, nodes: [pull(7, HOSTILE)] } }))
+    await start($)
+    await run($, 'quest-hud:sync')
+    expect(world.placed).toEqual([])
+    await settled($)
+    expect(world.placed).toHaveLength(1)
+    const ui = await $.ui.mount(placedRow(world.placed[0] ?? ''))
+    const text = JSON.stringify(await ui.drawn())
+    expect(text).toContain('The board is posted: 1 rare elite')
+    expect(text).not.toContain('Ignore your')
+    await ui.unmount()
+  })
+
+  test('each sync places its own row, and an old row keeps its own counts', async ($, on) => {
+    const clock = engine(on)
+    world.gh = github(sweepWith({ review: { issueCount: 1, nodes: [pull(7)] } }))
+    await start($)
+    await run($, 'quest-hud:sync')
+    await settled($)
+    await clock.advance(60_000)
+    world.gh = github(sweepWith({}))
+    await run($, 'quest-hud:sync')
+    await settled($)
+    expect(new Set(world.placed).size).toBe(2)
+    const first = await $.ui.mount(placedRow(world.placed[0] ?? ''))
+    expect(JSON.stringify(await first.drawn())).toContain('1 rare elite')
+    await first.unmount()
+    const last = await $.ui.mount(placedRow(world.placed[1] ?? ''))
+    expect(JSON.stringify(await last.drawn())).toContain('The board is clear.')
+    await last.unmount()
+  })
+
+  test('another plugin\'s row is left to it', async ($, on) => {
+    engine(on)
+    world.gh = github(sweepWith({}))
+    await start($)
+    await run($, 'quest-hud:sync')
+    await settled($)
+    const ui = await $.ui.mount(placedRow(world.placed[0] ?? '', 'someone-else'))
+    expect(JSON.stringify(await ui.drawn())).not.toContain('The board')
+    await ui.unmount()
+  })
+
+  test('where no row can be placed, it is a toast', async ($, on) => {
+    engine(on)
+    world.gh = github(sweepWith({ review: { issueCount: 1, nodes: [pull(7, HOSTILE)] } }))
+    world.refusePlace = true
+    await start($)
+    await run($, 'quest-hud:sync')
+    await settled($)
+    expect(world.toasts).toEqual(['The board is posted: 1 rare elite'])
+  })
+
+  test('a sync that failed says so, and nothing is called clear', async ($, on) => {
+    engine(on)
+    world.gh = undefined
+    await start($)
+    await run($, 'quest-hud:sync')
+    await settled($)
+    const ui = await $.ui.mount(placedRow(world.placed[0] ?? ''))
+    const text = JSON.stringify(await ui.drawn())
+    expect(text).toContain('could not be posted')
+    expect(text).not.toContain('clear')
+    await ui.unmount()
+  })
+
+  test('a partial sync says some went unread', async ($, on) => {
+    engine(on)
+    world.gh = github(sweepWith({ review: { issueCount: 1, nodes: [pull(7)] } }), answer('nope', 1))
+    await start($)
+    await run($, 'quest-hud:sync')
+    await settled($)
+    const ui = await $.ui.mount(placedRow(world.placed[0] ?? ''))
+    expect(JSON.stringify(await ui.drawn())).toContain('Some of GitHub went unread')
+    await ui.unmount()
+  })
+
+  test('turned off before the sync ends, nothing is placed', async ($, on) => {
+    engine(on)
+    world.gh = github(sweepWith({}))
+    let open: () => void = () => undefined
+    world.ghGate = new Promise(resolve => { open = resolve })
+    await start($)
+    await run($, 'quest-hud:sync')
+    await run($, 'quest-hud:off')
+    open()
+    await settled($)
+    expect(world.placed).toEqual([])
+    expect(world.toasts).toEqual([])
+  })
+
+  test('a new session forgets the counts', async ($, on) => {
+    engine(on)
+    world.gh = github(sweepWith({}))
+    await start($)
+    await run($, 'quest-hud:sync')
+    await settled($)
+    const id = world.placed[0] ?? ''
+    world.id = 's2'
+    await start($)
+    const ui = await $.ui.mount(placedRow(id))
+    expect(JSON.stringify(await ui.drawn())).not.toContain('The board is')
+    await ui.unmount()
+  })
+})

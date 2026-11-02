@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { ageText, countsText, finishQuests, labelOf, MAX_QUESTS, NOTIFICATIONS_ARGV, parseNotifications, parseSweep, questOf, safeHref, SWEEP_ARGV, SWEEP_QUERY, type QuestInput, boardOf, codeArgv, parseCodeAlerts, parseSecretAlerts, repoOfRemote, SCAN_REPOS, scanOutcome, secretArgv, tallyScan } from '../src/github'
+import { ageText, countsText, finishQuests, labelOf, MAX_QUESTS, NOTIFICATIONS_ARGV, parseNotifications, parseSweep, questOf, safeHref, SWEEP_ARGV, SWEEP_QUERY, type QuestInput, boardOf, boardView, codeArgv, failedBoard, postedText, parseCodeAlerts, parseSecretAlerts, repoOfRemote, SCAN_REPOS, scanOutcome, secretArgv, tallyScan } from '../src/github'
 import type { QuestRank } from '../types'
 
 const NOW = Date.parse('2026-11-02T12:00:00Z')
@@ -520,5 +520,40 @@ describe('the scan', () => {
   test('sweep repositories hold only names a path can carry', () => {
     const parsedSweep = only(repos(repoNode('o/r'), repoNode('../../evil'), repoNode('o/r?x=1')))
     expect(parsedSweep.repos).toEqual(['o/r'])
+  })
+})
+
+describe('postedText', () => {
+  const base = { phase: 'done' as const, at: NOW, notes: [] }
+  const row = questOf(input('boss', 'https://github.com/a/b/issues/1'), NOW)
+
+  test('a whole board is its counts', () => expect(postedText({ ...base, quests: [row], isPartial: false })).toBe('The board is posted: 1 boss'))
+  test('a whole empty board is clear', () => expect(postedText({ ...base, quests: [], isPartial: false })).toBe('The board is clear.'))
+  test('a partial board says so', () => expect(postedText({ ...base, quests: [row], isPartial: true })).toBe('The board is posted: 1 boss. Some of GitHub went unread.'))
+  test('a partial empty board is not clear', () => expect(postedText({ ...base, quests: [], isPartial: true })).toBe('No quests found, but some of GitHub went unread.'))
+  test('a failed board is not posted', () => expect(postedText(failedBoard('no-gh', NOW))).toBe('The board could not be posted. The Quest Board says why.'))
+})
+
+describe('boardView', () => {
+  const board = (...quests: ReturnType<typeof questOf>[]) => ({ phase: 'done' as const, at: NOW, quests, isPartial: false, notes: [] })
+  const trivial = questOf(input('trivial', 'https://github.com/a/b/issues/2'), NOW)
+  const normal = questOf(input('normal', 'https://github.com/a/b/issues/1', { why: 'draft', isUnread: true }), NOW)
+
+  test('a row says why, marks what is unread, and gives its age', () => {
+    expect(boardView(board(normal), NOW).sections[0]?.rows[0]).toMatchObject({ label: 'a/b#1', text: '● draft: A title', age: '1d' })
+  })
+
+  test('Trivial is counted and folded until it is opened', () => {
+    const folded = boardView(board(normal, trivial), NOW)
+    expect(folded.sections.map(s => s.rank)).toEqual(['normal'])
+    expect(folded.fold).toBe('Show 1 Trivial')
+    const open = boardView(board(normal, trivial), NOW, true)
+    expect(open.sections.map(s => s.rank)).toEqual(['normal', 'trivial'])
+    expect(open.fold).toBe('Hide 1 Trivial')
+  })
+
+  test('only a fold of Trivial is no clear board', () => {
+    expect(boardView(board(trivial), NOW).lines).toEqual([])
+    expect(boardView(board(), NOW).fold).toBeUndefined()
   })
 })

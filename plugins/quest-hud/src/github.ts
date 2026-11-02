@@ -411,6 +411,25 @@ export const boardOf = (parts: { phase: Board['phase']; at: number; sweep: Sweep
   return { phase: parts.phase, at: parts.at, quests, isPartial: sweep.refused > 0 || unread === undefined || (scan?.unread ?? 0) > 0, notes }
 }
 
+/** What the counts row says when a sync ends. Counts and the HUD's own words: no title, no repository. */
+export const postedText = (board: Board): string => {
+  if (board.failure !== undefined) return 'The board could not be posted. The Quest Board says why.'
+  if (!board.isPartial) return countsText(board.quests)
+
+  return board.quests.length === 0 ? 'No quests found, but some of GitHub went unread.' : `${countsText(board.quests)}. Some of GitHub went unread.`
+}
+
+/** Each rank's colour on the board: Elite's gold and Rare's silver as WoW frames them, the rest the HUD's own. */
+export const RANK_COLOR: Readonly<Record<QuestRank, string | undefined>> = {
+  boss: '#e8663c',
+  rareElite: '#c6d8e4',
+  elite: '#f2d15b',
+  rare: '#c3a6ff',
+  normal: undefined,
+  minion: undefined,
+  trivial: undefined,
+}
+
 /** The ladder's words, as the board heads its sections. */
 const RANK_HEAD: Readonly<Record<QuestRank, string>> = {
   boss: 'BOSS',
@@ -424,7 +443,7 @@ const RANK_HEAD: Readonly<Record<QuestRank, string>> = {
 
 export type BoardRow = { id: string; href?: string; label: string; text: string; age: string }
 export type BoardSection = { rank: QuestRank; head: string; rows: BoardRow[] }
-export type BoardView = { status: string; lines: string[]; sections: BoardSection[]; notes: string[] }
+export type BoardView = { status: string; lines: string[]; sections: BoardSection[]; notes: string[]; fold?: string }
 
 const STATUS: Readonly<Record<Exclude<Board['phase'], 'done'>, string>> = {
   riding: 'the herald rides…',
@@ -432,10 +451,12 @@ const STATUS: Readonly<Record<Exclude<Board['phase'], 'done'>, string>> = {
 }
 
 /** What the board draws. */
-export const boardView = (board: Board | null, now: number): BoardView => {
+export const boardView = (board: Board | null, now: number, isTrivialOpen = false): BoardView => {
   if (board === null) return { status: '', lines: [NO_BOARD_TEXT], sections: [], notes: [] }
 
-  const sections = RANKS.flatMap(rank => {
+  const trivialCount = board.quests.filter(quest => quest.rank === 'trivial').length
+  const shown = RANKS.filter(rank => rank !== 'trivial' || isTrivialOpen)
+  const sections = shown.flatMap(rank => {
     const rows = board.quests.filter(quest => quest.rank === rank).map((quest): BoardRow => ({
       id: quest.id,
       ...(quest.href === undefined ? {} : { href: quest.href }),
@@ -452,6 +473,7 @@ export const boardView = (board: Board | null, now: number): BoardView => {
     lines: [...(board.failure === undefined ? [] : [FAILURE_TEXT[board.failure]]), ...(isClear ? ['The board is clear.'] : [])],
     sections,
     notes: board.notes,
+    ...(trivialCount === 0 ? {} : { fold: `${isTrivialOpen ? 'Hide' : 'Show'} ${trivialCount} Trivial` }),
   }
 }
 

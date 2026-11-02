@@ -2,30 +2,59 @@
 // own elements. It reads no state: register.tsx reads the values and passes them in.
 import type { EngineInterface, RenderInput } from 'claude-code'
 
-import type { BoardView } from '../src/github'
+import { RANK_COLOR, type BoardRow, type BoardView } from '../src/github'
 import { TONE_COLOR } from '../src/meters'
 
 export const BOARD_ID = 'quest-board'
 export const BOARD_TITLE = 'The Quest Board'
+/** From this wide a row fits on one line. */
+const ONE_LINE_COLUMNS = 72
 
-/** The board's tree. Titles are outside text: plain `Text` only. */
-export function drawBoard($: EngineInterface, e: RenderInput<'Pane'>, view: BoardView) {
-  const { Box, Text } = $.ui.resolve(e)
+/**
+ * The board's tree. A title is outside text: plain `Text` only, never `Markdown`,
+ * and never inside a `Link`, whose href is checked and whose label is built from
+ * that href's own parts.
+ */
+export function drawBoard($: EngineInterface, e: RenderInput<'Pane'>, view: BoardView, onFold: () => void) {
+  const { Box, Text, Link, Button } = $.ui.resolve(e)
+  const isOneLine = e.props.bodyColumns >= ONE_LINE_COLUMNS
+  const label = (row: BoardRow) => (row.href === undefined ? <Text dimColor>{row.label}</Text> : <Text><Link href={row.href} label={row.label} /></Text>)
 
   return (
     <Box flexDirection="column">
       <Box flexDirection="row" justifyContent="space-between">
-        <Text color={TONE_COLOR.accent}>THE QUEST BOARD</Text>
+        <Text color={TONE_COLOR.accent} bold>THE QUEST BOARD</Text>
         {view.status === '' ? null : <Text dimColor>{view.status}</Text>}
       </Box>
       {view.lines.map(line => <Text wrap="wrap">{line}</Text>)}
-      {view.sections.map(section => (
-        <Box key={section.rank} flexDirection="column">
-          <Text bold>{section.head}</Text>
-          {section.rows.map(row => <Text key={row.id} wrap="truncate-end">{`${row.label}  ${row.text}  ${row.age}`}</Text>)}
-        </Box>
-      ))}
-      {view.notes.map(note => <Text dimColor wrap="wrap">{note}</Text>)}
+      {view.sections.map(section => {
+        const isDim = section.rank === 'minion' || section.rank === 'trivial'
+
+        return (
+          <Box key={section.rank} flexDirection="column" marginTop={1}>
+            <Text color={RANK_COLOR[section.rank]} dimColor={isDim} bold>{section.head}</Text>
+            {section.rows.map(row => (isOneLine
+              ? (
+                  <Box key={row.id} flexDirection="row" gap={2}>
+                    {label(row)}
+                    <Box flexGrow={1} flexShrink={1}><Text dimColor={isDim} wrap="truncate-end">{row.text}</Text></Box>
+                    <Text dimColor>{row.age}</Text>
+                  </Box>
+                )
+              : (
+                  <Box key={row.id} flexDirection="column">
+                    <Box flexDirection="row" justifyContent="space-between">
+                      {label(row)}
+                      <Text dimColor>{row.age}</Text>
+                    </Box>
+                    <Text dimColor={isDim} wrap="truncate-end">{`  ${row.text}`}</Text>
+                  </Box>
+                )))}
+          </Box>
+        )
+      })}
+      {view.fold === undefined ? null : <Box marginTop={1}><Button key="trivial" label={view.fold} hotkey="t" plain dimColor onPress={onFold} /></Box>}
+      {view.notes.length === 0 ? null : <Box marginTop={1} flexDirection="column">{view.notes.map(note => <Text dimColor wrap="wrap">{note}</Text>)}</Box>}
     </Box>
   )
 }

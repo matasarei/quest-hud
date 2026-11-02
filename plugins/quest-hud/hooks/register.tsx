@@ -7,7 +7,7 @@ import type { EngineInterface, Register, Timer } from 'claude-code'
 import { gridToSvg } from '../src/avatar'
 import { commandKinds, endFights, fightKinds, fightOutcome, fightText, forgeEvent, holdsTheRoad, lootText, NO_FOES, startFights, stdoutOf } from '../src/bash'
 import { activeCompanions, sameCompanions } from '../src/companions'
-import { boardOf, boardView, failedBoard, failureOf, NOTIFICATIONS_ARGV, parseNotifications, parseSweep, ridingBoard, SCAN_REPOS, SWEEP_ARGV, tallyScan } from '../src/github'
+import { boardOf, boardView, failedBoard, failureOf, NOTIFICATIONS_ARGV, parseNotifications, parseSweep, postedText, ridingBoard, SCAN_REPOS, SWEEP_ARGV, tallyScan } from '../src/github'
 import { asCard, cardOf, type Inventory } from '../src/harness'
 import { unknownText, usageText } from '../src/help'
 import { levelLogText, levelText, levelUpText, NO_LEVEL_YET, rereadingText, scoutRidesText, STILL_READING } from '../src/levelup'
@@ -21,7 +21,7 @@ import { asSurvey, changedFiles, mergeSurvey, talliesOf, usageFrom, type History
 import { applyTaskCall } from '../src/tasks'
 import { ART_SCALE } from '../src/world/sprites'
 import { parseZones, zoneFor } from '../src/zones'
-import type { Allies, FightKind, Foes, LevelCard, LogEntry, Meters, Usage, Zone } from '../types'
+import type { Allies, Board, FightKind, Foes, LevelCard, LogEntry, Meters, Usage, Zone } from '../types'
 import { BOARD_ID, BOARD_TITLE, drawBoard } from './board'
 import { readHereRepo, runGh, scanRepos, SWEEP_MS } from './github'
 import { artCells, drawRoad, PANE_ID, PANE_TITLE, SCENE_IMAGE_KEY, SCENE_KEY, sceneImage, type PngSource, type SceneMode } from './pane'
@@ -46,6 +46,8 @@ const allies = atom({ plugin: 'quest-hud', key: 'allies' } as const, NO_ALLIES)
 const hidden = atom({ plugin: 'quest-hud', key: 'hidden' } as const, false)
 const level = atom({ plugin: 'quest-hud', key: 'level' } as const, null)
 const board = atom({ plugin: 'quest-hud', key: 'board' } as const, null)
+const isTrivialOpen = atom({ plugin: 'quest-hud', key: 'isTrivialOpen' } as const, false)
+const posted = atom({ plugin: 'quest-hud', key: 'posted' } as const, {})
 
 /** off, the bars on the hint line, the band, or the band and the Road pane opened at the start. */
 type Detail = 'off' | 'status' | 'band' | 'pane'
@@ -329,21 +331,40 @@ async function turnOn($: EngineInterface, detail: Detail): Promise<string> {
 /** One sync at a time; a reload starts this over. */
 const syncing: { isRunning: boolean } = { isRunning: false }
 
-/** Reads GitHub through gh in the background, and posts what came back. Only /quest-hud:sync calls it: never at a start, never on a timer. */
-async function readGitHub($: EngineInterface): Promise<void> {
+/** Reads GitHub through gh. Only /quest-hud:sync calls it, in the background: never at a start, never on a timer. */
+async function readGitHub($: EngineInterface): Promise<Board> {
   const [swept, notified, here] = await Promise.all([runGh($, SWEEP_ARGV, SWEEP_MS), runGh($, NOTIFICATIONS_ARGV), readHereRepo($)])
   const at = await $.clock.now()
   const sweep = swept === undefined ? undefined : parseSweep(swept.stdout, at)
-
-  if (sweep === undefined) {
-    await update($, board, () => failedBoard(failureOf(swept?.exitCode), at))
-    return
-  }
+  if (sweep === undefined) return failedBoard(failureOf(swept?.exitCode), at)
 
   const unread = notified === undefined ? undefined : parseNotifications(notified.stdout, at, new Set(sweep.repos))
   await update($, board, () => boardOf({ phase: 'scanning', at, sweep, unread, here }))
   const scan = tallyScan(await scanRepos($, sweep.repos.slice(0, SCAN_REPOS)), at)
-  await update($, board, () => boardOf({ phase: 'done', at, sweep, unread, here, scan }))
+
+  return boardOf({ phase: 'done', at, sweep, unread, here, scan })
+}
+
+/**
+ * Says what a sync came to, as a row in the transcript that only draws: the model
+ * and the transcript file never read it, as they may a command's answer. Counts only.
+ * Where no row can be placed, a toast; turned off meanwhile, nothing.
+ */
+async function postCounts($: EngineInterface, done: Board): Promise<void> {
+  if (await read($, hidden)) return
+
+  const id = `quest-board-${done.at}`
+  const text = postedText(done)
+  await update($, posted, rows => ({ ...rows, [id]: text }))
+  const placed = await $.ui.place({ id }).catch(() => undefined)
+  if (placed?.isPlaced !== true) $.ui.toast(text)
+}
+
+/** One sync, start to end. Whatever goes wrong, the board says so. */
+async function syncBoard($: EngineInterface, at: number): Promise<void> {
+  const done = await readGitHub($).catch(() => failedBoard('no-answer', at))
+  await update($, board, () => done)
+  await postCounts($, done)
 }
 
 /**
@@ -359,8 +380,7 @@ async function syncCommand($: EngineInterface): Promise<string> {
   const at = await $.clock.now()
   syncing.isRunning = true
   await update($, board, last => ridingBoard(last, at))
-  void readGitHub($)
-    .catch(() => update($, board, () => failedBoard('no-answer', at)))
+  void syncBoard($, at)
     .catch(() => undefined)
     .finally(() => {
       syncing.isRunning = false
@@ -541,6 +561,8 @@ export const register: Register = (on, options) => {
       await update($, loot, () => 0)
       await update($, allies, () => NO_ALLIES)
       await update($, board, () => null)
+      await update($, isTrivialOpen, () => false)
+      await update($, posted, () => ({}))
       anim.tick = 0
       anim.motion = REST
       anim.zone = undefined
@@ -827,7 +849,20 @@ export const register: Register = (on, options) => {
     return next(e)
   }).catch(($, e, next) => next(e))
 
-  on('ui.render', { component: 'Pane', requestId: BOARD_ID }, async ($, e) => drawBoard($, e, boardView(await read($, board), await $.clock.now()))).catch(($, e, next) => next(e))
+  on('ui.render', { component: 'Pane', requestId: BOARD_ID }, async ($, e) => {
+    const view = boardView(await read($, board), await $.clock.now(), await read($, isTrivialOpen))
+
+    return drawBoard($, e, view, () => void update($, isTrivialOpen, open => !open).catch(() => undefined))
+  }).catch(($, e, next) => next(e))
+
+  on('ui.render', { component: 'Placed' }, async ($, e, next) => {
+    const text = e.props.plugin === 'quest-hud' ? (await read($, posted))[e.props.id] : undefined
+    if (text === undefined) return next(e)
+
+    const { Text } = $.ui.resolve(e)
+
+    return <Text color={TONE_COLOR.gold} wrap="wrap">{text}</Text>
+  }).catch(($, e, next) => next(e))
 
   on('ui.render', { component: 'Pane', requestId: PANE_ID }, async ($, e) => {
     // The terminal draws images when they are forced, or in auto until the

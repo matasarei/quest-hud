@@ -59,6 +59,10 @@ export const world: {
   ghHold?: (argv: readonly string[]) => Promise<void> | undefined
   /** What `git remote get-url origin` prints; undefined when it fails. */
   remote?: string
+  /** The rows the plugin placed in the transcript, by id; when true, the engine draws none. */
+  placed: string[]
+  refusePlace: boolean
+  toasts: string[]
 } = {
   id: 's1',
   state: {},
@@ -86,6 +90,9 @@ export const world: {
   grepEnds: [],
   spawned: [],
   ran: [],
+  placed: [],
+  refusePlace: false,
+  toasts: [],
 }
 
 export const NOW = Date.parse('2026-11-01T10:00:00Z')
@@ -123,6 +130,9 @@ export const engine = (on: On, store: Readonly<Record<string, unknown>> = {}) =>
   world.ghGate = undefined
   world.ghHold = undefined
   world.remote = undefined
+  world.placed = []
+  world.refusePlace = false
+  world.toasts = []
   // Every value the plugin stores, as the kit's own store accepted it.
   on('state.set', async (_, e, next) => {
     const stored = await next(e)
@@ -209,6 +219,14 @@ export const engine = (on: On, store: Readonly<Record<string, unknown>> = {}) =>
     if (world.failOpen) throw new Error('no pane today')
     world.opened.push(e.id)
     return { value: { isPlaced: true } }
+  })
+  on('ui.place', (_, e) => {
+    world.placed.push(e.id)
+    return { value: world.refusePlace ? { isPlaced: false as const, reason: 'no surface' } : { isPlaced: true as const, requestId: `placed-${e.id}` } }
+  })
+  on('ui.toast', (_, e) => {
+    world.toasts.push(e.text)
+    return { value: undefined }
   })
   on('ui.panes', () => ({ value: world.panes.map(p => ({ ...p, title: 'The Road', isFocused: false, isPlaced: p.isShown })) }))
   on('ui.blit', (_, e) => {

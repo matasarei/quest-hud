@@ -165,6 +165,10 @@ declare module 'claude-code' {
       level: LevelCard | null
       /** What the last /quest-hud:sync posted; null before the first. */
       board: Board | null
+      /** The board's Trivial rows are unfolded. */
+      isTrivialOpen: boolean
+      /** The counts each sync placed in the transcript, by row id: counts only, never a title. */
+      posted: Record<string, string>
     }
   }
 }
