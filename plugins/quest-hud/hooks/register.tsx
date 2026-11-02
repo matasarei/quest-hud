@@ -7,6 +7,7 @@ import type { EngineInterface, Register, Timer } from 'claude-code'
 import { gridToSvg } from '../src/avatar'
 import { commandKinds, endFights, fightKinds, fightOutcome, fightText, forgeEvent, lootText, NO_FOES, startFights, stdoutOf } from '../src/bash'
 import { activeCompanions, sameCompanions } from '../src/companions'
+import { unknownText, usageText } from '../src/help'
 import { appendEntry, castText, scoutCounts, scoutText } from '../src/log'
 import { bandModel, fromMeasure, shortTokens, statusText, TONE_COLOR, ZONE_LABEL, zoneLine, type Bars } from '../src/meters'
 import { downsample } from '../src/paint/pixels'
@@ -323,7 +324,7 @@ export const register: Register = (on, options) => {
   // session id: the quest in progress is kept. A new id (/clear, a resume of
   // another session) starts everything over.
   on('session.start', async ($, e, next) => {
-    await $.command.register({ name: 'hud', description: 'Show the Quest HUD state; "/hud statusline" prints the fallback setup' })
+    await $.command.register({ name: 'hud', description: 'Show the Quest HUD state; "/hud help" lists the rest' })
     const id = await $.session.id()
 
     if ((await read($, sessionId)) !== id) {
@@ -518,13 +519,24 @@ export const register: Register = (on, options) => {
   }).catch(($, e, next) => next(e))
 
   on('command.run', { command: 'hud' }, async ($, e) => {
-    if (e.args.trim() === 'statusline') {
+    const word = e.args.trim()
+    const settings = { detail, bars, graphics, zones: typeof options.zones === 'string' ? options.zones.trim() : '' }
+
+    if (word.toLowerCase() === 'help') {
+      return { text: usageText(settings) }
+    }
+
+    if (word === 'statusline') {
       return { text: help($.plugin.root) }
     }
 
-    if (e.args.trim() === 'pane') {
+    if (word === 'pane') {
       const opened = await $.ui.open({ id: PANE_ID, title: PANE_TITLE })
       return { text: opened.isPlaced ? 'The Road is open.' : `The Road waits: ${opened.reason}` }
+    }
+
+    if (word !== '') {
+      return { text: unknownText(word, settings) }
     }
 
     const current = await read($, quest)
