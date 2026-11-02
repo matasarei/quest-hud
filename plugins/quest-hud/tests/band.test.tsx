@@ -115,6 +115,17 @@ describe('the band', () => {
     await desktop.unmount()
   })
 
+  test('avatar = octocat: its portrait on the terminal, and on the desktop its Svg under its own name', { options: { avatar: 'octocat' } }, async ($, on) => {
+    engine(on)
+    await implementWithTasks($)
+    const terminal = await $.ui.mount(band('terminal'))
+    expect(String((await terminal.find({ type: 'Raster' }))?.props.cells)).toBe(artCells(bandPortrait('stand', 'octocat')))
+    await terminal.unmount()
+    const desktop = await $.ui.mount(band('desktop'))
+    expect((await desktop.find({ type: 'Svg' }))?.props.alt).toBe('the Octocat')
+    await desktop.unmount()
+  })
+
   test('an avatar it does not know draws the wizard', { options: { avatar: 'nonsense' } }, async ($, on) => {
     engine(on)
     await implementWithTasks($)

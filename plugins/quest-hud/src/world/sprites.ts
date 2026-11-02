@@ -1609,9 +1609,47 @@ export const BAND_CAST = sprite([
   '..((]]]]]]((........',
 ])
 
+/**
+ * The Octocat for the band: the Road's rows, with the face's top row and the
+ * nose gone and the side bump trimmed, to fit 20 × 12, each row doubled as a
+ * cell row is two art rows deep. Its body is one shade up from the Road's (L
+ * for l): that near-black leaves only the face on a dark terminal, with no
+ * landscape behind it. Its tentacles splay as the Road's do; the head never moves.
+ */
+export const BAND_OCTOCAT = {
+  still: sprite([
+    '...LL..........LL...',
+    '...LL..........LL...',
+    '...LLLLLLLLLLLLLL...',
+    '...LLLLLLLLLLLLLL...',
+    '..LLee<2eeee<2eeLL..',
+    '..LLee<2eeee<2eeLL..',
+    '..LLee<<eeee<<eeLL..',
+    '..LLee<<eeee<<eeLL..',
+    '...LLLLLLLLLLLLLL...',
+    '...LLLLLLLLLLLLLL...',
+    '..LL.LL.LLLL.LL.LL..',
+    '..LL.LL.LLLL.LL.LL..',
+  ]),
+  wiggle: sprite([
+    '...LL..........LL...',
+    '...LL..........LL...',
+    '...LLLLLLLLLLLLLL...',
+    '...LLLLLLLLLLLLLL...',
+    '..LLee<2eeee<2eeLL..',
+    '..LLee<2eeee<2eeLL..',
+    '..LLee<<eeee<<eeLL..',
+    '..LLee<<eeee<<eeLL..',
+    '...LLLLLLLLLLLLLL...',
+    '...LLLLLLLLLLLLLL...',
+    '.LL.LL..LLLL..LL.LL.',
+    '.LL.LL..LLLL..LL.LL.',
+  ]),
+}
+
 /** Who the band's portrait shows: the `avatar` option's values. */
-export type Avatar = 'wizard' | 'claude'
-export const AVATARS: readonly Avatar[] = ['wizard', 'claude']
+export type Avatar = 'wizard' | 'claude' | 'octocat'
+export const AVATARS: readonly Avatar[] = ['wizard', 'claude', 'octocat']
 
 /**
  * What each avatar draws in the band: its frame at rest, the frame it steps to,
@@ -1622,4 +1660,5 @@ export const AVATARS: readonly Avatar[] = ['wizard', 'claude']
 export const BAND_AVATARS: Readonly<Record<Avatar, { rest: Sprite; active: Sprite; alt: string }>> = {
   wizard: { rest: BAND_ICON, active: BAND_CAST, alt: 'the wizard' },
   claude: { rest: sprite(MASCOT.still.rows.slice(4)), active: sprite(MASCOT.hop.rows.slice(4)), alt: "Claude's mascot" },
+  octocat: { rest: BAND_OCTOCAT.still, active: BAND_OCTOCAT.wiggle, alt: 'the Octocat' },
 }

@@ -149,6 +149,26 @@ describe('the band\'s avatars', () => {
     expect(BAND_AVATARS.claude.rest.rows).toEqual(MASCOT.still.rows.slice(4))
     expect(BAND_AVATARS.claude.active.rows).toEqual(MASCOT.hop.rows.slice(4))
   })
+
+  describe('the Octocat', () => {
+    const { rest, active } = BAND_AVATARS.octocat
+    const asRoad = (row: string | undefined) => row?.replaceAll('L', 'l')
+
+    test('only its tentacles move', () => {
+      expect(rest.rows.slice(0, 10)).toEqual(active.rows.slice(0, 10))
+      expect(rest.rows[10] === active.rows[10]).toBe(false)
+    })
+
+    test('has the Road\'s tentacles, ears, head and chin, in a body one shade up', () => {
+      expect(asRoad(rest.rows[11])).toBe(OCTOCAT.still.rows[15])
+      expect(asRoad(active.rows[11])).toBe(OCTOCAT.hop.rows[15])
+      expect(asRoad(rest.rows[0])).toBe(OCTOCAT.still.rows[2])
+      expect(asRoad(rest.rows[2])).toBe(OCTOCAT.still.rows[4])
+      expect(asRoad(rest.rows[8])).toBe(OCTOCAT.still.rows[12])
+      expect(rest.rows.join('')).not.toContain('l')
+      expect(spriteGrid(rest).flat()).toContain(PALETTE.L)
+    })
+  })
 })
 
 describe('Claude\'s mascot', () => {

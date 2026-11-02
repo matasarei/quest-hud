@@ -24,8 +24,8 @@
     "avatar": {
       "type": "string",
       "title": "Avatar",
-      "description": "Who the band's portrait shows, above the prompt: the wizard or Claude's mascot. The Road keeps its own cast.",
-      "options": ["wizard", "claude"],
+      "description": "Who the band's portrait shows, above the prompt: the wizard, Claude's mascot or GitHub's Octocat. The Road keeps its own cast.",
+      "options": ["wizard", "claude", "octocat"],
       "default": "wizard"
     },
     "graphics": {

@@ -556,8 +556,8 @@ export const BAND = { columns: 10, rows: 3 } as const
  * The band's portrait: an avatar drawn for the size, as art — 20 × 12, two
  * pixels a column and four a row, as the Road's art is. While the Road walks
  * it steps on every other frame, at rest between — the wizard casts, his hand
- * up and the orb flaring, and Claude's mascot hops — and in a fight, as the
- * Road's wizard strikes.
+ * up and the orb flaring, Claude's mascot hops, the Octocat splays its
+ * tentacles — and in a fight, as the Road's wizard strikes.
  */
 export const bandPortrait = (pose: Pose = 'stand', avatar: Avatar = 'wizard'): Grid => {
   const { rest, active } = BAND_AVATARS[avatar]
