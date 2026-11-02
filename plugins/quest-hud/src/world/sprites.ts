@@ -579,52 +579,96 @@ export const FLYING_BOOKS = sprite([
  * brown eyes glinting white, a small pink nose, five tentacles. 20 × 16, the
  * size of Claude's mascot. Drawn for the text cells first: each eye fills a
  * whole quadrant cell, dark with its glint, so nothing runs below it; the
- * nose sits on an odd row, for images only.
+ * nose sits on an odd row, for images only. On the mascot's hop it wiggles
+ * its tentacles.
  */
-export const OCTOCAT = sprite([
-  '....................',
-  '....................',
-  '...ll..........ll...',
-  '...ll..........ll...',
-  '...llllllllllllll...',
-  '...llllllllllllll...',
-  '..lleeeeeeeeeeeell..',
-  '..lleeeeeeeeeeeell..',
-  '.lllee<2eeee<2eelll.',
-  '..llee<<eeee<<eell..',
-  '..llee<<eeee<<eell..',
-  '..lleeeee@@eeeeell..',
-  '...llllllllllllll...',
-  '...llllllllllllll...',
-  '..ll.ll.llll.ll.ll..',
-  '..ll.ll.llll.ll.ll..',
-])
+export const OCTOCAT = {
+  still: sprite([
+    '....................',
+    '....................',
+    '...ll..........ll...',
+    '...ll..........ll...',
+    '...llllllllllllll...',
+    '...llllllllllllll...',
+    '..lleeeeeeeeeeeell..',
+    '..lleeeeeeeeeeeell..',
+    '.lllee<2eeee<2eelll.',
+    '..llee<<eeee<<eell..',
+    '..llee<<eeee<<eell..',
+    '..lleeeee@@eeeeell..',
+    '...llllllllllllll...',
+    '...llllllllllllll...',
+    '..ll.ll.llll.ll.ll..',
+    '..ll.ll.llll.ll.ll..',
+  ]),
+  /** Its tentacles splayed: the head never moves, so its eyes keep their cells. */
+  hop: sprite([
+    '....................',
+    '....................',
+    '...ll..........ll...',
+    '...ll..........ll...',
+    '...llllllllllllll...',
+    '...llllllllllllll...',
+    '..lleeeeeeeeeeeell..',
+    '..lleeeeeeeeeeeell..',
+    '.lllee<2eeee<2eelll.',
+    '..llee<<eeee<<eell..',
+    '..llee<<eeee<<eell..',
+    '..lleeeee@@eeeeell..',
+    '...llllllllllllll...',
+    '...llllllllllllll...',
+    '.ll.ll..llll..ll.ll.',
+    '.ll.ll..llll..ll.ll.',
+  ]),
+}
 
 /**
  * GitLab's fox, brought by glab: the GitLab tanuki's head in its red,
  * orange and yellow — red ear tips, an orange face narrowing to a point,
  * yellow cheeks, two eyes — on three short legs. 20 × 16, the size of
- * Claude's mascot, each row doubled for the text cells. It faces the road
- * mirrored.
+ * Claude's mascot, each row doubled for the text cells, the row under its
+ * eyes red so each eye's cell keeps two colours. It hops with the mascot,
+ * and faces the road mirrored.
  */
-export const FOX = sprite([
-  '....................',
-  '....................',
-  '.!!............!!...',
-  '.!!............!!...',
-  '.!!!..........!!!...',
-  '.!!!..........!!!...',
-  '%#!!!!######!!!!#%..',
-  '%#!!!!######!!!!#%..',
-  '%%##1!!!!!!!!1##%%..',
-  '%%##1!!!!!!!!1##%%..',
-  '.%%###!!!!!!###%%...',
-  '.%%###!!!!!!###%%...',
-  '...%%##!!!!##%%.....',
-  '...%%##!!!!##%%.....',
-  '....&&..!!!..&&.....',
-  '....&&..!!!..&&.....',
-])
+export const FOX = {
+  still: sprite([
+    '....................',
+    '....................',
+    '.!!............!!...',
+    '.!!............!!...',
+    '.!!!..........!!!...',
+    '.!!!..........!!!...',
+    '%#!!!!######!!!!#%..',
+    '%#!!!!######!!!!#%..',
+    '%%##1!!!!!!!!1##%%..',
+    '%%##1!!!!!!!!1##%%..',
+    '.%%#!!!!!!!!!!#%%...',
+    '.%%#!!!!!!!!!!#%%...',
+    '...%%##!!!!##%%.....',
+    '...%%##!!!!##%%.....',
+    '....&&..!!!..&&.....',
+    '....&&..!!!..&&.....',
+  ]),
+  /** Mid-hop, a row up, as Claude's mascot hops. */
+  hop: sprite([
+    '.!!............!!...',
+    '.!!............!!...',
+    '.!!!..........!!!...',
+    '.!!!..........!!!...',
+    '%#!!!!######!!!!#%..',
+    '%#!!!!######!!!!#%..',
+    '%%##1!!!!!!!!1##%%..',
+    '%%##1!!!!!!!!1##%%..',
+    '.%%#!!!!!!!!!!#%%...',
+    '.%%#!!!!!!!!!!#%%...',
+    '...%%##!!!!##%%.....',
+    '...%%##!!!!##%%.....',
+    '....&&..!!!..&&.....',
+    '....&&..!!!..&&.....',
+    '....................',
+    '....................',
+  ]),
+}
 
 /** Loot: a wooden chest with gold bands. */
 export const CHEST = sprite([

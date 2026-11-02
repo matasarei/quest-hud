@@ -94,10 +94,10 @@ export const propsWidth = (zone: Zone): number => propsUnits(ZONE_PROPS[zone]) +
 /** What the session gathered, standing left of the zone's landmarks. */
 export type Extras = { loot?: number; allies?: Allies }
 
-/** GitHub's Octocat and GitLab's fox once they came, right to left, the fox turned to face the road. */
-const allyGrids = ({ allies }: Extras): Array<{ kind: 'octopus' | 'fox'; grid: Grid }> => [
-  ...(allies?.octopus ? [{ kind: 'octopus' as const, grid: spriteGrid(OCTOCAT) }] : []),
-  ...(allies?.fox ? [{ kind: 'fox' as const, grid: mirrorGrid(spriteGrid(FOX)) }] : []),
+/** GitHub's Octocat and GitLab's fox once they came, right to left, the fox turned to face the road; on the mascot's hop, theirs too. */
+const allyGrids = ({ allies }: Extras, hop = false): Array<{ kind: 'octopus' | 'fox'; grid: Grid }> => [
+  ...(allies?.octopus ? [{ kind: 'octopus' as const, grid: spriteGrid(hop ? OCTOCAT.hop : OCTOCAT.still) }] : []),
+  ...(allies?.fox ? [{ kind: 'fox' as const, grid: mirrorGrid(spriteGrid(hop ? FOX.hop : FOX.still)) }] : []),
 ]
 
 /** The gathered things, right to left: the chest once there is loot, then the allies. */
@@ -431,7 +431,7 @@ export const party = (args: SceneArgs): Party => {
 
   // GitHub's Octocat and GitLab's fox joined the party: they keep their places as it walks.
   let right = roadsideOf(kept, width, motion.step).right
-  const allies = allyGrids(kept.extras).map(({ kind, grid }) => {
+  const allies = allyGrids(kept.extras, motion.hop).map(({ kind, grid }) => {
     right -= (grid[0]?.length ?? 0) / ART_SCALE + EXTRA_GAP
     return { kind, grid, x: right }
   })
