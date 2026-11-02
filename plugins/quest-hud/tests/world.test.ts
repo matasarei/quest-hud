@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'claude-code/testing'
 
 import { bounds } from '../src/paint/picture'
-import type { Sprite } from '../src/paint/pixels'
+import { spriteGrid, type Sprite } from '../src/paint/pixels'
 import { BAND_CAST, BAND_ICON, CHEST, DRAGON, FLAG, FLYING_BOOKS, FOX, GHOST, GOLEM, MASCOT, OCTOCAT, PALETTE, POSES, PROPS, SKELETON, SPIDER, WIZARD } from '../src/world/sprites'
 import { GROUND, HEIGHT, landscape } from '../src/world/landscapes'
 
@@ -16,6 +16,21 @@ const CAST: ReadonlyArray<readonly [string, Sprite, number, number]> = [
   ['band icon', BAND_ICON, 20, 12],
   ['band cast', BAND_CAST, 20, 12],
 ]
+
+describe("Claude's mascot's outline", () => {
+  for (const [name, frame] of [['still', MASCOT.still], ['hop', MASCOT.hop]] as const) {
+    test(`${name}: every pixel on its edge is the wizard's outline colour`, () => {
+      const grid = spriteGrid(frame)
+      grid.forEach((row, y) =>
+        row.forEach((pixel, x) => {
+          if (pixel === undefined) return
+          const onEdge = [[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]].some(([nx = 0, ny = 0]) => grid[ny]?.[nx] === undefined)
+          if (onEdge) expect(pixel).toBe(PALETTE.o)
+        }),
+      )
+    })
+  }
+})
 
 describe('the cast', () => {
   test('each sprite is its size, every row as wide, every pixel a palette colour or none', () => {
