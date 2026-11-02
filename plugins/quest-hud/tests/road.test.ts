@@ -2,7 +2,7 @@ import { describe, expect, test } from 'claude-code/testing'
 
 import { road, roadScene, SCENE_MIN_COLUMNS, SCENE_ROWS, sceneZone, taskWindow, type RoadArgs } from '../src/road'
 import { SCENE_HEIGHT, skyColor } from '../src/scene'
-import type { LogEntry, Quest, Task } from '../types'
+import type { LevelCard, LogEntry, Quest, Task } from '../types'
 
 const implement: Quest = { title: 'gku:implement', skill: 'gku:implement', zone: 'forge', startedAt: 0 }
 const task = (id: string, status: Task['status']): Task => ({ id, subject: `task ${id}`, status })
@@ -118,5 +118,39 @@ describe('a pane too narrow for the scene', () => {
     expect(wide.scene).toHaveLength(SCENE_HEIGHT)
     expect(wide.scene[0]).toHaveLength(SCENE_MIN_COLUMNS)
     expect(narrow.log.length).toBe(wide.log.length + SCENE_ROWS)
+  })
+})
+
+describe('the level on the meters row', () => {
+  const CARD: LevelCard = {
+    level: 8,
+    title: 'Sage',
+    points: 16,
+    outOf: 21,
+    parts: [],
+    usage: { isRead: true, sessions: 1, days: 1, editingSessions: 0, checkedSessions: 0, testRuns: 0, lintRuns: 0, skillSessions: 0, allSessions: 1, skillRuns: {}, agentCalls: 0, agentSessions: 0, mcpCalls: 0, mcpServers: 0, browserCalls: 0, webCalls: 0, ghRuns: 0, edits: {} },
+  }
+  const width = road(args()).meters.reduce((sum, segment) => sum + segment.text.length, 0)
+  const shown = (columns: number, level: LevelCard | null = CARD) => road(args({ columns, level })).level
+
+  test('no level yet: nothing', () => {
+    expect(shown(60, null)).toBeUndefined()
+    expect(road(args()).level).toBeUndefined()
+  })
+
+  test('the level and its title, with room', () => {
+    expect(shown(60)).toBe('Lv 8 Sage')
+  })
+
+  test('the title goes first as the pane narrows, then the level', () => {
+    expect(shown(width + 2 + 'Lv 8 Sage'.length)).toBe('Lv 8 Sage')
+    expect(shown(width + 2 + 'Lv 8 Sage'.length - 1)).toBe('Lv 8')
+    expect(shown(width + 2 + 'Lv 8'.length)).toBe('Lv 8')
+    expect(shown(width + 2 + 'Lv 8'.length - 1)).toBeUndefined()
+  })
+
+  test('the wider bars of `all` leave it less room', () => {
+    const wide = road(args({ columns: width + 2 + 'Lv 8 Sage'.length, level: CARD, bars: 'all', meters: { window: 200_000, contextPercent: 43, weekUsed: 20, fiveHourUsed: 10, costUsd: 1.5 } }))
+    expect(wide.level).not.toBe('Lv 8 Sage')
   })
 })

@@ -805,6 +805,7 @@ export const register: Register = (on, options) => {
       foes: await read($, foes),
       loot: await read($, loot),
       allies: await read($, allies),
+      level: await currentLevel($),
       bars,
       columns: e.props.bodyColumns,
       rows: e.viewport?.rows ?? 30,
