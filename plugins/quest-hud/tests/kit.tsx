@@ -52,6 +52,19 @@ export const world: {
   /** Every command spawned, and every one run. */
   spawned: string[][]
   ran: string[][]
+  /** What gh answers a call; undefined, or no function, when it cannot start. A held call waits for `ghGate`. */
+  gh?: (argv: readonly string[]) => { exitCode: number; stdout: string; stderr: string } | undefined
+  ghGate?: Promise<void>
+  /** Holds only the calls it returns a promise for. */
+  ghHold?: (argv: readonly string[]) => Promise<void> | undefined
+  /** What `git remote get-url origin` prints; undefined when it fails. */
+  remote?: string
+  /** The rows the plugin placed in the transcript, by id; when true, the engine draws none. */
+  placed: string[]
+  refusePlace: boolean
+  /** The engine refuses a state write this says yes to, as a failed write would. */
+  refuseState?: (key: string, value: unknown) => boolean
+  toasts: string[]
 } = {
   id: 's1',
   state: {},
@@ -79,6 +92,9 @@ export const world: {
   grepEnds: [],
   spawned: [],
   ran: [],
+  placed: [],
+  refusePlace: false,
+  toasts: [],
 }
 
 export const NOW = Date.parse('2026-11-01T10:00:00Z')
@@ -112,8 +128,17 @@ export const engine = (on: On, store: Readonly<Record<string, unknown>> = {}) =>
   world.grepFailsAt = undefined
   world.spawned = []
   world.ran = []
+  world.gh = undefined
+  world.ghGate = undefined
+  world.ghHold = undefined
+  world.remote = undefined
+  world.placed = []
+  world.refusePlace = false
+  world.refuseState = undefined
+  world.toasts = []
   // Every value the plugin stores, as the kit's own store accepted it.
   on('state.set', async (_, e, next) => {
+    if (world.refuseState?.(e.key, e.value)) return { deny: 'the state is full' }
     const stored = await next(e)
     if (stored.value?.isSet) world.state[e.key] = e.value
     return stored
@@ -153,8 +178,18 @@ export const engine = (on: On, store: Readonly<Record<string, unknown>> = {}) =>
   on('fs.exists', (_, e) => ({ value: e.path in world.files || e.path in world.dirs }))
   on('settings.read', () => ({ value: world.settings }))
   on('command.list', () => ({ value: world.commands }))
-  on('process.run', (_, e) => {
+  on('process.run', async (_, e) => {
     world.ran.push([...e.argv])
+    if (e.argv[0] === 'gh') {
+      await world.ghGate
+      await world.ghHold?.(e.argv)
+      const answer = world.gh?.(e.argv)
+      if (answer === undefined) throw new Error('gh: not found')
+      return { value: { ...answer, isStdoutTruncated: false, isStderrTruncated: false } }
+    }
+    if (e.argv[0] === 'git') {
+      return { value: { exitCode: world.remote === undefined ? 1 : 0, stdout: world.remote ?? '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+    }
     return { value: { exitCode: 0, stdout: world.files[e.argv.at(-1) ?? ''] ?? '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
   })
   on('process.spawn', async function* (_, e) {
@@ -188,6 +223,14 @@ export const engine = (on: On, store: Readonly<Record<string, unknown>> = {}) =>
     if (world.failOpen) throw new Error('no pane today')
     world.opened.push(e.id)
     return { value: { isPlaced: true } }
+  })
+  on('ui.place', (_, e) => {
+    world.placed.push(e.id)
+    return { value: world.refusePlace ? { isPlaced: false as const, reason: 'no surface' } : { isPlaced: true as const, requestId: `placed-${e.id}` } }
+  })
+  on('ui.toast', (_, e) => {
+    world.toasts.push(e.text)
+    return { value: undefined }
   })
   on('ui.panes', () => ({ value: world.panes.map(p => ({ ...p, title: 'The Road', isFocused: false, isPlaced: p.isShown })) }))
   on('ui.blit', (_, e) => {

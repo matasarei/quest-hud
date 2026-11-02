@@ -96,6 +96,42 @@ export type LevelCard = {
   usage: Usage
 }
 
+/** Where a GitHub quest stands on the ladder, highest first: WoW's creature classifications. */
+export type QuestRank = 'boss' | 'rareElite' | 'elite' | 'rare' | 'normal' | 'minion' | 'trivial'
+
+/** One row of the Quest Board. Its title is outside text: cleaned, and drawn only on the board. */
+export type BoardQuest = {
+  /** What two sources of one quest share. */
+  id: string
+  rank: QuestRank
+  /** The kind's place within the rank, lowest first. */
+  order: number
+  /** Where the row links to; absent when the link failed its check. */
+  href?: string
+  label: string
+  title: string
+  /** Why it is on the board, in the HUD's own words; may be empty. */
+  why: string
+  at: number
+  isUnread: boolean
+  isSecurity: boolean
+}
+
+/** Why a read of GitHub came back with nothing: gh would not run, is not signed in, or GitHub gave nothing to read. */
+export type BoardFailure = 'no-gh' | 'no-login' | 'no-answer'
+
+/** The Quest Board, as the last /quest-hud:quests left it. Kept for the session only, never in `$.store`. */
+export type Board = {
+  phase: 'riding' | 'scanning' | 'done'
+  at: number
+  quests: BoardQuest[]
+  failure?: BoardFailure
+  /** Some part of GitHub went unread, so a short list may not mean a clear road. */
+  isPartial: boolean
+  /** What the read could not do or read, in the HUD's own words. */
+  notes: string[]
+}
+
 /** A subagent at work, drawn as a ghost behind the avatar. */
 export type Companion = { id: string; type: string }
 
@@ -127,6 +163,12 @@ declare module 'claude-code' {
       hidden: boolean
       /** What /quest-hud:level last worked out; kept in `$.store`, loaded at each start. Null before the first run. */
       level: LevelCard | null
+      /** What the last /quest-hud:quests posted; null before the first. */
+      board: Board | null
+      /** The board's Trivial rows are unfolded. */
+      isTrivialOpen: boolean
+      /** The counts each read placed in the transcript, by row id: counts only, never a title. */
+      posted: Record<string, string>
     }
   }
 }

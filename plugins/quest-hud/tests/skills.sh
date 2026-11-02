@@ -18,7 +18,7 @@ frontmatter() {
   awk 'NR == 1 && $0 == "---" { inside = 1; next } inside && $0 == "---" { exit } inside { print }' "$1"
 }
 
-for name in status pane level level-up statusline off on help; do
+for name in status pane level level-up quests statusline off on help; do
   [ -f "$skills/$name/SKILL.md" ] || fail "$name: no skills/$name/SKILL.md"
 done
 

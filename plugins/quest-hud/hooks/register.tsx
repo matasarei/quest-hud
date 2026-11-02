@@ -7,6 +7,7 @@ import type { EngineInterface, Register, Timer } from 'claude-code'
 import { gridToSvg } from '../src/avatar'
 import { commandKinds, endFights, fightKinds, fightOutcome, fightText, forgeEvent, holdsTheRoad, lootText, NO_FOES, startFights, stdoutOf } from '../src/bash'
 import { activeCompanions, sameCompanions } from '../src/companions'
+import { boardOf, boardView, failedBoard, failureOf, isFullPage, NOTIFICATIONS_ARGV, parseNotifications, parseSweep, postedText, ridingBoard, SCAN_REPOS, SWEEP_ARGV, tallyScan } from '../src/github'
 import { asCard, cardOf, type Inventory } from '../src/harness'
 import { unknownText, usageText } from '../src/help'
 import { levelLogText, levelText, levelUpText, NO_LEVEL_YET, rereadingText, scoutRidesText, STILL_READING } from '../src/levelup'
@@ -20,7 +21,9 @@ import { asSurvey, changedFiles, mergeSurvey, talliesOf, usageFrom, type History
 import { applyTaskCall } from '../src/tasks'
 import { ART_SCALE } from '../src/world/sprites'
 import { parseZones, zoneFor } from '../src/zones'
-import type { Allies, FightKind, Foes, LevelCard, LogEntry, Meters, Usage, Zone } from '../types'
+import type { Allies, Board, FightKind, Foes, LevelCard, LogEntry, Meters, Usage, Zone } from '../types'
+import { BOARD_ID, BOARD_TITLE, drawBoard } from './board'
+import { readHereRepo, runGh, scanRepos, SWEEP_MS } from './github'
 import { artCells, drawRoad, PANE_ID, PANE_TITLE, SCENE_IMAGE_KEY, SCENE_KEY, sceneImage, type PngSource, type SceneMode } from './pane'
 import { configDir, readHistory, readInventory, readProjects, scanTranscripts } from './survey'
 
@@ -42,6 +45,9 @@ const NO_ALLIES: Allies = { octopus: false, fox: false }
 const allies = atom({ plugin: 'quest-hud', key: 'allies' } as const, NO_ALLIES)
 const hidden = atom({ plugin: 'quest-hud', key: 'hidden' } as const, false)
 const level = atom({ plugin: 'quest-hud', key: 'level' } as const, null)
+const board = atom({ plugin: 'quest-hud', key: 'board' } as const, null)
+const isTrivialOpen = atom({ plugin: 'quest-hud', key: 'isTrivialOpen' } as const, false)
+const posted = atom({ plugin: 'quest-hud', key: 'posted' } as const, {})
 
 /** off, the bars on the hint line, the band, or the band and the Road pane opened at the start. */
 type Detail = 'off' | 'status' | 'band' | 'pane'
@@ -304,6 +310,7 @@ async function turnOff($: EngineInterface): Promise<string> {
   await update($, hidden, () => true)
   stopTimer()
   await $.ui.close({ id: PANE_ID })
+  if ((await $.ui.panes()).some(pane => pane.id === BOARD_ID)) await $.ui.close({ id: BOARD_ID })
 
   return 'Quest HUD is off, in every session. /quest-hud:on brings it back.'
 }
@@ -319,6 +326,73 @@ async function turnOn($: EngineInterface, detail: Detail): Promise<string> {
   if (wasOpen || detail === 'pane') await $.ui.open({ id: PANE_ID, title: PANE_TITLE })
 
   return detail === 'off' ? 'Quest HUD is on, but the detail option is off: /plugin configure quest-hud@quest-hud changes it.' : 'Quest HUD is back.'
+}
+
+/** One read of GitHub at a time; a reload starts this over. */
+const reachingGitHub: { isRunning: boolean } = { isRunning: false }
+
+/** Reads GitHub through gh. Only /quest-hud:quests calls it, in the background: never at a start, never on a timer. */
+async function readGitHub($: EngineInterface, session: string): Promise<Board> {
+  const [swept, notified, here] = await Promise.all([runGh($, SWEEP_ARGV, SWEEP_MS), runGh($, NOTIFICATIONS_ARGV), readHereRepo($)])
+  const at = await $.clock.now()
+  const sweep = swept === undefined ? undefined : parseSweep(swept.stdout, at)
+  if (sweep === undefined) return failedBoard(failureOf(swept?.exitCode), at)
+
+  const unread = notified === undefined ? undefined : parseNotifications(notified.stdout, at, new Set(sweep.repos))
+  const isUnreadCut = notified !== undefined && isFullPage(notified.stdout)
+  // Only a sight of the rows while the scan runs: a write that fails costs that, and not the sweep.
+  if ((await $.session.id()) === session) await update($, board, () => boardOf({ phase: 'scanning', at, sweep, unread, isUnreadCut, here })).catch(() => undefined)
+  const scan = tallyScan(await scanRepos($, sweep.repos.slice(0, SCAN_REPOS)), at)
+
+  return boardOf({ phase: 'done', at, sweep, unread, isUnreadCut, here, scan })
+}
+
+/**
+ * Says what a read of GitHub came to, as a row in the transcript that only draws: the model
+ * and the transcript file never read it, as they may a command's answer. Counts only.
+ * Where no row can be placed, a toast; turned off meanwhile, nothing.
+ */
+async function postCounts($: EngineInterface, done: Board): Promise<void> {
+  if (await read($, hidden)) return
+
+  const id = `quest-board-${done.at}`
+  const text = postedText(done)
+  await update($, posted, rows => ({ ...rows, [id]: text }))
+  const placed = await $.ui.place({ id }).catch(() => undefined)
+  if (placed?.isPlaced !== true) $.ui.toast(text)
+}
+
+/** One read of GitHub, start to end. Whatever goes wrong, the board says so; a session that began meanwhile is left alone. */
+async function postBoard($: EngineInterface, at: number): Promise<void> {
+  const session = await $.session.id()
+  const done = await readGitHub($, session).catch(() => failedBoard('no-answer', at))
+  if ((await $.session.id()) !== session) return
+
+  await update($, board, () => done)
+  await postCounts($, done)
+}
+
+/**
+ * What /quest-hud:quests answers, at once: it opens the board, and GitHub is read in
+ * the background. No outside text is ever in this answer: it may reach the model.
+ */
+async function questsCommand($: EngineInterface): Promise<string> {
+  if (await read($, hidden)) return 'Quest HUD is off. /quest-hud:on brings it back.'
+
+  const opened = await $.ui.open({ id: BOARD_ID, title: BOARD_TITLE, focus: true, closeOnEscape: true })
+  if (reachingGitHub.isRunning) return 'The herald is still out. The Quest Board fills when they return.'
+
+  const at = await $.clock.now()
+  reachingGitHub.isRunning = true
+  // Past the flag nothing may throw before the read's finally, or every later run reads as still out.
+  await update($, board, last => ridingBoard(last, at)).catch(() => undefined)
+  void postBoard($, at)
+    .catch(() => undefined)
+    .finally(() => {
+      reachingGitHub.isRunning = false
+    })
+
+  return opened.isPlaced ? 'The herald rides to GitHub. The Quest Board fills when they return.' : `The Quest Board waits: ${opened.reason}`
 }
 
 /** One reading of the transcripts at a time; a reload starts this over, and the engine ends its child. */
@@ -492,6 +566,9 @@ export const register: Register = (on, options) => {
       await update($, foes, () => NO_FOES)
       await update($, loot, () => 0)
       await update($, allies, () => NO_ALLIES)
+      await update($, board, () => null)
+      await update($, isTrivialOpen, () => false)
+      await update($, posted, () => ({}))
       anim.tick = 0
       anim.motion = REST
       anim.zone = undefined
@@ -693,6 +770,8 @@ export const register: Register = (on, options) => {
 
   on('command.run', { command: 'quest-hud:level-up' }, async $ => ({ text: await levelUpCommand($) })).catch(($, e, next) => next(e))
 
+  on('command.run', { command: 'quest-hud:quests' }, async $ => ({ text: await questsCommand($) })).catch(($, e, next) => next(e))
+
   on('command.run', { command: 'quest-hud:off' }, async $ => ({ text: await turnOff($) })).catch(($, e, next) => next(e))
 
   on('command.run', { command: 'quest-hud:on' }, async $ => ({ text: await turnOn($, detail) })).catch(($, e, next) => next(e))
@@ -708,6 +787,7 @@ export const register: Register = (on, options) => {
     if (word === 'statusline') return { text: help($.plugin.root) }
     if (word === 'level') return { text: await levelCommand($) }
     if (word === 'level-up') return { text: await levelUpCommand($) }
+    if (word === 'quests') return { text: await questsCommand($) }
     if (word === 'off') return { text: await turnOff($) }
     if (word === 'on') return { text: await turnOn($, detail) }
 
@@ -773,6 +853,21 @@ export const register: Register = (on, options) => {
   on('ui.close', async ($, e, next) => {
     if (e.id === PANE_ID) stopTimer()
     return next(e)
+  }).catch(($, e, next) => next(e))
+
+  on('ui.render', { component: 'Pane', requestId: BOARD_ID }, async ($, e) => {
+    const view = boardView(await read($, board), await $.clock.now(), await read($, isTrivialOpen))
+
+    return drawBoard($, e, view, () => void update($, isTrivialOpen, open => !open).catch(() => undefined))
+  }).catch(($, e, next) => next(e))
+
+  on('ui.render', { component: 'Placed' }, async ($, e, next) => {
+    const text = e.props.plugin === 'quest-hud' ? (await read($, posted))[e.props.id] : undefined
+    if (text === undefined) return next(e)
+
+    const { Text } = $.ui.resolve(e)
+
+    return <Text color={TONE_COLOR.gold} wrap="wrap">{text}</Text>
   }).catch(($, e, next) => next(e))
 
   on('ui.render', { component: 'Pane', requestId: PANE_ID }, async ($, e) => {

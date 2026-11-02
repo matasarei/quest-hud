@@ -1,8 +1,8 @@
 # quest-hud — notes for Claude
 
 A Claude Code marketplace with one mod, `quest-hud` (`plugins/quest-hud/`): a hooks module
-(`hooks/register.tsx`, with the Road pane's layout in `hooks/pane.tsx` and the level's readers
-in `hooks/survey.ts`) over pure modules
+(`hooks/register.tsx`, with the Road pane's layout in `hooks/pane.tsx`, the Quest Board's in
+`hooks/board.tsx`, the level's readers in `hooks/survey.ts` and GitHub's in `hooks/github.ts`) over pure modules
 (`src/`), a state contract (`types/index.d.ts`), and a status-line script
 (`scripts/hud-line.sh`), and one user-only skill file per command (`skills/`). Tests are `plugins/quest-hud/tests/*.test.ts(x)`; `tests/kit.tsx`
 stands for the engine in the newer ones. TypeScript run by the Claude Code engine; there is no
@@ -57,8 +57,18 @@ files only (`git grep -I`): perl dies on binary input.
   Road's meters row.
 - **Logic lives in `src/`, pure and tested**; `register.tsx` is wiring and layout. A new rule
   is a new function with its test.
-- **Outside text is drawn as plain `Text`**: skill names and task subjects. Never
-  `Markdown` or `Link`. Titles go through `cleanTitle()`. Prompts are never drawn: they only
+- **The board reads GitHub on command, through `gh`, and only reads.** `/quest-hud:quests` runs
+  `gh api` with `$.process.run` in the background: never at a session start, never on a timer, and
+  the mod never holds a token (no `$.http.fetch`). Every call is a read on github.com, as
+  `tests/github.test.ts` pins: no `-X`, no `--method`, no fields on a REST path, nothing marked read.
+  A title is outside text and goes only on the Quest Board: never in a command's answer (it may
+  reach the model), the log, `$.store` or a counts row. The board lives in an atom, so private
+  titles are never on disk. A secret alert's `--jq` keeps out the value. A part that could not be
+  read is named on the board and keeps an empty one from reading as clear. Rank by what GitHub
+  states, as the author's `__typename` for a bot: never by a title, which anyone can write.
+- **Outside text is drawn as plain `Text`**: skill names, task subjects and GitHub titles. Never
+  `Markdown`, and `Link` only on the Quest Board, with an href through `safeHref()` and a label
+  built from that href's own parts: a title is never a link's text. Titles go through `cleanTitle()`. Prompts are never drawn: they only
   end a finished skill's quest (`afterPrompt()`).
 - **Never write `\u` escapes through a tool that may decode them**: check new source with the
   CI step's bidi scan; a literal bidirectional control character is refused.

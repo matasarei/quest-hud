@@ -22,11 +22,12 @@ play. Quest HUD is a Claude Code mod that draws your session that way, above the
 - **✦ MP**: what is left of the context window.
 - **⚔ the quest**: the running skill, from any plugin, and its zone, with Claude Code's task list.
 
-It costs nothing: no model calls, nothing added to the context, no network, and nothing written
-into your project. It reads your past sessions only if you ask it to, with
-[`/quest-hud:level`](#your-level), and then keeps counts, not what they said.
+It costs nothing: no model calls, nothing added to the context, and nothing written into your
+project. It reads your past sessions only if you ask it to, with
+[`/quest-hud:level`](#your-level), and then keeps counts, not what they said. It uses the network
+only if you ask it to, with [`/quest-hud:quests`](#the-quest-board), through your own `gh`.
 
-[Install](#install) · [Update](#update) · [Settings](#settings) · [Commands](#commands) · [Your level](#your-level) · [The Road](#the-road) · [Without mods](#without-mods) · [Art](#art) · [Development](#development) · [License](#license)
+[Install](#install) · [Update](#update) · [Settings](#settings) · [Commands](#commands) · [Your level](#your-level) · [The Quest Board](#the-quest-board) · [The Road](#the-road) · [Without mods](#without-mods) · [Art](#art) · [Development](#development) · [License](#license)
 
 ## Install
 
@@ -73,6 +74,7 @@ is a skill's full name (`gku:plan`) or the part after the plugin prefix (`plan`)
 | `/quest-hud:pane` | opens the Road at any width |
 | `/quest-hud:level` | reads your setup and sessions, as counts, and [scores the harness](#your-level) from 1 to 10 |
 | `/quest-hud:level-up` | quests for the next level: what to add, picked from what you work on |
+| `/quest-hud:quests` | your open GitHub work and alerts as quests on [the Quest Board](#the-quest-board), ranked and linked |
 | `/quest-hud:statusline` | prints the setup for [the status line](#without-mods) |
 | `/quest-hud:off` | hides the band, the hint-line bars and the Road in every session, until `on`; it comes back up to date |
 | `/quest-hud:on` | brings them back, with the Road if `off` closed it |
@@ -119,6 +121,42 @@ stored. Claude Code deletes old sessions (30 days by default), so the level cove
 
 The first run needs `grep`, which Windows does not have: there the card says `usage unread`, and
 Checks and Delegation are left out of the score rather than counted as zero.
+
+## The Quest Board
+
+`/quest-hud:quests` opens a pane of what is waiting for you on GitHub, highest first, each row a link
+to its page. It answers at once and reads in the background: the rows come in about ten seconds,
+and the security scan about seven more. When it ends, a line in the conversation gives the counts.
+
+The ranks are World of Warcraft's creature classifications:
+
+| Rank | What it holds |
+|---|---|
+| **Boss** | a leaked secret, or a Dependabot or code-scanning alert rated critical or high |
+| **Rare Elite** | a pull request with your review requested: someone is waiting on you |
+| **Elite** | your pull request with changes requested, failing checks or a conflict |
+| **Rare** | a mention you have not answered, an unanswered question in a repository you can write to, an issue assigned to you, your pull request approved and green |
+| **Normal** | moderate and low alerts, then the open issues and pull requests in your repositories, your other pull requests and issues, then drafts |
+| **Minion** | any other unread notification, and pull requests a bot opened |
+| **Trivial** | idle for over 90 days, folded behind a button. An alert or an unread row never drops here |
+
+Within a rank the repository you are working in comes first, then the most recently updated.
+Alerts for one package in one repository are one row with a count.
+
+**What it reads.** Only when you run it, through your own [`gh`](https://cli.github.com), so the mod
+never holds your token:
+
+- one GraphQL query for your repositories, their open work and Dependabot alerts, and your reviews,
+  pull requests, assignments, mentions and discussions;
+- your unread notifications, which it does not mark as read;
+- secret-scanning and code-scanning alerts in your 20 most recently pushed repositories, since GitHub
+  has no account-wide read of them. The board says how many it scanned. A leaked secret's value
+  never reaches the mod.
+
+It changes nothing on GitHub. Nothing it reads is written to disk, and a `/clear` or a new session
+empties the board. Titles are written by other people, so they are drawn only on the board, as
+plain text, and never go into a command's answer. A part it could not read is named on the board,
+and a short list then does not read as a clear one. github.com only, not GitHub Enterprise Server.
 
 ## The Road
 
