@@ -21,6 +21,7 @@ import { applyTaskCall } from '../src/tasks'
 import { ART_SCALE } from '../src/world/sprites'
 import { parseZones, zoneFor } from '../src/zones'
 import type { Allies, FightKind, Foes, LevelCard, LogEntry, Meters, Usage, Zone } from '../types'
+import { BOARD_ID, BOARD_TITLE, drawBoard } from './board'
 import { artCells, drawRoad, PANE_ID, PANE_TITLE, SCENE_IMAGE_KEY, SCENE_KEY, sceneImage, type PngSource, type SceneMode } from './pane'
 import { configDir, readHistory, readInventory, readProjects, scanTranscripts } from './survey'
 
@@ -304,6 +305,7 @@ async function turnOff($: EngineInterface): Promise<string> {
   await update($, hidden, () => true)
   stopTimer()
   await $.ui.close({ id: PANE_ID })
+  if ((await $.ui.panes()).some(pane => pane.id === BOARD_ID)) await $.ui.close({ id: BOARD_ID })
 
   return 'Quest HUD is off, in every session. /quest-hud:on brings it back.'
 }
@@ -319,6 +321,15 @@ async function turnOn($: EngineInterface, detail: Detail): Promise<string> {
   if (wasOpen || detail === 'pane') await $.ui.open({ id: PANE_ID, title: PANE_TITLE })
 
   return detail === 'off' ? 'Quest HUD is on, but the detail option is off: /plugin configure quest-hud@quest-hud changes it.' : 'Quest HUD is back.'
+}
+
+/** What /quest-hud:sync answers, at once: it opens the board. No outside text is ever in this answer. */
+async function syncCommand($: EngineInterface): Promise<string> {
+  if (await read($, hidden)) return 'Quest HUD is off. /quest-hud:on brings it back.'
+
+  const opened = await $.ui.open({ id: BOARD_ID, title: BOARD_TITLE, focus: true, closeOnEscape: true })
+
+  return opened.isPlaced ? 'The Quest Board is open.' : `The Quest Board waits: ${opened.reason}`
 }
 
 /** One reading of the transcripts at a time; a reload starts this over, and the engine ends its child. */
@@ -693,6 +704,8 @@ export const register: Register = (on, options) => {
 
   on('command.run', { command: 'quest-hud:level-up' }, async $ => ({ text: await levelUpCommand($) })).catch(($, e, next) => next(e))
 
+  on('command.run', { command: 'quest-hud:sync' }, async $ => ({ text: await syncCommand($) })).catch(($, e, next) => next(e))
+
   on('command.run', { command: 'quest-hud:off' }, async $ => ({ text: await turnOff($) })).catch(($, e, next) => next(e))
 
   on('command.run', { command: 'quest-hud:on' }, async $ => ({ text: await turnOn($, detail) })).catch(($, e, next) => next(e))
@@ -708,6 +721,7 @@ export const register: Register = (on, options) => {
     if (word === 'statusline') return { text: help($.plugin.root) }
     if (word === 'level') return { text: await levelCommand($) }
     if (word === 'level-up') return { text: await levelUpCommand($) }
+    if (word === 'sync') return { text: await syncCommand($) }
     if (word === 'off') return { text: await turnOff($) }
     if (word === 'on') return { text: await turnOn($, detail) }
 
@@ -774,6 +788,8 @@ export const register: Register = (on, options) => {
     if (e.id === PANE_ID) stopTimer()
     return next(e)
   }).catch(($, e, next) => next(e))
+
+  on('ui.render', { component: 'Pane', requestId: BOARD_ID }, async ($, e) => drawBoard($, e)).catch(($, e, next) => next(e))
 
   on('ui.render', { component: 'Pane', requestId: PANE_ID }, async ($, e) => {
     // The terminal draws images when they are forced, or in auto until the
