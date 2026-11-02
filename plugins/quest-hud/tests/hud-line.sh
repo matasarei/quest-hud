@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Feeds each status-line fixture to scripts/hud-line.sh and compares the line
-# it prints with the .expected file beside it; then checks the no-jq path.
+# it prints with the .expected file beside it, an escape byte reading as @ so the
+# files stay plain text; then checks the no-jq path.
 set -u
 here="$(cd "$(dirname "$0")" && pwd)"
 script="$here/../scripts/hud-line.sh"
@@ -8,7 +9,7 @@ failed=0
 
 for json in "$here"/statusline/*.json; do
   name="$(basename "$json" .json)"
-  got="$(bash "$script" < "$json")"
+  got="$(bash "$script" < "$json" | tr '\033' '@')"
   want="$(cat "$here/statusline/$name.expected")"
   if [ "$got" = "$want" ]; then
     echo "ok   $name"
