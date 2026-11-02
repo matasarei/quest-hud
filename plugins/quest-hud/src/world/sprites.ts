@@ -306,19 +306,20 @@ export const WIZARD: Readonly<Record<Pose, Sprite>> = {
 /**
  * Claude's mascot, the agent at the wizard's side: still, and mid-hop. Drawn
  * for the text cells, like the allies: each row doubled, at most two colours
- * in each 2 × 2 quadrant cell — a dark top edge and sides around the face,
- * two tall eyes, side arms, four legs. The hop lifts it a row, legs tucked.
+ * in each 2 × 2 quadrant cell — an edge in its own darker shade (black there
+ * read as hair, and it has none), two tall eyes, side arms, four legs. The hop
+ * lifts it a row, legs tucked.
  */
 export const MASCOT = {
   still: sprite([
     '....................',
     '....................',
-    '..oooooooooooooooo..',
-    '..oooooooooooooooo..',
-    '..oaAAAAAAAAAAAAao..',
-    '..oaAAAAAAAAAAAAao..',
-    '..oaaa11aaaa11aaao..',
-    '..oaaa11aaaa11aaao..',
+    '..dddddddddddddddd..',
+    '..dddddddddddddddd..',
+    '..daAAAAAAAAAAAAad..',
+    '..daAAAAAAAAAAAAad..',
+    '..daaa11aaaa11aaad..',
+    '..daaa11aaaa11aaad..',
     'aaaaaa11aaaa11aaaaaa',
     'aaaaaa11aaaa11aaaaaa',
     '..dddddddddddddddd..',
@@ -329,12 +330,12 @@ export const MASCOT = {
     '...dd.dd....dd.dd...',
   ]),
   hop: sprite([
-    '..oooooooooooooooo..',
-    '..oooooooooooooooo..',
-    '..oaAAAAAAAAAAAAao..',
-    '..oaAAAAAAAAAAAAao..',
-    '..oaaa11aaaa11aaao..',
-    '..oaaa11aaaa11aaao..',
+    '..dddddddddddddddd..',
+    '..dddddddddddddddd..',
+    '..daAAAAAAAAAAAAad..',
+    '..daAAAAAAAAAAAAad..',
+    '..daaa11aaaa11aaad..',
+    '..daaa11aaaa11aaad..',
     'aaaaaa11aaaa11aaaaaa',
     'aaaaaa11aaaa11aaaaaa',
     '..dddddddddddddddd..',
