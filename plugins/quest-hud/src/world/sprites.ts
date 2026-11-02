@@ -533,43 +533,44 @@ export const GOLEM = sprite([
   ])
 
 /**
- * The living spellbook of a test run in the Map room: a fat tome on page-legs,
- * an eye on its cover, its pages a fanged mouth. Facing left, rows doubled, as
- * the skeleton.
+ * The flying books of a test run in the Map room: two open books loose from
+ * the shelves, a big red one and a small blue one, flapping their pages, with
+ * sparkles about them and their shadows on the floor. Rows doubled, as the
+ * skeleton.
  */
-export const TOME = sprite([
+export const FLYING_BOOKS = sprite([
     '................................',
     '................................',
-    '......oooooooooooooooooooo......',
-    '......oooooooooooooooooooo......',
-    '.....o66KKKKKKKKKKKKKKKkk6o.....',
-    '.....o66KKKKKKKKKKKKKKKkk6o.....',
-    '....oKKKKKKK]]]]KKKKKKKkkKo.....',
-    '....oKKKKKKK]]]]KKKKKKKkkKo.....',
-    '....oKKKKKKK]11]KKKKKKKkkKo.....',
-    '....oKKKKKKK]11]KKKKKKKkkKo.....',
-    '...o66KKKKKKKKKKKKKKKKKkk6o.....',
-    '...o66KKKKKKKKKKKKKKKKKkk6o.....',
-    '..o????????????????????kKo......',
-    '..o????????????????????kKo......',
-    '..o]o]o]o]o]o//////////kKo......',
-    '..o]o]o]o]o]o//////////kKo......',
-    '..ooooooooooo??????????kKo......',
-    '..ooooooooooo??????????kKo......',
-    '..o-------_-o//////////kKo......',
-    '..o-------_-o//////////kKo......',
-    '..o]o]o]o]o]o??????????kKo......',
-    '..o]o]o]o]o]o??????????kKo......',
-    '..o????????????????????kKo......',
-    '..o????????????????????kKo......',
-    '...o66KKKKKKKKKKKKKKKKKkk6o.....',
-    '...o66KKKKKKKKKKKKKKKKKkk6o.....',
-    '....oooooooooooooooooooooo......',
-    '....oooooooooooooooooooooo......',
-    '.......o/o....o/o....o/o........',
-    '.......o/o....o/o....o/o........',
-    '......ooo....ooo....ooo.........',
-    '......ooo....ooo....ooo.........',
+    '.................??..........??.',
+    '.................??..........??.',
+    '....`............?????....?????.',
+    '....`............?????....?????.',
+    '.................?||||?oo?||||?.',
+    '.................?||||?oo?||||?.',
+    '.................=????|oo|????=`',
+    '.................=????|oo|????=`',
+    '..................=====oo=====..',
+    '..................=====oo=====..',
+    '??..............................',
+    '??..............................',
+    '????????......????????..........',
+    '????????......????????..........',
+    '?||||||???oo???||||||?..........',
+    '?||||||???oo???||||||?..........',
+    '-??|||||??oo??|||||??-..........',
+    '-??|||||??oo??|||||??-..........',
+    '.-------??oo??-------...........',
+    '.-------??oo??-------...........',
+    '........--oo--..................',
+    '........--oo--..................',
+    '................................',
+    '................................',
+    '........................`.......',
+    '........................`.......',
+    '................................',
+    '................................',
+    '...kkkkkkkkkkkkkk.....kkkkkk....',
+    '...kkkkkkkkkkkkkk.....kkkkkk....',
   ])
 
 /**

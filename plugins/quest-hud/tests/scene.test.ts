@@ -224,7 +224,7 @@ describe('the monsters', () => {
 describe('the monster of a test run, by zone', () => {
   const three: Waypoint[] = ['done', 'now', 'todo']
   const at = (zone: Zone, foes: { test: 'none' | 'standing'; lint: 'none' | 'standing' }) => scene({ columns: 120, zone, waypoints: three, companions: 0, foes })
-  // Each room's monster by a colour of its own, in no foe-free scene of that room: the skull's red eyes, the golem's glowing core, the tome's tongue.
+  // Each room's monster by a colour of its own, in no foe-free scene of that room: the skull's red eyes, the golem's glowing core, the red book's cover.
   const ROOMS: ReadonlyArray<readonly [Zone, number]> = [['dungeon', PALETTE['3'] as number], ['forge', PALETTE.Y as number], ['map', PALETTE['-'] as number]]
   const OUTDOORS: readonly Zone[] = ['wilds', 'camp', 'harbour', 'watchtower', 'arena']
   const SPIDER = PALETTE[';'] as number
