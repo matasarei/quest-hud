@@ -89,7 +89,8 @@ the log.
 **Animation.** While Claude works, the Road walks: four frames a second, slow and stepped as a
 terminal animates. The landscape steps past in layers at different speeds, the wizard takes
 his four walking poses, and the mascot hops. In a fight he stops and strikes. When the zone
-changes, the old landscape slides out and the new one in, over six frames. When Claude is
+changes, the old landscape slides out and the new one in, over six frames, its landmarks with
+it, while the party walks to its places in the new zone. When Claude is
 idle, nothing moves, and nothing is drawn. The wizard above the prompt casts while the Road walks.
 
 **Images or text cells.** Where the terminal shows images (kitty, Ghostty, iTerm2 3.5+), the
