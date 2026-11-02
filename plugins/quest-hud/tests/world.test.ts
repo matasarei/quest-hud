@@ -89,6 +89,15 @@ describe('the band\'s wizard', () => {
     }
   })
 
+  test('casts with loose sparks on both sides of the staff, none touching the orb or the wood', () => {
+    /** Each gold pixel's column, with what lies either side of it on its row. */
+    const sparks = BAND_CAST.rows.flatMap(row => [...row].flatMap((pixel, x) => (pixel === '{' ? [{ x, beside: `${row[x - 1] ?? '.'}${row[x + 1] ?? '.'}` }] : [])))
+    const staff = BAND_CAST.rows[0]?.indexOf('~') ?? -1
+    expect(sparks.some(spark => spark.x < staff)).toBe(true)
+    expect(sparks.some(spark => spark.x > staff + 1)).toBe(true)
+    expect(sparks.filter(spark => /[~w]/.test(spark.beside))).toEqual([])
+  })
+
   test('casts by raising the whole staff a row: as long as at rest, its foot off the ground', () => {
     /** The rows the staff spans, orb to foot: the first and last row with its wood or orb in it. */
     const span = (sprite: Sprite): readonly [number, number] => {

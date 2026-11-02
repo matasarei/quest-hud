@@ -1588,17 +1588,18 @@ export const BAND_ICON = sprite([
 
 /**
  * The band's portrait casting: his hand raises the staff a row, whole — orb,
- * head and foot together, as long as at rest — with gold sparks by the orb.
- * The head is two pixels wide so the orb can sit on it in one cell: a
+ * head and foot together, as long as at rest — with three gold sparks loose
+ * around the orb, a column clear of it and on both sides of the staff: beside
+ * the orb on one side alone, they read as a flag. The head is two pixels wide so the orb can sit on it in one cell: a
  * one-pixel staff under the orb would be a third colour there.
  */
 export const BAND_CAST = sprite([
-  '.......((.....~~{...',
-  '.......((.....~~{...',
-  '......((((....ww.{..',
-  '......((((....ww.{..',
-  '..))))))))))..w.....',
-  '..))))))))))..w.....',
+  '.......((.....~~.{..',
+  '.......((.....~~.{..',
+  '......((((..{.ww....',
+  '......((((..{.ww....',
+  '..))))))))))..w..{..',
+  '..))))))))))..w..{..',
   '..]]ssssss]]ssw.....',
   '..]]ssssss]]ssw.....',
   '..]]]]]]]]]]..w.....',
