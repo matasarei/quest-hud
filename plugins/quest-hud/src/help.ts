@@ -10,6 +10,7 @@ export type OptionInfo = { name: string; values: readonly string[]; fallback: st
 export const OPTIONS: readonly OptionInfo[] = [
   { name: 'detail', values: ['off', 'status', 'band', 'pane'], fallback: 'band' },
   { name: 'bars', values: ['hpmp', 'all'], fallback: 'hpmp' },
+  { name: 'avatar', values: ['wizard', 'claude'], fallback: 'wizard' },
   { name: 'graphics', values: ['auto', 'cells', 'images'], fallback: 'auto' },
   { name: 'zones', values: [], fallback: '' },
 ]

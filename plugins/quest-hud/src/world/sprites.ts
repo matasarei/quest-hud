@@ -1608,3 +1608,18 @@ export const BAND_CAST = sprite([
   '..((]]]]]]((........',
   '..((]]]]]]((........',
 ])
+
+/** Who the band's portrait shows: the `avatar` option's values. */
+export type Avatar = 'wizard' | 'claude'
+export const AVATARS: readonly Avatar[] = ['wizard', 'claude']
+
+/**
+ * What each avatar draws in the band: its frame at rest, the frame it steps to,
+ * and what the desktop's Svg says it is. All are 20 × 12, as BAND_ICON is.
+ * Claude's are the Road's mascot, from the row its hop reaches: four art rows
+ * are one cell row, so its cells stay as they were drawn.
+ */
+export const BAND_AVATARS: Readonly<Record<Avatar, { rest: Sprite; active: Sprite; alt: string }>> = {
+  wizard: { rest: BAND_ICON, active: BAND_CAST, alt: 'the wizard' },
+  claude: { rest: sprite(MASCOT.still.rows.slice(4)), active: sprite(MASCOT.hop.rows.slice(4)), alt: "Claude's mascot" },
+}

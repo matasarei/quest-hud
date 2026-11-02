@@ -19,7 +19,7 @@ import { road, roadArt, SCENE_MIN_COLUMNS, sceneZone } from '../src/road'
 import { atRest, BAND, bandPortrait, nextMotion, REST, TRANSITION_STEPS, type Motion, type Transition } from '../src/scene'
 import { asSurvey, changedFiles, mergeSurvey, talliesOf, usageFrom, type History, type Surveyed, type Transcript } from '../src/survey'
 import { applyTaskCall } from '../src/tasks'
-import { ART_SCALE } from '../src/world/sprites'
+import { ART_SCALE, AVATARS, BAND_AVATARS, type Avatar } from '../src/world/sprites'
 import { parseZones, zoneFor } from '../src/zones'
 import type { Allies, Board, FightKind, Foes, LevelCard, LogEntry, Meters, Usage, Zone } from '../types'
 import { BOARD_ID, BOARD_TITLE, drawBoard } from './board'
@@ -134,7 +134,10 @@ const anim: {
   slide?: { from: Zone; step: number }
   /** The band's draw, when its portrait is a Raster the animation can step too. */
   band?: string
+  /** Who the band's portrait shows: the `avatar` option. */
+  avatar: Avatar
 } = {
+  avatar: 'wizard',
   isStarting: false,
   generation: 0,
   tick: 0,
@@ -212,7 +215,7 @@ async function blitFrame($: EngineInterface): Promise<void> {
 
   // The band's wizard steps with the Road's; a band no longer drawn just stops taking frames.
   if (anim.band !== undefined) {
-    const band = await $.ui.blit({ requestId: anim.band, key: BAND_KEY, cells: artCells(bandPortrait(anim.motion.pose)) })
+    const band = await $.ui.blit({ requestId: anim.band, key: BAND_KEY, cells: artCells(bandPortrait(anim.motion.pose, anim.avatar)) })
     if (band.deny !== undefined) anim.band = undefined
   }
 }
@@ -538,6 +541,7 @@ export const register: Register = (on, options) => {
   const bars = pick<Bars>(options.bars, ['hpmp', 'all'], 'hpmp')
   const overrides = parseZones(typeof options.zones === 'string' ? options.zones : '')
   const graphics = pick<Graphics>(options.graphics, ['auto', 'cells', 'images'], 'auto')
+  anim.avatar = pick<Avatar>(options.avatar, AVATARS, 'wizard')
   // Skills a subagent's Skill call is running right now, counted (two
   // subagents may run the same one): their skill.prompt fires inside that
   // call, and must not become the session's quest.
@@ -754,7 +758,7 @@ export const register: Register = (on, options) => {
     return next(e)
   }).catch(($, e, next) => next(e))
 
-  const settings = { detail, bars, graphics, zones: typeof options.zones === 'string' ? options.zones.trim() : '' }
+  const settings = { detail, bars, avatar: anim.avatar, graphics, zones: typeof options.zones === 'string' ? options.zones.trim() : '' }
 
   // A skill file gives each command its /quest-hud: name; the mod answers it, so
   // no model turn runs. If a hook fails, the skill's text says the mod is not running.
@@ -831,9 +835,9 @@ export const register: Register = (on, options) => {
     const avatar = !hasRoom
       ? null
       : isRaster && 'Raster' in elements
-        ? <elements.Raster key={BAND_KEY} columns={BAND.columns} rows={BAND.rows} cells={artCells(bandPortrait(anim.motion.pose))} />
+        ? <elements.Raster key={BAND_KEY} columns={BAND.columns} rows={BAND.rows} cells={artCells(bandPortrait(anim.motion.pose, anim.avatar))} />
         : 'Svg' in elements
-          ? <elements.Svg source={gridToSvg(downsample(bandPortrait(), ART_SCALE))} alt="the wizard" width={BAND.columns * 4} height={BAND.rows * 8} />
+          ? <elements.Svg source={gridToSvg(downsample(bandPortrait('stand', anim.avatar), ART_SCALE))} alt={BAND_AVATARS[anim.avatar].alt} width={BAND.columns * 4} height={BAND.rows * 8} />
           : null
 
     return (

@@ -21,6 +21,13 @@
       "options": ["hpmp", "all"],
       "default": "hpmp"
     },
+    "avatar": {
+      "type": "string",
+      "title": "Avatar",
+      "description": "Who the band's portrait shows, above the prompt: the wizard or Claude's mascot. The Road keeps its own cast.",
+      "options": ["wizard", "claude"],
+      "default": "wizard"
+    },
     "graphics": {
       "type": "string",
       "title": "Graphics",

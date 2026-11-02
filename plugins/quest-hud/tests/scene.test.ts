@@ -5,7 +5,7 @@ import {
   atRest, avatarX, BAND, bandPortrait, figures, foesOnRoad, foesShown, party, partyAt, FLAG_SLOT, FLAG_WIDTH, fitWaypoints, flagSlots, foeX, GROUND_ROW, layout, MAX_FLAGS, MAX_GHOSTS, MIN_FLAGS, propsWidth,
   nextMotion, REST, roadWidth, scene, sceneArt, SCENE_HEIGHT, SIZE, slide, slideShift, roadside, skyColor, waypointsOf, waypointX, ZONE_PROPS, type Waypoint,
 } from '../src/scene'
-import { PALETTE, PROPS } from '../src/world/sprites'
+import { AVATARS, PALETTE, POSES, PROPS } from '../src/world/sprites'
 import type { Task, Zone } from '../types'
 import { striping } from './measure'
 
@@ -610,4 +610,25 @@ describe('the band\'s wizard', () => {
     const portrait = bandPortrait()
     expect([portrait[0]?.length, portrait.length]).toEqual([BAND.columns * 2, BAND.rows * 4])
   })
+})
+
+describe('the band\'s avatars', () => {
+  test('the wizard is the default', () => {
+    for (const pose of POSES) expect(JSON.stringify(bandPortrait(pose))).toBe(JSON.stringify(bandPortrait(pose, 'wizard')))
+  })
+
+  for (const avatar of AVATARS) {
+    test(`${avatar}: steps on the wizard's frames, is art of his size, and differs by avatar`, () => {
+      const rest = JSON.stringify(bandPortrait('stand', avatar))
+      expect(JSON.stringify(bandPortrait('walk0', avatar))).toBe(rest)
+      expect(JSON.stringify(bandPortrait('walk2', avatar))).toBe(rest)
+      const active = JSON.stringify(bandPortrait('walk1', avatar))
+      expect(active === rest).toBe(false)
+      expect(JSON.stringify(bandPortrait('walk3', avatar))).toBe(active)
+      expect(JSON.stringify(bandPortrait('strike', avatar))).toBe(active)
+      const portrait = bandPortrait('stand', avatar)
+      expect([portrait[0]?.length, portrait.length]).toEqual([BAND.columns * 2, BAND.rows * 4])
+      if (avatar !== 'wizard') expect(rest === JSON.stringify(bandPortrait('stand', 'wizard'))).toBe(false)
+    })
+  }
 })

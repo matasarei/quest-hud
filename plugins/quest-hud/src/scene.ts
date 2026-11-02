@@ -11,7 +11,7 @@ import type { Grid } from './avatar'
 import { downsample, mirrorGrid, spriteGrid, stamp, type Canvas, type Sprite } from './paint/pixels'
 import { rasterize, rgbToGrid } from './paint/raster'
 import { landscape, PARALLAX } from './world/landscapes'
-import { ART_SCALE, BAND_CAST, BAND_ICON, CHEST, DRAGON, FLAG, FLYING_BOOKS, FOX, GHOST, GOLEM, MASCOT, OCTOCAT, PROPS, SKELETON, SPIDER, WALK, WIZARD, type Pose, type PropName } from './world/sprites'
+import { ART_SCALE, BAND_AVATARS, CHEST, DRAGON, FLAG, FLYING_BOOKS, FOX, GHOST, GOLEM, MASCOT, OCTOCAT, PROPS, SKELETON, SPIDER, WALK, WIZARD, type Avatar, type Pose, type PropName } from './world/sprites'
 
 /** Pixel rows: fourteen terminal rows of half blocks. */
 export const SCENE_HEIGHT = 28
@@ -553,14 +553,16 @@ export const scene = (args: SceneArgs): Grid => downsample(sceneArt(args), ART_S
 export const BAND = { columns: 10, rows: 3 } as const
 
 /**
- * The band's portrait: a small wizard drawn for the size, as art — 20 × 12,
- * two pixels a column and four a row, as the Road's art is. While the Road
- * walks he casts — his hand up and the orb flaring on every other frame
- * (BAND_CAST), at rest between (BAND_ICON) — and in a fight, as the Road's
- * wizard strikes.
+ * The band's portrait: an avatar drawn for the size, as art — 20 × 12, two
+ * pixels a column and four a row, as the Road's art is. While the Road walks
+ * it steps on every other frame, at rest between — the wizard casts, his hand
+ * up and the orb flaring, and Claude's mascot hops — and in a fight, as the
+ * Road's wizard strikes.
  */
-export const bandPortrait = (pose: Pose = 'stand'): Grid =>
-  spriteGrid(pose === 'walk1' || pose === 'walk3' || pose === 'strike' ? BAND_CAST : BAND_ICON)
+export const bandPortrait = (pose: Pose = 'stand', avatar: Avatar = 'wizard'): Grid => {
+  const { rest, active } = BAND_AVATARS[avatar]
+  return spriteGrid(pose === 'walk1' || pose === 'walk3' || pose === 'strike' ? active : rest)
+}
 
 /** The colour a zone's scene starts with: its top-left pixel, the sky's or the wall's. */
 export const skyColor = (zone: Zone): number => scene({ columns: 4, zone, waypoints: [], companions: 0 })[0]?.[0] ?? 0

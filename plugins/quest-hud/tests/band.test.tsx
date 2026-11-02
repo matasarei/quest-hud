@@ -104,6 +104,28 @@ describe('the band', () => {
     await desktop.unmount()
   })
 
+  test('avatar = claude: its portrait on the terminal, and on the desktop its Svg under its own name', { options: { avatar: 'claude' } }, async ($, on) => {
+    engine(on)
+    await implementWithTasks($)
+    const terminal = await $.ui.mount(band('terminal'))
+    expect(String((await terminal.find({ type: 'Raster' }))?.props.cells)).toBe(artCells(bandPortrait('stand', 'claude')))
+    await terminal.unmount()
+    const desktop = await $.ui.mount(band('desktop'))
+    expect((await desktop.find({ type: 'Svg' }))?.props.alt).toBe("Claude's mascot")
+    await desktop.unmount()
+  })
+
+  test('an avatar it does not know draws the wizard', { options: { avatar: 'nonsense' } }, async ($, on) => {
+    engine(on)
+    await implementWithTasks($)
+    const terminal = await $.ui.mount(band('terminal'))
+    expect(String((await terminal.find({ type: 'Raster' }))?.props.cells)).toBe(artCells(bandPortrait('stand', 'wizard')))
+    await terminal.unmount()
+    const desktop = await $.ui.mount(band('desktop'))
+    expect((await desktop.find({ type: 'Svg' }))?.props.alt).toBe('the wizard')
+    await desktop.unmount()
+  })
+
   test('leaves the avatar out when the slot has fewer rows than it needs', async ($, on) => {
     engine(on)
     await implementWithTasks($)
