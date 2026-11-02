@@ -69,6 +69,9 @@ files only (`git grep -I`): perl dies on binary input.
   Raster takes one printable width-1 BMP character a cell, so octants (U+1CD00) and
   sextants (U+1FB00) are out. The band's portrait is art the same way, each 2 × 2 block in at
   most two colours.
+  The roadside (a zone's landmarks, and the chest) is scenery: it walks with the near layer
+  and, in a zone change, slides with its own zone's backdrop by the same `slideShift`
+  (`roadside()`); the figures and the allies do neither.
   GitHub's Octocat, GitLab's fox and Claude's mascot are our own drawings, never logo files.
 - **`resolve()` lists every element on every surface**; one a surface lacks draws as an empty
   fragment. Choose by `e.surface`, not by `'X' in elements`.
