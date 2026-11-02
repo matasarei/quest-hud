@@ -71,8 +71,11 @@ export function drawRoad($: EngineInterface, e: RenderInput<'Pane'>, road: Road,
       {columns > 0 ? scene : null}
       {road.companions ? <Text dimColor wrap="truncate-end">{road.companions}</Text> : null}
       {road.tasks.map(line => <Text wrap="truncate-end">{line}</Text>)}
-      <Box flexDirection="row">
-        {road.meters.map(segment => <Text color={TONE_COLOR[segment.tone]}>{segment.text}</Text>)}
+      <Box flexDirection="row" justifyContent="space-between">
+        <Box flexDirection="row">
+          {road.meters.map(segment => <Text color={TONE_COLOR[segment.tone]}>{segment.text}</Text>)}
+        </Box>
+        {road.level ? <Text color={TONE_COLOR.gold} wrap="truncate-end">{road.level}</Text> : null}
       </Box>
       {road.log.length > 0 ? <Text dimColor>— log —</Text> : null}
       {road.log.map(line => <Text dimColor wrap="truncate-end">{line}</Text>)}

@@ -4,6 +4,7 @@ import type { Engine } from 'claude-code/testing'
 import { imageScale, QUADRANT } from '../src/avatar'
 import { sceneArt } from '../src/scene'
 import { engine, RUN, start, world } from './kit'
+import type { LevelCard } from '../types'
 import { striping } from './measure'
 
 // Tests about the cells scene (the Raster, its animation) ask for it: auto draws an image first.
@@ -40,6 +41,93 @@ const implementing = async ($: Engine) => {
     changed: ['context'],
   })
 }
+
+const CARD: LevelCard = {
+  level: 8,
+  title: 'Sage',
+  points: 16,
+  outOf: 21,
+  parts: [],
+  usage: { isRead: true, sessions: 1, days: 1, editingSessions: 0, checkedSessions: 0, testRuns: 0, lintRuns: 0, skillSessions: 0, allSessions: 1, skillRuns: {}, agentCalls: 0, agentSessions: 0, mcpCalls: 0, mcpServers: 0, browserCalls: 0, webCalls: 0, ghRuns: 0, edits: {} },
+}
+
+const LEVEL = { type: 'Text', text: /^Lv / } as const
+
+/** Each spaced-out row of a drawing, as the JSON of what it holds. */
+const rowsOf = (element: unknown): string[] => {
+  if (typeof element !== 'object' || element === null) return []
+  const { props, children } = element as { props?: { justifyContent?: unknown }; children?: unknown }
+  const below = (Array.isArray(children) ? children : [children]).flatMap(rowsOf)
+  return props?.justifyContent === 'space-between' ? [JSON.stringify(children), ...below] : below
+}
+
+describe('the level', () => {
+  for (const surface of ['terminal', 'desktop'] as const) {
+    test(`sits on the meters row, in gold, on ${surface}`, async ($, on) => {
+      engine(on, { level: CARD })
+      await implementing($)
+      const ui = await $.ui.mount(pane(surface))
+      const level = await ui.find(LEVEL)
+      expect(level?.text).toBe('Lv 8 Sage')
+      expect(level?.props.color).toBe('#f2d15b')
+      const rows = rowsOf(await ui.drawn())
+      expect(rows.some(row => row.includes('♥') && row.includes('Lv 8 Sage'))).toBe(true)
+      await ui.unmount()
+    })
+  }
+
+  test('no level: nothing is drawn, and the bars are as they were', async ($, on) => {
+    engine(on)
+    await implementing($)
+    const ui = await $.ui.mount(pane('terminal'))
+    expect(await ui.find(LEVEL)).toBeFalsy()
+    expect((await ui.find({ type: 'Text', text: /^♥/ }))?.text).toBe('♥ ████████░░ 80%   ')
+    await ui.unmount()
+  })
+
+  // A /clear wipes the atoms and fires no session.start, so the store is all there is.
+  test('after a /clear the store still has it, with nothing fired', async ($, on) => {
+    engine(on, { level: CARD })
+    const ui = await $.ui.mount(pane('terminal'))
+    expect((await ui.find(LEVEL))?.text).toBe('Lv 8 Sage')
+    await ui.unmount()
+  })
+
+  test('narrow, it shortens, then goes', async ($, on) => {
+    engine(on, { level: CARD })
+    await implementing($)
+    const ui = await $.ui.mount(pane('terminal', 41))
+    expect((await ui.find(LEVEL))?.text).toBe('Lv 8')
+    await ui.unmount()
+    const narrow = await $.ui.mount(pane('terminal', 40))
+    expect(await narrow.find(LEVEL)).toBeFalsy()
+    await narrow.unmount()
+  })
+
+  test('appears when a reading comes back, with the pane open', async ($, on) => {
+    engine(on)
+    await implementing($)
+    const ui = await $.ui.mount(pane('terminal'))
+    expect(await ui.find(LEVEL)).toBeFalsy()
+    world.dirs = { '/home/a/.claude/projects': [{ name: 'p', kind: 'dir', size: 0, mtimeMs: 0, isLink: false }], '/home/a/.claude/projects/p': [{ name: 's.jsonl', kind: 'file', size: 1, mtimeMs: 1, isLink: false }] }
+    world.grep = '/home/a/.claude/projects/p/s.jsonl:"type":"tool_use","id":"a","name":"Read"\n'
+    await $.command.run({ command: 'quest-hud:level', args: '', ...RUN })
+    for (let i = 0; i < 200 && !(await ui.find(LEVEL)); i++) await $.command.run({ command: 'quest-hud:help', args: '', ...RUN })
+    expect(await ui.find(LEVEL)).toBeTruthy()
+    await ui.unmount()
+  })
+
+  test('is not on the band or the hint line: the pane only', async ($, on) => {
+    engine(on, { level: CARD })
+    await implementing($)
+    const band = await $.ui.mount({ plugin: 'quest-hud', component: 'AbovePrompt', surface: 'terminal', props: { hasSurvey: false, isWorking: false, maxRows: 6, bodyColumns: 140, scroll: { offset: 0, bodyRows: 6 }, view: {} } })
+    expect(await band.find({ type: 'Text', text: /Lv |Sage/ })).toBeFalsy()
+    await band.unmount()
+    const hint = await $.ui.mount({ plugin: 'quest-hud', component: 'PromptHint', surface: 'terminal', props: { isDraft: false, isWorking: false, hint: '?' } })
+    expect(await hint.find({ type: 'Text', text: /Lv |Sage/ })).toBeFalsy()
+    await hint.unmount()
+  })
+})
 
 describe('the Road pane', () => {
   for (const surface of ['terminal', 'desktop'] as const) {

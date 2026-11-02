@@ -1,7 +1,8 @@
 # quest-hud — notes for Claude
 
 A Claude Code marketplace with one mod, `quest-hud` (`plugins/quest-hud/`): a hooks module
-(`hooks/register.tsx`, with the Road pane's layout in `hooks/pane.tsx`) over pure modules
+(`hooks/register.tsx`, with the Road pane's layout in `hooks/pane.tsx` and the level's readers
+in `hooks/survey.ts`) over pure modules
 (`src/`), a state contract (`types/index.d.ts`), and a status-line script
 (`scripts/hud-line.sh`), and one user-only skill file per command (`skills/`). Tests are `plugins/quest-hud/tests/*.test.ts(x)`; `tests/kit.tsx`
 stands for the engine in the newer ones. TypeScript run by the Claude Code engine; there is no
@@ -36,10 +37,24 @@ files only (`git grep -I`): perl dies on binary input.
   answers it before any model turn. `disable-model-invocation: true` keeps it out of the context.
   A new command needs its skill file, its literal hook (a computed name fails validate), its
   word in the plain `/quest-hud` hook, its line in `src/help.ts`, and its name in
-  `tests/skills.sh`. The only thing stored is `/quest-hud:off`'s switch, in `$.store`.
-- **It knows no skill pack.** It reads only what the engine passes for every session: skill
-  name and description, the task tools, usage. No reading of `.quests/`, `.tasks/`, `.gku/` or
-  any pack's files.
+  `tests/skills.sh`. Only `$.store` is written: `/quest-hud:off`'s switch, and the level's card
+  and survey.
+- **It knows no skill pack.** Outside the level it reads only what the engine passes for every
+  session: skill name and description, the task tools, usage. No reading of `.quests/`, `.tasks/`,
+  `.gku/` or any pack's files, ever. Packs are named only by the fixed catalogue in
+  `src/levelup.ts`, which the engine's command list and the enabled plugins are compared against.
+- **The level reads the machine on command, and as counts.** Transcripts are read only by
+  `/quest-hud:level`, in the background, through `$.process.spawn` of `grep`: `$.fs.read` refuses
+  over 4 MiB and `$.process.run` cuts its output there. Never at a session start, never on a timer.
+  `/quest-hud:level-up` reads the setup and the prompt history, and no transcript. `src/survey.ts`
+  keeps names and counts: a command goes to `commandKinds()` and is dropped, a path gives its
+  extension, a prompt its first `/word`. A project's path is used and never stored, so the store
+  keys sessions by file name. `~/.claude.json` is never read, as it holds account details; of a
+  settings file only hooks, permission rules, auto mode and enabled plugins are looked at. The
+  transcript format is the engine's own and undocumented: a scan that finds nothing changes nothing
+  and the card says "usage unread", as a part that could not be read leaves the sum rather than
+  scoring zero. A catalogue row's command is printed, never run. The level is drawn only on the
+  Road's meters row.
 - **Logic lives in `src/`, pure and tested**; `register.tsx` is wiring and layout. A new rule
   is a new function with its test.
 - **Outside text is drawn as plain `Text`**: skill names and task subjects. Never
@@ -62,7 +77,8 @@ files only (`git grep -I`): perl dies on binary input.
 - **Bash commands are read by `src/bash.ts` only, and never drawn.** It recognises known
   shapes (a test runner, a linter, `git commit`, `gh`, `glab`, behind known wrappers), and
   a mention inside quotes, a heredoc or `echo` is not a run. Callers draw a kind, a score, a
-  commit's sha and subject (through `cleanTitle()`), or a PR number — never the command.
+  commit's sha and subject (through `cleanTitle()`), or a PR number — never the command. The
+  level's survey counts kinds the same way, from what grep cut of a transcript's command.
   Scores read at most the last `SCORE_TAIL` characters of the output. A new shape is a row
   in `tests/bash.test.ts`'s table first.
 - **The art is drawn in code, as pixel art.** Sprites in `src/world/sprites.ts` are pixel maps

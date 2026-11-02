@@ -23,9 +23,10 @@ play. Quest HUD is a Claude Code mod that draws your session that way, above the
 - **⚔ the quest**: the running skill, from any plugin, and its zone, with Claude Code's task list.
 
 It costs nothing: no model calls, nothing added to the context, no network, and nothing written
-into your project.
+into your project. It reads your past sessions only if you ask it to, with
+[`/quest-hud:level`](#your-level), and then keeps counts, not what they said.
 
-[Install](#install) · [Update](#update) · [Settings](#settings) · [Commands](#commands) · [The Road](#the-road) · [Without mods](#without-mods) · [Art](#art) · [Development](#development) · [License](#license)
+[Install](#install) · [Update](#update) · [Settings](#settings) · [Commands](#commands) · [Your level](#your-level) · [The Road](#the-road) · [Without mods](#without-mods) · [Art](#art) · [Development](#development) · [License](#license)
 
 ## Install
 
@@ -70,6 +71,8 @@ is a skill's full name (`gku:plan`) or the part after the plugin prefix (`plan`)
 |---|---|
 | `/quest-hud:status` | prints the current state, what the zone means, and the task list |
 | `/quest-hud:pane` | opens the Road at any width |
+| `/quest-hud:level` | reads your setup and sessions, as counts, and [scores the harness](#your-level) from 1 to 10 |
+| `/quest-hud:level-up` | quests for the next level: what to add, picked from what you work on |
 | `/quest-hud:statusline` | prints the setup for [the status line](#without-mods) |
 | `/quest-hud:off` | hides the band, the hint-line bars and the Road in every session, until `on`; it comes back up to date |
 | `/quest-hud:on` | brings them back, with the Road if `off` closed it |
@@ -79,8 +82,43 @@ The mod answers each one itself, with no model call. `/quest-hud pane` with a sp
 and a word `/quest-hud` does not know shows the list. A typo after the colon, such as
 `/quest-hud:pan`, reaches the model as an ordinary message.
 
-The only file the mod writes is `off`'s switch, a small JSON file in Claude Code's configuration
-folder.
+The only file the mod writes is a small JSON file in Claude Code's configuration folder: `off`'s
+switch, and your level with the counts behind it.
+
+## Your level
+
+`/quest-hud:level` scores your Claude Code setup from 1 (Novice) to 10 (Grand Wizard) and shows
+the level on the Road, beside the bars. It describes the environment, not you, and the scale is
+this game's own, not a benchmark.
+
+| Part | What raises it |
+|---|---|
+| Instructions | a `CLAUDE.md` or `AGENTS.md` in the projects you work in |
+| Memory | notes kept across projects |
+| Skills | skills you run, not only ones installed, and one of your own |
+| Checks | test and lint runs in the sessions that edit code |
+| Guardrails | hooks and deny rules |
+| Tools | a language server for your main language, and an MCP server in use |
+| Delegation | subagents in use, and one of your own |
+
+`/quest-hud:level-up` then lists up to five quests, weakest part first, from a fixed list in the
+mod. Each gives your own number and the command to run, and the mod runs none of them: read a pack
+before you install it, as a skill runs with your permissions.
+
+**What it reads.** Only when you run `/quest-hud:level`, and in the background, so the first answer
+comes at once and the level follows a little later (about 20 seconds for 3 GB of sessions):
+
+- your sessions in `~/.claude/projects`, through `grep`, which stops inside each tool's input, so
+  no prompt, output or file content is read: it keeps tool and skill names, file extensions and
+  the kind of command;
+- `~/.claude/history.jsonl`, for the projects you work in and the first `/word` of a prompt;
+- your settings, the command list, and whether each project has its own instructions.
+
+Later runs read only what changed. Nothing is sent anywhere, and no prompt, command or path is
+stored. Claude Code deletes old sessions (30 days by default), so the level covers what is left.
+
+The first run needs `grep`, which Windows does not have: there the card says `usage unread`, and
+Checks and Delegation are left out of the score rather than counted as zero.
 
 ## The Road
 

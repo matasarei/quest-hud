@@ -1,7 +1,7 @@
 // What the Road pane shows, as plain values for a given size: the header, the
 // scene, the companions, a window of the task list, the bars and the log's
 // tail. Pure; hooks/pane.tsx only lays it out.
-import type { Allies, Companion, Foes, LogEntry, Meters, Quest, Task, Zone } from '../types'
+import type { Allies, Companion, Foes, LevelCard, LogEntry, Meters, Quest, Task, Zone } from '../types'
 import type { Grid } from './avatar'
 import { clockTime } from './log'
 import { bar, hpLeft, mpLeft, zoneLine, type Bars, type Segment } from './meters'
@@ -41,6 +41,8 @@ export type RoadArgs = {
   transition?: Transition
   /** Drawn as text cells: the art's dither in row pairs (SceneArgs.cells). */
   cells?: boolean
+  /** What /quest-hud:level last worked out; none before its first run. */
+  level?: LevelCard | null
 }
 
 export type Road = {
@@ -53,6 +55,8 @@ export type Road = {
   companions?: string
   tasks: string[]
   meters: Segment[]
+  /** The level, at the right end of the meters row; left out when it does not fit. */
+  level?: string
   log: string[]
 }
 
@@ -105,6 +109,17 @@ const meterSegments = (meters: Meters | null, bars: Bars): Segment[] => {
   return segments
 }
 
+/** The room kept between the bars and the level. */
+const LEVEL_GAP = 2
+
+/** The level as the row has room for it: with its title, without, or not at all. */
+const levelTag = (card: LevelCard | null | undefined, meters: readonly Segment[], columns: number): string | undefined => {
+  if (!card) return undefined
+
+  const room = columns - LEVEL_GAP - meters.reduce((sum, segment) => sum + segment.text.length, 0)
+  return [`Lv ${card.level} ${card.title}`, `Lv ${card.level}`].find(tag => tag.length <= room)
+}
+
 /**
  * The pane for `rows` rows: the header, the scene, the companions line when
  * there are any, then the tasks, the bars, and the log's newest lines with
@@ -128,6 +143,8 @@ export const road = (args: RoadArgs): Road => {
     : []
 
   const art = hasScene ? roadArt({ ...args, columns }) : []
+  const meterRow = meterSegments(meters, bars)
+  const levelText = levelTag(args.level, meterRow, columns)
 
   return {
     header,
@@ -136,7 +153,8 @@ export const road = (args: RoadArgs): Road => {
     art,
     ...(companionsLine ? { companions: companionsLine } : {}),
     tasks: taskRows,
-    meters: meterSegments(meters, bars),
+    meters: meterRow,
+    ...(levelText === undefined ? {} : { level: levelText }),
     log: logRows,
   }
 }

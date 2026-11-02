@@ -1,6 +1,6 @@
 {
   "name": "quest-hud",
-  "description": "HP and MP bars for the weekly limit and the context window, and the skill, zone and tasks you are on, above the prompt. Works with any skills. No model calls, nothing added to the context.",
+  "description": "HP and MP bars for the weekly limit and the context window, and the skill, zone and tasks you are on, above the prompt. Works with any skills. On command, scores your setup from 1 to 10 and suggests what to add. No model calls, nothing added to the context.",
   "author": { "name": "Yevhen Matasar", "url": "https://github.com/matasarei" },
   "license": "MIT",
   "repository": "https://github.com/matasarei/quest-hud",
