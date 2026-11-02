@@ -191,6 +191,14 @@ describe('/hud help and the options', () => {
     }
   }
 
+  test('/quest-hud:help answers the same list', async ($, on) => {
+    engine(on)
+    await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+    const text = (await $.command.run({ command: 'quest-hud:help', args: '', ...RUN })).text ?? ''
+    expect(text).toBe((await $.command.run({ command: 'hud', args: 'help', ...RUN })).text ?? '')
+    expect(text).toContain('now band (default band)')
+  })
+
   test('zones: the rules in force, or none', { options: { zones: 'quest=forge' } }, async ($, on) => {
     engine(on)
     await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })

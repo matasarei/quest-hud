@@ -530,9 +530,14 @@ export const register: Register = (on, options) => {
     return next(e)
   }).catch(($, e, next) => next(e))
 
+  const settings = { detail, bars, graphics, zones: typeof options.zones === 'string' ? options.zones.trim() : '' }
+
+  // A skill file gives the command its /quest-hud: name; the mod answers it, so
+  // no model turn runs. If a hook fails, the skill's text says the mod is not running.
+  on('command.run', { command: 'quest-hud:help' }, async () => ({ text: usageText(settings) })).catch(($, e, next) => next(e))
+
   on('command.run', { command: 'hud' }, async ($, e) => {
     const word = e.args.trim()
-    const settings = { detail, bars, graphics, zones: typeof options.zones === 'string' ? options.zones.trim() : '' }
 
     if (word.toLowerCase() === 'help') {
       return { text: usageText(settings) }
