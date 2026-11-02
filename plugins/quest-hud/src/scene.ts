@@ -11,7 +11,7 @@ import type { Grid } from './avatar'
 import { downsample, mirrorGrid, spriteGrid, stamp, type Canvas, type Sprite } from './paint/pixels'
 import { rasterize, rgbToGrid } from './paint/raster'
 import { landscape, PARALLAX } from './world/landscapes'
-import { ART_SCALE, BAND_CAST, BAND_ICON, CHEST, DRAGON, FLAG, FOX, GHOST, MASCOT, OCTOCAT, PROPS, SPIDER, WALK, WIZARD, type Pose, type PropName } from './world/sprites'
+import { ART_SCALE, BAND_CAST, BAND_ICON, CHEST, DRAGON, FLAG, FOX, GHOST, MASCOT, OCTOCAT, PROPS, SKELETON, SPIDER, WALK, WIZARD, type Pose, type PropName } from './world/sprites'
 
 /** Pixel rows: fourteen terminal rows of half blocks. */
 export const SCENE_HEIGHT = 28
@@ -290,8 +290,21 @@ export const foeX = (hero: number, width: number, count: number, index: number, 
   return first + index * pitch
 }
 
-/** A monster facing left, towards the wizard: the dragon is drawn facing right. */
-const foeGrid = (kind: FightKind): Grid => (kind === 'test' ? mirrorGrid(spriteGrid(DRAGON)) : spriteGrid(SPIDER))
+/**
+ * The monster of a test run in a room, where a dragon would not fit; outdoors
+ * it is the dragon. Each is drawn facing left, towards the wizard.
+ */
+const ROOM_FOE: Readonly<Partial<Record<Zone, Sprite>>> = { dungeon: SKELETON }
+
+/**
+ * A monster facing left, towards the wizard: a lint run's spider anywhere; a
+ * test run's the room's own monster, or outdoors the dragon, drawn facing right.
+ */
+const foeGrid = (kind: FightKind, zone: Zone): Grid => {
+  if (kind === 'lint') return spriteGrid(SPIDER)
+  const room = ROOM_FOE[zone]
+  return room === undefined ? mirrorGrid(spriteGrid(DRAGON)) : spriteGrid(room)
+}
 
 /**
  * How far a zone change has gone, in pixels of a scene `width` pixels wide:
@@ -402,11 +415,11 @@ export const sceneArt = (args: SceneArgs): Grid => {
 
   standAt(art, spriteGrid(motion.hop ? MASCOT.hop : MASCOT.still), hero - FAMILIAR_BEHIND)
 
-  // The monsters face the wizard from the right: the dragon nearest, the spider
-  // behind it, drawn first so the dragon stands in front.
+  // The monsters face the wizard from the right: the test's monster nearest, the
+  // spider behind it, drawn first so the test's monster stands in front.
   const up = (['test', 'lint'] as const).filter(kind => foes[kind] !== 'none')
   for (let i = up.length - 1; i >= 0; i--) {
-    standAt(art, foeGrid(up[i] as FightKind), foeX(hero, kept.road, up.length, i, Math.max(placed.ahead, hero + SIZE.wizard)))
+    standAt(art, foeGrid(up[i] as FightKind, zone), foeX(hero, kept.road, up.length, i, Math.max(placed.ahead, hero + SIZE.wizard)))
   }
 
   standAt(art, spriteGrid(WIZARD[motion.pose]), hero)

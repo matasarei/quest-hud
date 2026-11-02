@@ -221,6 +221,26 @@ describe('the monsters', () => {
   })
 })
 
+describe('the monster of a test run, by zone', () => {
+  /** The skeleton's eyes: red, and in no foe-free room scene. */
+  const SKULL_EYE = PALETTE['3'] as number
+  const three: Waypoint[] = ['done', 'now', 'todo']
+  const at = (zone: Zone, test: 'none' | 'standing') => scene({ columns: 120, zone, waypoints: three, companions: 0, foes: { test, lint: 'none' } })
+
+  test('in the Dungeon a skeleton, not the dragon', () => {
+    expect(columnsOf(at('dungeon', 'none'), SKULL_EYE)).toEqual([])
+    const grid = at('dungeon', 'standing')
+    expect(columnsOf(grid, SKULL_EYE).length).toBeGreaterThan(0)
+    expect(columnsOf(grid, DRAGON)).toEqual([])
+  })
+
+  test('outdoors the dragon, as before', () => {
+    for (const zone of ['wilds', 'camp', 'harbour', 'watchtower', 'arena'] as const) {
+      expect([zone, columnsOf(at(zone, 'standing'), DRAGON).length > 0]).toEqual([zone, true])
+    }
+  })
+})
+
 describe('the chest', () => {
   test('stands left of the landmarks once there is loot, and the road gives it room', () => {
     const none = scene({ columns: 120, zone: 'camp', waypoints: [], companions: 0, loot: 0 })

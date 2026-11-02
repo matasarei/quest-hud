@@ -452,6 +452,47 @@ export const SPIDER = sprite([
   ])
 
 /**
+ * The skeleton of a test run in the Dungeon: a bony warrior with its sword up
+ * and a round shield, red eyes in its skull. Drawn facing left, towards the
+ * wizard, so never mirrored; each row doubled, as a quadrant cell keeps every
+ * other art row, so the ribs and the teeth show in cells as in images.
+ */
+export const SKELETON = sprite([
+    '....oo..........................',
+    '....oo..........................',
+    '...o89o.......oooooooo..........',
+    '...o89o.......oooooooo..........',
+    '...o89o......o]]]]]]]]o.........',
+    '...o89o......o]]]]]]]]o.........',
+    '...o89o.....o]33]]]33]^o........',
+    '...o89o.....o]33]]]33]^o........',
+    '...o89o.....o]33]]]33]^o........',
+    '...o89o.....o]33]]]33]^o........',
+    '...o89o.....o]]]]o]]]]^o........',
+    '...o89o.....o]]]]o]]]]^o........',
+    '.oo<<<<oo....o]o]o]o]^o..oooo...',
+    '.oo<<<<oo....o]o]o]o]^o..oooo...',
+    '...owwo.......oo]]^oo..oW66Wo...',
+    '...owwo.......oo]]^oo..oW66Wo...',
+    '..o]ww]o..oo]]]]]]]]]ooW6886Wo..',
+    '..o]ww]o..oo]]]]]]]]]ooW6886Wo..',
+    '..o]]]]]oo]^oo]]^o]]ooW689986Wo.',
+    '..o]]]]]oo]^oo]]^o]]ooW689986Wo.',
+    '...oo]^]]]^o.oo]]]]]ooW689986Wo.',
+    '...oo]^]]]^o.oo]]]]]ooW689986Wo.',
+    '.....ooooo...o]]o^o]]oW6688666o.',
+    '.....ooooo...o]]o^o]]oW6688666o.',
+    '.............oo]]]]oo.oW6666Wo..',
+    '.............oo]]]]oo.oW6666Wo..',
+    '.............o]^oo]^o..oooooo...',
+    '.............o]^oo]^o..oooooo...',
+    '............o]^o..o]^o..........',
+    '............o]^o..o]^o..........',
+    '..........oo]]]o.oo]]]o.........',
+    '..........oo]]]o.oo]]]o.........',
+  ])
+
+/**
  * GitHub's Octocat, brought by gh: our own drawing after the real one — a
  * wide black cat's head with pointed ears and whiskers, a peach face with
  * white-and-brown eyes, tentacles splaying into a blue puddle. 20 × 20, a
