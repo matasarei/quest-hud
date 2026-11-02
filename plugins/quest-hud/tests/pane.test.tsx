@@ -324,6 +324,26 @@ describe('the monsters on the Road', () => {
     await $.tool.call({ tool: 'Bash', command: 'claude plugin test plugins/quest-hud', description: '' })
   }
 
+  test('while a monster from a lost run stands, the Road holds: the wizard faces it, striking, and walks on once a run beats it', CELLS, async ($, on) => {
+    const clock = engine(on)
+    world.panes = [{ id: 'quest-hud', isShown: true }]
+    await implementing($)
+    const ui = await $.ui.mount(pane('terminal'))
+    await lose($)
+    await $.turn.start({ text: 'go', turnId: 'turn-1' })
+    world.blits = []
+    await clock.advance(1000)
+    // Four frames, two of them: the landscape does not step on, the wizard strikes and stands.
+    expect(world.blits).toHaveLength(4)
+    expect(new Set(world.blits).size).toBe(2)
+    world.bash = { stdout: ' 232 pass\n 0 fail\n' }
+    await $.tool.call({ tool: 'Bash', command: 'claude plugin test plugins/quest-hud', description: '' })
+    world.blits = []
+    await clock.advance(1000)
+    expect(new Set(world.blits).size).toBe(4)
+    await ui.unmount()
+  })
+
   test('a lost test run puts the Forge\'s golem on the desktop scene, and a passing one takes it away', async ($, on) => {
     engine(on)
     await implementing($)

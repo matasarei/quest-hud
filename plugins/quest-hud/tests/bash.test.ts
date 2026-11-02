@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { type BashKind, commandKinds, commitLoot, endFights, fightKinds, fightOutcome, fightScore, fightText, forgeEvent, lootText, NO_FOES, SCORE_TAIL, startFights, stdoutOf } from '../src/bash'
+import { commandKinds, commitLoot, endFights, fightKinds, fightOutcome, fightScore, fightText, forgeEvent, holdsTheRoad, lootText, NO_FOES, SCORE_TAIL, startFights, stdoutOf, type BashKind } from '../src/bash'
 
 // Each command as Claude might run it, and the kinds it holds, in order.
 const COMMANDS: ReadonlyArray<readonly [string, readonly BashKind[]]> = [
@@ -243,5 +243,13 @@ describe('forgeEvent', () => {
   test('a command without that tool gives nothing', () => {
     expect(forgeEvent('glab', 'gh pr merge 3', true, '')).toBe(undefined)
     expect(forgeEvent('gh', 'echo "gh pr merge 3"', true, '')).toBe(undefined)
+  })
+})
+
+describe('holdsTheRoad', () => {
+  test('a monster being fought or standing after a lost run holds the Road; none does not', () => {
+    expect(holdsTheRoad({ test: 'none', lint: 'none' })).toBe(false)
+    expect(holdsTheRoad({ test: 'fighting', lint: 'none' })).toBe(true)
+    expect(holdsTheRoad({ test: 'none', lint: 'standing' })).toBe(true)
   })
 })

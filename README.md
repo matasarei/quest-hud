@@ -65,7 +65,7 @@ HUD reads only the command and its output, and never shows a command as it was t
 
 | Command | On the Road | In the log |
 |---|---|---|
-| a test run: `npm test`, `pytest`, `go test`, `cargo test`, `phpunit`, `rspec`, `bun test`, `claude plugin test` and others | a monster while it runs, the room's own indoors: a **skeleton** in the Dungeon, a **fire golem** in the Forge, **flying books** in the Map room, and a **dragon** everywhere else. It stays after a failed run, until a run of the same kind passes | `fight tests won` or `lost`, with the score when the output shows one |
+| a test run: `npm test`, `pytest`, `go test`, `cargo test`, `phpunit`, `rspec`, `bun test`, `claude plugin test` and others | a monster while it runs, the room's own indoors: a **skeleton** in the Dungeon, a **fire golem** in the Forge, **flying books** in the Map room, and a **dragon** everywhere else. It stays after a failed run, the wizard holding his ground against it instead of walking on, until a run of the same kind passes | `fight tests won` or `lost`, with the score when the output shows one |
 | a lint or type check: `eslint`, `ruff check`, `mypy`, `tsc --noEmit`, `shellcheck`, `phpcs`, `npm run lint` and others | a **spider**, the same way | `fight lint won` or `lost` |
 | `git commit` | a **chest**, and `loot N` in the header | `loot`, with the commit's short sha and subject |
 | `gh` | **GitHub's Octocat**, for the rest of the session | `ally PR #3 opened`, `merged`, `ready`, `closed`, checks passed or failed |

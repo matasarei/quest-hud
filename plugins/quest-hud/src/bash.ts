@@ -397,6 +397,13 @@ export const endFights = (foes: Foes, kinds: readonly FightKind[], outcome: Outc
     return { ...next, [kind]: foe }
   }, foes)
 
+/**
+ * Whether a monster blocks the Road: one being fought, or one still standing
+ * after a lost run. The wizard holds his ground, facing it, until a run of
+ * its kind beats it, rather than walking on past it.
+ */
+export const holdsTheRoad = (foes: Foes): boolean => Object.values(foes).some(foe => foe !== 'none')
+
 const FIGHT_LABEL: Readonly<Record<FightKind, string>> = { test: 'tests', lint: 'lint' }
 
 /** `tests won · 232 pass · 0 fail`, led by the subagent that fought it when one did. */
