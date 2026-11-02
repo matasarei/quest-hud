@@ -383,7 +383,8 @@ async function questsCommand($: EngineInterface): Promise<string> {
 
   const at = await $.clock.now()
   reachingGitHub.isRunning = true
-  await update($, board, last => ridingBoard(last, at))
+  // Past the flag nothing may throw before the read's finally, or every later run reads as still out.
+  await update($, board, last => ridingBoard(last, at)).catch(() => undefined)
   void postBoard($, at)
     .catch(() => undefined)
     .finally(() => {

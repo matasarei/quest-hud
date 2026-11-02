@@ -522,6 +522,18 @@ describe('a read that outlives its session', () => {
 const hasPhase = (value: unknown, phase: string): boolean => typeof value === 'object' && value !== null && (value as { phase?: unknown }).phase === phase
 
 describe('a state write that fails', () => {
+  test('as the herald sets out: the read still runs, and a later one is not refused', async ($, on) => {
+    engine(on)
+    world.gh = github(sweepWith({ review: { issueCount: 1, nodes: [pull(7, 'Fix the door')] } }))
+    world.refuseState = (key, value) => key === 'board' && hasPhase(value, 'riding')
+    await start($)
+    expect(await run($, 'quest-hud:quests')).toContain('The herald rides')
+    await settled($)
+    expect(await boardText($)).toContain('Fix the door')
+    world.refuseState = undefined
+    expect(await run($, 'quest-hud:quests')).toContain('The herald rides')
+  })
+
   test('while the scan starts: the sweep it already holds still reaches the board', async ($, on) => {
     engine(on)
     world.gh = github(sweepWith({ review: { issueCount: 1, nodes: [pull(7, 'Fix the door')] } }))
