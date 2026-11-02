@@ -575,63 +575,55 @@ export const FLYING_BOOKS = sprite([
 
 /**
  * GitHub's Octocat, brought by gh: our own drawing after the real one — a
- * wide black cat's head with pointed ears and whiskers, a peach face with
- * white-and-brown eyes, tentacles splaying into a blue puddle. 20 × 20, a
- * little over half the wizard's height. Drawn for the text cells first:
- * every 2 × 2 block reduces to the 10 × 10 cell picture as designed, and
- * only the finer touches (glints, nose, smile, thin whiskers) are for images.
+ * black cat's head with pointed ears and whiskers, a peach face with dark
+ * brown eyes glinting white, a small pink nose, five tentacles. 20 × 16, the
+ * size of Claude's mascot. Drawn for the text cells first: each eye fills a
+ * whole quadrant cell, dark with its glint, so nothing runs below it; the
+ * nose sits on an odd row, for images only.
  */
 export const OCTOCAT = sprite([
-  '..ll............ll..',
-  '..ll............ll..',
-  '..llll........llll..',
-  '..llll........llll..',
-  '..llllllllllllllll..',
-  '..llllllllllllllll..',
-  '..llEEEEEEEEEEEEll..',
-  '..llEEEEEEEEEEEEll..',
-  'llllee22eeee22eellll',
-  '..llee22eeee22eell..',
-  'llllee<2eeee<2eellll',
-  '..llee<<e@@e<<eell..',
-  '..lllleeeee<eellll..',
-  '..lllleee<<eeellll..',
-  '....llllllllllll....',
-  '....llllllllllll....',
-  '....ll..llll..ll....',
-  '....ll..llll..ll....',
-  '."ll".."llll".."ll".',
-  '."ll".."llll".."ll".',
+  '....................',
+  '....................',
+  '...ll..........ll...',
+  '...ll..........ll...',
+  '...llllllllllllll...',
+  '...llllllllllllll...',
+  '..lleeeeeeeeeeeell..',
+  '..lleeeeeeeeeeeell..',
+  '.lllee<2eeee<2eelll.',
+  '..llee<<eeee<<eell..',
+  '..llee<<eeee<<eell..',
+  '..lleeeee@@eeeeell..',
+  '...llllllllllllll...',
+  '...llllllllllllll...',
+  '..ll.ll.llll.ll.ll..',
+  '..ll.ll.llll.ll.ll..',
 ])
 
 /**
- * GitLab's fox, brought by glab: a fox of sharp crystal facets in GitLab's
- * red, orange and yellow, its head the GitLab mark, a pale-tipped tail. 20 ×
- * 20, the Octocat's size, drawn for the text cells first like it; its eyes
- * and the glint along its back are for images. It faces the road mirrored,
- * so every touch sits on an odd row, which never decides a cell either way.
+ * GitLab's fox, brought by glab: the GitLab tanuki's head in its red,
+ * orange and yellow — red ear tips, an orange face narrowing to a point,
+ * yellow cheeks, two eyes — on three short legs. 20 × 16, the size of
+ * Claude's mascot, each row doubled for the text cells. It faces the road
+ * mirrored.
  */
 export const FOX = sprite([
-  '..........!!......!!',
-  '..........!!......!!',
-  '>>........!!##..##!!',
-  '>>........!!##..##!!',
-  '##!!......%%##!!##%%',
-  '##!!......%%#1!!#1%%',
-  '##!!##......%%!!%%..',
-  '##!!##......%%!!%%..',
-  '..!!##%%%%%%%%!!....',
-  '..!!##%>%>%>%>!!....',
-  '....!!########!!....',
-  '....!!########!!....',
-  '....&&..!!..&&..!!..',
-  '....&&..!!..&&..!!..',
-  '....&&..!!..&&..!!..',
-  '....&&..!!..&&..!!..',
-  '....&&..!!..&&..!!..',
-  '....&&..!!..&&..!!..',
-  '....&&..!!..&&..!!..',
-  '....&&..!!..&&..!!..',
+  '....................',
+  '....................',
+  '.!!............!!...',
+  '.!!............!!...',
+  '.!!!..........!!!...',
+  '.!!!..........!!!...',
+  '%#!!!!######!!!!#%..',
+  '%#!!!!######!!!!#%..',
+  '%%##1!!!!!!!!1##%%..',
+  '%%##1!!!!!!!!1##%%..',
+  '.%%###!!!!!!###%%...',
+  '.%%###!!!!!!###%%...',
+  '...%%##!!!!##%%.....',
+  '...%%##!!!!##%%.....',
+  '....&&..!!!..&&.....',
+  '....&&..!!!..&&.....',
 ])
 
 /** Loot: a wooden chest with gold bands. */
