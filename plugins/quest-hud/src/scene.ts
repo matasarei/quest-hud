@@ -26,7 +26,7 @@ export const MAX_GHOSTS = 4
 const units = (sprite: Sprite): number => (sprite.rows[0]?.length ?? 0) / ART_SCALE
 
 /** The figures' widths in units. */
-export const SIZE = { wizard: units(WIZARD.stand), foe: units(DRAGON), familiar: units(MASCOT.still), extra: units(CHEST) } as const
+export const SIZE = { wizard: units(WIZARD.stand), foe: units(DRAGON.still), familiar: units(MASCOT.still), extra: units(CHEST) } as const
 /** A flag's width in units. */
 export const FLAG_WIDTH = units(FLAG.done)
 /** Units a flag takes, with the gap to the next one. */
@@ -162,8 +162,12 @@ export type Transition = { from: Zone; progress: number }
 /** How many frames a zone change takes: six, about a second and a half. */
 export const TRANSITION_STEPS = 6
 
-/** A frame of the walk: how many steps along the road, the wizard's pose, and whether the mascot is mid-hop. */
-export type Motion = { step: number; pose: Pose; hop: boolean }
+/**
+ * A frame of the walk: how many steps along the road, the wizard's pose,
+ * whether the mascot is mid-hop, and — on the frames a monster holding the
+ * Road strikes back, while the wizard stands — `lunge`.
+ */
+export type Motion = { step: number; pose: Pose; hop: boolean; lunge?: boolean }
 
 /** Standing at the start of the road. */
 export const REST: Motion = { step: 0, pose: 'stand', hop: false }
@@ -171,12 +175,14 @@ export const REST: Motion = { step: 0, pose: 'stand', hop: false }
 /**
  * The next frame of the animation, its `tick`th: a step further along the
  * road, the next of the walk's four poses, the mascot hopping every other
- * frame. While a fight is on, the wizard stops and strikes and stands in
- * turn, and the road stays where it is.
+ * frame. While a fight is on, the road stays where it is and the wizard and
+ * the monster trade blows: he strikes, then stands as it lunges.
  */
 export const nextMotion = (motion: Motion, tick: number, isFighting: boolean): Motion =>
   isFighting
-    ? { step: motion.step, pose: tick % 2 === 0 ? 'strike' : 'stand', hop: false }
+    ? tick % 2 === 0
+      ? { step: motion.step, pose: 'strike', hop: false }
+      : { step: motion.step, pose: 'stand', hop: false, lunge: true }
     : { step: motion.step + 1, pose: WALK[tick % WALK.length] ?? 'stand', hop: tick % 2 === 1 }
 
 /** The figures at rest where the walk got to. */
@@ -325,16 +331,21 @@ export const foesOnRoad = (args: SceneArgs): { hero: number; road: number; shown
  * The monster of a test run in a room, where a dragon would not fit; outdoors
  * it is the dragon. Each is drawn facing left, towards the wizard.
  */
-const ROOM_FOE: Readonly<Partial<Record<Zone, Sprite>>> = { dungeon: SKELETON, forge: GOLEM, map: FLYING_BOOKS }
+const ROOM_FOE: Readonly<Partial<Record<Zone, Monster>>> = { dungeon: SKELETON, forge: GOLEM, map: FLYING_BOOKS }
+
+/** A monster's two frames: at rest, and lunging as the wizard stands between his strikes. */
+type Monster = { still: Sprite; lunge: Sprite }
 
 /**
- * A monster facing left, towards the wizard: a lint run's spider anywhere; a
- * test run's the room's own monster, or outdoors the dragon, drawn facing right.
+ * A monster facing left, towards the wizard, at rest or `lunge`-ing: a lint
+ * run's spider anywhere; a test run's the room's own monster, or outdoors the
+ * dragon, drawn facing right.
  */
-const foeGrid = (kind: FightKind, zone: Zone): Grid => {
-  if (kind === 'lint') return spriteGrid(SPIDER)
+const foeGrid = (kind: FightKind, zone: Zone, lunge = false): Grid => {
+  const frame = (monster: Monster): Sprite => (lunge ? monster.lunge : monster.still)
+  if (kind === 'lint') return spriteGrid(frame(SPIDER))
   const room = ROOM_FOE[zone]
-  return room === undefined ? mirrorGrid(spriteGrid(DRAGON)) : spriteGrid(room)
+  return room === undefined ? mirrorGrid(spriteGrid(frame(DRAGON))) : spriteGrid(frame(room))
 }
 
 /**
@@ -454,7 +465,7 @@ export const party = (args: SceneArgs): Party => {
     ghosts,
     flags: flags.map((state, i) => ({ state, x: placed.flagXs[i] ?? 0 })),
     mascot: hero - FAMILIAR_BEHIND,
-    foes: placeFoes(hero, kept.road, placed.ahead, foes).map(foe => ({ ...foe, grid: foeGrid(foe.kind, zone) })),
+    foes: placeFoes(hero, kept.road, placed.ahead, foes).map(foe => ({ ...foe, grid: foeGrid(foe.kind, zone, motion.lunge === true) })),
   }
 }
 

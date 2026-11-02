@@ -8,8 +8,9 @@ import { GROUND, HEIGHT, landscape } from '../src/world/landscapes'
 // Each sprite and the size it must be, in art pixels: two a unit, so a 16-unit figure is 32 × 32.
 const CAST: ReadonlyArray<readonly [string, Sprite, number, number]> = [
   ...POSES.map(pose => [`wizard ${pose}`, WIZARD[pose], 32, 32] as const),
-  ['mascot', MASCOT.still, 20, 16], ['mascot hop', MASCOT.hop, 20, 16], ['ghost', GHOST, 32, 32], ['dragon', DRAGON, 32, 32],
-  ['spider', SPIDER, 32, 32], ['skeleton', SKELETON, 32, 32], ['golem', GOLEM, 32, 32], ['flying books', FLYING_BOOKS, 32, 32], ['octocat', OCTOCAT.still, 20, 16], ['octocat wiggle', OCTOCAT.hop, 20, 16], ['fox', FOX.still, 20, 16], ['fox hop', FOX.hop, 20, 16], ['chest', CHEST, 32, 24],
+  ['mascot', MASCOT.still, 20, 16], ['mascot hop', MASCOT.hop, 20, 16], ['ghost', GHOST, 32, 32], ['dragon', DRAGON.still, 32, 32], ['dragon lunge', DRAGON.lunge, 32, 32],
+  ['spider', SPIDER.still, 32, 32], ['spider lunge', SPIDER.lunge, 32, 32], ['skeleton', SKELETON.still, 32, 32], ['skeleton lunge', SKELETON.lunge, 32, 32],
+  ['golem', GOLEM.still, 32, 32], ['golem lunge', GOLEM.lunge, 32, 32], ['flying books', FLYING_BOOKS.still, 32, 32], ['flying books lunge', FLYING_BOOKS.lunge, 32, 32], ['octocat', OCTOCAT.still, 20, 16], ['octocat wiggle', OCTOCAT.hop, 20, 16], ['fox', FOX.still, 20, 16], ['fox hop', FOX.hop, 20, 16], ['chest', CHEST, 32, 24],
   ['flag done', FLAG.done, 16, 32], ['flag now', FLAG.now, 16, 32], ['flag todo', FLAG.todo, 16, 32],
   ['band icon', BAND_ICON, 20, 12],
   ['band cast', BAND_CAST, 20, 12],
@@ -34,6 +35,7 @@ describe('the cast', () => {
     expect(MASCOT.hop.rows.join() === MASCOT.still.rows.join()).toBe(false)
     expect(OCTOCAT.hop.rows.join() === OCTOCAT.still.rows.join()).toBe(false)
     expect(FOX.hop.rows.join() === FOX.still.rows.join()).toBe(false)
+    for (const monster of [DRAGON, SPIDER, SKELETON, GOLEM, FLYING_BOOKS]) expect(monster.lunge.rows.join() === monster.still.rows.join()).toBe(false)
     expect(new Set([FLAG.done, FLAG.now, FLAG.todo].map(f => f.rows.join())).size).toBe(3)
   })
 })

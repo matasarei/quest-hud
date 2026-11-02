@@ -236,6 +236,20 @@ describe('the monsters', () => {
   })
 })
 
+describe('the monsters trade blows', () => {
+  test('on a lunge frame each monster changes, and nothing outside its own columns does', () => {
+    for (const [zone, foes] of [['wilds', { test: 'standing', lint: 'none' }], ['wilds', { test: 'none', lint: 'standing' }], ['dungeon', { test: 'standing', lint: 'none' }], ['forge', { test: 'standing', lint: 'none' }], ['map', { test: 'standing', lint: 'none' }]] as const) {
+      const args = { columns: 120, zone, waypoints: ['done', 'now'] as Waypoint[], companions: 0, foes }
+      const still = scene({ ...args, motion: { step: 0, pose: 'stand', hop: false } })
+      const lunging = scene({ ...args, motion: { step: 0, pose: 'stand', hop: false, lunge: true } })
+      const xs = changed(still, lunging)
+      const [foe] = foesOnRoad(args).shown
+      expect([zone, xs.length > 0]).toEqual([zone, true])
+      expect([zone, xs.every(x => foe !== undefined && x >= foe.x && x < foe.x + SIZE.foe)]).toEqual([zone, true])
+    }
+  })
+})
+
 describe('the monsters on a narrow road', () => {
   const ZONES_ALL: readonly Zone[] = ['watchtower', 'harbour', 'dungeon', 'arena', 'forge', 'map', 'camp', 'wilds']
   const TASKS: readonly Waypoint[] = ['done', 'done', 'now', 'todo', 'todo', 'todo']
@@ -438,10 +452,13 @@ describe('the walk', () => {
     expect(poses).toEqual(['walk1^', 'walk2', 'walk3^', 'walk0', 'walk1^', 'walk2', 'walk3^', 'walk0'])
   })
 
-  test('in a fight the wizard stops, and strikes and stands in turn', () => {
+  test('in a fight the wizard stops, and strikes and stands in turn; the monster lunges as he stands', () => {
     const walked = { step: 5, pose: 'walk2', hop: false } as const
     expect(nextMotion(walked, 6, true)).toEqual({ step: 5, pose: 'strike', hop: false })
-    expect(nextMotion(walked, 7, true)).toEqual({ step: 5, pose: 'stand', hop: false })
+    expect(nextMotion(walked, 7, true)).toEqual({ step: 5, pose: 'stand', hop: false, lunge: true })
+    // Walking, or at rest, nothing lunges.
+    expect(nextMotion(walked, 7, false).lunge).toBeUndefined()
+    expect(atRest({ step: 5, pose: 'stand', hop: false, lunge: true }).lunge).toBeUndefined()
     expect(atRest({ step: 9, pose: 'walk3', hop: true })).toEqual({ step: 9, pose: 'stand', hop: false })
   })
 

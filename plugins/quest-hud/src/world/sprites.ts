@@ -380,7 +380,8 @@ export const GHOST = sprite([
   ])
 
 /** The dragon of a failed test run. */
-export const DRAGON = sprite([
+export const DRAGON = {
+  still: sprite([
     '...................o............',
     '..................o2o...........',
     '.......o...........o2o..........',
@@ -413,10 +414,47 @@ export const DRAGON = sprite([
     '..oDoo...oDnmo.oDnmo............',
     '...o.....o2D2o.o2D2o............',
     '..........ooo...ooo.............',
-  ])
+  ]),
+  /** Lunging, as the wizard stands between his strikes. */
+  lunge: sprite([
+    '...................o............',
+    '..................o2o...........',
+    '...................o2o..........',
+    '...................o22o.........',
+    '...................o2Xoooo......',
+    '...................oDDDDDDo.....',
+    '..................oDnnnm12Do....',
+    '.............o....oDnnnnDDnDoo..',
+    '..................oDnnnnnnnnDDo.',
+    '.......o.........oDnnnnnnnnnmmo.',
+    '.....oGgGoo.....oDnnnnnmmmmmmDo.',
+    '...oGggggggGo...oDnnnnmooooooo..',
+    '.oGggggggggio..oDnnnnmo.........',
+    '.oGggggggggio..oDnnnmo..........',
+    '..oGggggggio.ooDnnnnmo..........',
+    '...oGggggioooDDnnnnmo...........',
+    '.....oooGDDnnnnnnnnmo...........',
+    '........oDnnnnmmmmnmo...........',
+    '.......oDnnnnmFFFFDnDoo.........',
+    '.......oDnnnnmFfffFDmDDo........',
+    '.......oDnnnmFfffffFoDnDo.......',
+    '......oDnnnnmFffffffDoDo........',
+    '.......oDnnnmFffffffo.o.........',
+    '.......oDnnnmFffffffo...........',
+    '.....ooDnnnnnDFfffffo...........',
+    '...ooDDnnnnnnmFffffo............',
+    '..oDDnnnnmnnnnDFfffo............',
+    '.oDnnnmmmoDnnmmDDDDo............',
+    '.oDnmmooooDnmoooDnmo............',
+    '..oDoo...oDnmo.oDnmo............',
+    '...o.....o2D2o.o2D2o............',
+    '..........ooo...ooo.............',
+  ]),
+}
 
 /** The spider of a failed lint run. */
-export const SPIDER = sprite([
+export const SPIDER = {
+  still: sprite([
     '................................',
     '................................',
     '................................',
@@ -449,7 +487,43 @@ export const SPIDER = sprite([
     'o:oo:,oo:oo:o......o:oo:oo:,oo:o',
     'o:o.oo.o:oo:o......o:oo:o.oo.o:o',
     '.o......o..o........o..o......o.',
-  ])
+  ]),
+  /** Lunging, as the wizard stands between his strikes. */
+  lunge: sprite([
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '..........o..........o..........',
+    '.........o:o........o:o.........',
+    '........oo:o........o:oo........',
+    '.....ooo:o::o.oooo.o:,o:ooo.....',
+    '...oo::o::;,oo:33:oo:;:,o::oo...',
+    '..o::;;:;;;;::3::3::;;;;:;;::o..',
+    '..o:,;,o:;;;;;:;;:;;;;;,o:;,,o..',
+    '.o:,o:,:;;;;;;;;;;;;;;;;:,,o::o.',
+    '.o:,o:oo:;;;;;;;;;;;;;;,oo:o:,o.',
+    '.o:oo:oo:,;;;;;;;;;;;;,,oo:oo:o.',
+    '.o:oo:oo:o:;;;;;;;;;;,o:oo:oo:o.',
+    '.o:oo:oo:o:;;;;;;;;;;,o:oo:oo:o.',
+    '.o:oo:oo:oo:;;;;;;;;,oo:oo:oo:o.',
+    '.o:oo:oo:oo:,;;;;;;,,oo:oo:oo:o.',
+    '.o:oo:oo:oo:o:,,,,,o:oo:oo:oo:o.',
+    'o:,o:,oo:oo:oooooooo:oo:oo::o::o',
+    'o:,o:,oo:oo:o......o:oo:oo:,o:,o',
+    'o:,o:,oo:oo:oooooooo:oo:oo::o::o',
+    'o:,o:,oo:oo:o......o:oo:oo:,o:,o',
+    'o:oo:,oo:oo:o......o:oo:oo:,oo:o',
+    'o:oo:,oo:oo:o......o:oo:oo:,oo:o',
+    'o:o.oo.o:oo:o......o:oo:o.oo.o:o',
+    '.o......o..o........o..o......o.',
+  ]),
+}
 
 /**
  * The skeleton of a test run in the Dungeon: a bony warrior with its sword up
@@ -457,7 +531,8 @@ export const SPIDER = sprite([
  * wizard, so never mirrored; each row doubled, as a quadrant cell keeps every
  * other art row, so the ribs and the teeth show in cells as in images.
  */
-export const SKELETON = sprite([
+export const SKELETON = {
+  still: sprite([
     '....oo..........................',
     '....oo..........................',
     '...o89o.......oooooooo..........',
@@ -490,14 +565,51 @@ export const SKELETON = sprite([
     '............o]^o..o]^o..........',
     '..........oo]]]o.oo]]]o.........',
     '..........oo]]]o.oo]]]o.........',
-  ])
+  ]),
+  /** Lunging, as the wizard stands between his strikes. */
+  lunge: sprite([
+    '................................',
+    '................................',
+    '....oo........oooooooo..........',
+    '....oo........oooooooo..........',
+    '...o89o......o]]]]]]]]o.........',
+    '...o89o......o]]]]]]]]o.........',
+    '...o89o.....o]33]]]33]^o........',
+    '...o89o.....o]33]]]33]^o........',
+    '...o89o.....o]33]]]33]^o........',
+    '...o89o.....o]33]]]33]^o........',
+    '...o89o.....o]]]]o]]]]^o........',
+    '...o89o.....o]]]]o]]]]^o........',
+    '...o89o......oooooooooo..oooo...',
+    '...o89o......oooooooooo..oooo...',
+    '.oo<<<<oo....o]o]o]o]^ooW66Wo...',
+    '.oo<<<<oo....o]o]o]o]^ooW66Wo...',
+    '...owwo...oo]]]]]]]]]ooW6886Wo..',
+    '...owwo...oo]]]]]]]]]ooW6886Wo..',
+    '..o]ww]o..]^oo]]^o]]ooW689986Wo.',
+    '..o]ww]o..]^oo]]^o]]ooW689986Wo.',
+    '..o]]]]]oo^o.oo]]]]]ooW689986Wo.',
+    '..o]]]]]oo^o.oo]]]]]ooW689986Wo.',
+    '...oo]^]]]...o]]o^o]]oW6688666o.',
+    '...oo]^]]]...o]]o^o]]oW6688666o.',
+    '.....ooooo...oo]]]]oo.oW6666Wo..',
+    '.....ooooo...oo]]]]oo.oW6666Wo..',
+    '.............o]^oo]^o..oooooo...',
+    '.............o]^oo]^o..oooooo...',
+    '............o]^o..o]^o..........',
+    '............o]^o..o]^o..........',
+    '..........oo]]]o.oo]]]o.........',
+    '..........oo]]]o.oo]]]o.........',
+  ]),
+}
 
 /**
  * The fire golem of a test run in the Forge: a squat stone body with a molten
  * core and glowing cracks, glowing eyes, lava in its fists. Facing left, rows
  * doubled, as the skeleton.
  */
-export const GOLEM = sprite([
+export const GOLEM = {
+  still: sprite([
     '................................',
     '................................',
     '..........oooooo................',
@@ -530,7 +642,43 @@ export const GOLEM = sprite([
     '......oBBBBIIo..oBBBBBIIo.......',
     '......oooooooo..ooooooooo.......',
     '......oooooooo..ooooooooo.......',
-  ])
+  ]),
+  /** Lunging, as the wizard stands between his strikes. */
+  lunge: sprite([
+    '................................',
+    '................................',
+    '..........oooooo................',
+    '..........oooooo................',
+    '.........oBBBBBBo...ooooooo.....',
+    '.........oBBBBBBo...ooooooo.....',
+    '........oBYYBBYYIooBBBBBBBIo....',
+    '........oBYYBBYYIooBBBBBBBIo....',
+    '..oooooooBBBBBBBIIBBBBBBBBBIo...',
+    '..oooooooBBBBBBBIIBBBBBBBBBIo...',
+    '.oBBBBBBIIBB%%BBBBBB%%BBBBBIo...',
+    '.oBBBBBBIIBB%%BBBBBB%%BBBBBIo...',
+    '.oBBBIIBBBB%YY%BBBBBB%BBBIBBIo..',
+    '.oBBBIIBBBB%YY%BBBBBB%BBBIBBIo..',
+    'oBBIIoBBBB%YYYY%BBBBBBBBBIoBBIo.',
+    'oBBIIoBBBB%YYYY%BBBBBBBBBIoBBIo.',
+    'oBBIo.oBBB%YYYY%BBB%BBBBIo.oBIo.',
+    'oBBIo.oBBB%YYYY%BBB%BBBBIo.oBIo.',
+    'oBIIo.oBBBB%YY%BBBB%%BBBIo.oBIo.',
+    'oBIIo.oBBBB%YY%BBBB%%BBBIo.oBIo.',
+    'oBBIo.oIBBBB%%BBBBBBBBBIIo.oBBIo',
+    'oBBIo.oIBBBB%%BBBBBBBBBIIo.oBBIo',
+    'o%Y%o..oIIBBBBBBBBBBBBIIo..o%Y%o',
+    'o%Y%o..oIIBBBBBBBBBBBBIIo..o%Y%o',
+    '.ooo...oJIIIIIIIIIIIIIIJo...ooo.',
+    '.ooo...oJIIIIIIIIIIIIIIJo...ooo.',
+    '.......oBBBIo....oBBBBIo........',
+    '.......oBBBIo....oBBBBIo........',
+    '......oBBBBIIo..oBBBBBIIo.......',
+    '......oBBBBIIo..oBBBBBIIo.......',
+    '......oooooooo..ooooooooo.......',
+    '......oooooooo..ooooooooo.......',
+  ]),
+}
 
 /**
  * The flying books of a test run in the Map room: two open books loose from
@@ -538,7 +686,8 @@ export const GOLEM = sprite([
  * sparkles about them and their shadows on the floor. Rows doubled, as the
  * skeleton.
  */
-export const FLYING_BOOKS = sprite([
+export const FLYING_BOOKS = {
+  still: sprite([
     '................................',
     '................................',
     '.................??..........??.',
@@ -571,7 +720,43 @@ export const FLYING_BOOKS = sprite([
     '................................',
     '...kkkkkkkkkkkkkk.....kkkkkk....',
     '...kkkkkkkkkkkkkk.....kkkkkk....',
-  ])
+  ]),
+  /** Lunging, as the wizard stands between his strikes. */
+  lunge: sprite([
+    '.................??..........??.',
+    '.................??..........??.',
+    '....`............?????....?????.',
+    '....`............?????....?????.',
+    '.................?||||?oo?||||?.',
+    '.................?||||?oo?||||?.',
+    '.................=????|oo|????=`',
+    '.................=????|oo|????=`',
+    '..................=====oo=====..',
+    '..................=====oo=====..',
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '??..............................',
+    '??..............................',
+    '????????......????????..........',
+    '????????......????????..........',
+    '?||||||???oo???||||||?..........',
+    '?||||||???oo???||||||?..........',
+    '-??|||||??oo??|||||??-..........',
+    '-??|||||??oo??|||||??-..........',
+    '.-------??oo??-------...........',
+    '.-------??oo??-------...........',
+    '........--oo--..................',
+    '........--oo--..................',
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '...kkkkkkkkkkkkkk.....kkkkkk....',
+    '...kkkkkkkkkkkkkk.....kkkkkk....',
+  ]),
+}
 
 /**
  * GitHub's Octocat, brought by gh: our own drawing after the real one — a
