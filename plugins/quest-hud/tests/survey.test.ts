@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { changedFiles, isScratchPath, parseHistory, surveyReader, SURVEY_PATTERN, usageFrom, type Tally } from '../src/survey'
+import { asSurvey, changedFiles, isScratchPath, mergeSurvey, parseHistory, surveyReader, SURVEY_PATTERN, talliesOf, usageFrom, type Surveyed, type Tally } from '../src/survey'
 
 const SESSION = '/home/a/.claude/projects/-home-a-repo/aaaa-1.jsonl'
 const OTHER = '/home/a/.claude/projects/-home-a-repo/bbbb-2.jsonl'
@@ -230,5 +230,46 @@ describe('usage over the sessions', () => {
 
   test('a session under a day old is one day', () => {
     expect(usageFrom({ a: tally({}) }, NO_HISTORY, [], NOW, NOW - 1000).days).toBe(1)
+  })
+})
+
+describe('what a scan leaves in the cache', () => {
+  const tally = (reads: number): Tally => ({ calls: { Read: reads }, mcp: {}, skills: {}, extensions: {}, kinds: {} })
+  const file = (name: string, size = 1, mtimeMs = 1) => ({ name, path: `/p/${name}.jsonl`, size, mtimeMs })
+  const known = (reads: number, size = 1, mtimeMs = 1): Surveyed => ({ size, mtimeMs, tally: tally(reads) })
+
+  test('a read file takes its new tally, an unchanged one keeps its own, a swept one goes', () => {
+    const merged = mergeSurvey({ same: known(1), grown: known(2), swept: known(3) }, [file('same'), file('grown', 9)], [file('grown', 9)], { grown: tally(7) })
+    expect(merged).toEqual({ same: known(1), grown: known(7, 9) })
+  })
+
+  test('a file with no calls in a scan that found others is an empty session, not read again', () => {
+    const merged = mergeSurvey({}, [file('a'), file('empty')], [file('a'), file('empty')], { a: tally(1) })
+    expect(merged.empty?.tally.calls).toEqual({})
+    expect(changedFiles([file('empty')], merged)).toEqual([])
+  })
+
+  test('a scan that found nothing at all changes nothing: the old tallies stand, swept ones aside', () => {
+    const merged = mergeSurvey({ grown: known(2), swept: known(3) }, [file('grown', 9), file('new')], [file('grown', 9), file('new')], {})
+    expect(merged).toEqual({ grown: known(2) })
+    expect(changedFiles([file('grown', 9), file('new')], merged).map(f => f.name)).toEqual(['grown', 'new'])
+  })
+
+  test('talliesOf takes the tallies out', () => {
+    expect(talliesOf({ a: known(4) })).toEqual({ a: tally(4) })
+  })
+})
+
+describe('a survey from the store', () => {
+  const good = { size: 1, mtimeMs: 1, tally: { calls: {}, mcp: {}, skills: {}, extensions: {}, kinds: {} } }
+
+  test('comes back as it went in', () => {
+    expect(asSurvey({ a: good })).toEqual({ a: good })
+  })
+
+  test('what is not one is nothing; a broken entry alone is dropped', () => {
+    expect(asSurvey(undefined)).toEqual({})
+    expect(asSurvey('x')).toEqual({})
+    expect(asSurvey({ a: good, b: { size: 1 }, c: null, d: { ...good, tally: { calls: {} } } })).toEqual({ a: good })
   })
 })

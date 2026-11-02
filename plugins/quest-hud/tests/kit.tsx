@@ -1,7 +1,7 @@
 // What the engine answers in these tests: nothing sits beneath the plugin, so
 // these hooks stand for it. `world` holds what a test changes between events.
 import { mock } from 'claude-code/testing'
-import type { AgentInfo, On } from 'claude-code'
+import type { AgentInfo, CommandInfo, FsEntry, On } from 'claude-code'
 import type { Engine } from 'claude-code/testing'
 
 export const world: {
@@ -27,6 +27,25 @@ export const world: {
   /** Every status entry the plugin set, undefined when it cleared one. */
   statuses: Array<string | undefined>
   state: Record<string, unknown>
+  /** What the plugin kept with `$.store.set`, this test, and the keys it may not. */
+  store: Record<string, unknown>
+  storeRefuses: string[]
+  /** Files by path: what `$.fs.read` and `$.fs.exists` answer. */
+  files: Record<string, string>
+  /** Directories by path: what `$.fs.list` and `$.fs.exists` answer. */
+  dirs: Record<string, FsEntry[]>
+  /** Paths `$.fs.read` refuses for their size. */
+  tooBig: string[]
+  /** Every path `$.fs.read` was asked for. */
+  reads: string[]
+  settings: Record<string, unknown>
+  commands: CommandInfo[]
+  /** What grep prints; undefined when it cannot start. A held scan waits for `grepGate`. */
+  grep: string | undefined
+  grepGate?: Promise<void>
+  /** Every command spawned, and every one run. */
+  spawned: string[][]
+  ran: string[][]
 } = {
   id: 's1',
   state: {},
@@ -42,6 +61,17 @@ export const world: {
   failOpen: false,
   closed: [],
   statuses: [],
+  store: {},
+  storeRefuses: [],
+  files: {},
+  dirs: {},
+  tooBig: [],
+  reads: [],
+  settings: {},
+  commands: [],
+  grep: '',
+  spawned: [],
+  ran: [],
 }
 
 export const NOW = Date.parse('2026-11-01T10:00:00Z')
@@ -61,14 +91,64 @@ export const engine = (on: On, store: Readonly<Record<string, unknown>> = {}) =>
   world.closed = []
   world.statuses = []
   world.state = {}
+  world.storeRefuses = []
+  world.files = {}
+  world.dirs = {}
+  world.tooBig = []
+  world.reads = []
+  world.settings = {}
+  world.commands = []
+  world.grep = ''
+  world.grepGate = undefined
+  world.spawned = []
+  world.ran = []
   // Every value the plugin stores, as the kit's own store accepted it.
   on('state.set', async (_, e, next) => {
     const stored = await next(e)
     if (stored.value?.isSet) world.state[e.key] = e.value
     return stored
   })
-  mock.store(on, store)
+  // The store: mock.store takes the same events and shows a test nothing of what was kept.
+  world.store = JSON.parse(JSON.stringify(store)) as Record<string, unknown>
+  on('store.get', (_, e) => ({ value: world.store[e.key] }))
+  on('store.set', (_, e) => {
+    if (world.storeRefuses.includes(e.key)) return { deny: 'the store is full' }
+    world.store[e.key] = JSON.parse(JSON.stringify(e.value)) as unknown
+    return { value: undefined }
+  })
+  on('store.delete', (_, e) => {
+    delete world.store[e.key]
+    return { value: undefined }
+  })
+  on('store.keys', () => ({ value: Object.keys(world.store) }))
   const clock = mock.clock(on, { now: NOW })
+  mock.env(on, { HOME: '/home/a' })
+  on('fs.read', (_, e) => {
+    world.reads.push(e.path)
+    if (world.tooBig.includes(e.path)) throw new Error('over 4 MiB')
+    const text = world.files[e.path]
+    if (text === undefined) throw new Error('ENOENT')
+    return { value: text }
+  })
+  on('fs.list', (_, e) => {
+    const entries = world.dirs[e.path]
+    if (entries === undefined) throw new Error('ENOENT')
+    return { value: entries }
+  })
+  on('fs.exists', (_, e) => ({ value: e.path in world.files || e.path in world.dirs }))
+  on('settings.read', () => ({ value: world.settings }))
+  on('command.list', () => ({ value: world.commands }))
+  on('process.run', (_, e) => {
+    world.ran.push([...e.argv])
+    return { value: { exitCode: 0, stdout: world.files[e.argv.at(-1) ?? ''] ?? '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+  })
+  on('process.spawn', async function* (_, e) {
+    world.spawned.push([...e.argv])
+    await world.grepGate
+    if (world.grep === undefined) throw new Error('grep: not found')
+    if (world.grep !== '') yield { stream: 'stdout' as const, text: world.grep }
+    return { value: { code: world.grep === '' ? 1 : 0, signal: null } }
+  })
   on('command.register', () => ({ value: { command: 'quest-hud' } }))
   on('session.id', () => ({ value: world.id }))
   on('session.usage', () => ({ value: { startedAt: 0, context: { window: 200_000 }, rateLimits: [] } }))

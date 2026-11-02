@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { asCard, cardOf, levelOf, mainLanguage, pointsToNext, thousands, TITLES, type Inventory } from '../src/harness'
+import { asCard, cardOf, commandFacts, enabledPlugins, levelOf, mainLanguage, pointsToNext, settingsFacts, thousands, TITLES, type Inventory } from '../src/harness'
 import type { Usage } from '../types'
 
 const inventory = (over: Partial<Inventory> = {}): Inventory => ({
@@ -221,4 +221,49 @@ describe('a card from the store', () => {
   for (const [what, value] of BAD) {
     test(`${what} is no card`, () => expect(asCard(value)).toBeNull())
   }
+})
+
+describe('settings, as far as the level reads them', () => {
+  const NONE = { hasHooks: false, hasDenyRules: false, hasPermissionRules: false, hasAutoMode: false }
+
+  test('nothing set, or something that is no settings', () => {
+    expect(settingsFacts({})).toEqual(NONE)
+    expect(settingsFacts(null)).toEqual(NONE)
+    expect(settingsFacts('x')).toEqual(NONE)
+  })
+
+  test('hooks count when there are some', () => {
+    expect(settingsFacts({ hooks: {} }).hasHooks).toBe(false)
+    expect(settingsFacts({ hooks: { PostToolUse: [] } }).hasHooks).toBe(true)
+  })
+
+  test('rules count when they hold something', () => {
+    expect(settingsFacts({ permissions: { allow: [] } }).hasPermissionRules).toBe(false)
+    expect(settingsFacts({ permissions: { allow: ['Bash(ls)'] } })).toEqual({ ...NONE, hasPermissionRules: true })
+    expect(settingsFacts({ permissions: { ask: ['Bash(rm *)'] } })).toEqual({ ...NONE, hasPermissionRules: true })
+    expect(settingsFacts({ permissions: { deny: ['Read(.env)'] } })).toEqual({ ...NONE, hasPermissionRules: true, hasDenyRules: true })
+  })
+
+  test('auto mode, either way it is set', () => {
+    expect(settingsFacts({ autoMode: { environment: [] } }).hasAutoMode).toBe(true)
+    expect(settingsFacts({ permissions: { defaultMode: 'auto' } }).hasAutoMode).toBe(true)
+    expect(settingsFacts({ permissions: { defaultMode: 'plan' } }).hasAutoMode).toBe(false)
+  })
+
+  test('enabled plugins by name, not this one, not a disabled one', () => {
+    expect(enabledPlugins({ enabledPlugins: { 'gku@grinchenkoedu': true, 'php-lsp@claude-plugins-official': true, 'old@x': false, 'quest-hud@quest-hud': true } })).toEqual(['gku', 'php-lsp'])
+    expect(enabledPlugins({})).toEqual([])
+    expect(enabledPlugins({ enabledPlugins: 'x' })).toEqual([])
+  })
+})
+
+describe('the command list, as far as the level reads it', () => {
+  const command = (name: string, source: 'builtin' | 'plugin' | 'user' | 'mcp', plugin?: string) => ({ name, description: '', source, ...(plugin === undefined ? {} : { plugin }) })
+
+  test('skills are plugins\' and your own; this mod and the built-ins are not', () => {
+    const facts = commandFacts([command('clear', 'builtin'), command('gku:plan', 'plugin', 'gku'), command('self-review', 'user'), command('quest-hud:level', 'plugin', 'quest-hud'), command('quest-hud', 'plugin', 'quest-hud'), command('x:y', 'mcp')])
+    expect(facts.skills).toEqual(['gku:plan', 'self-review'])
+    expect(facts.ownSkills).toBe(1)
+    expect(facts.commands).toEqual(['clear', 'gku:plan', 'self-review', 'quest-hud:level', 'quest-hud', 'x:y'])
+  })
 })

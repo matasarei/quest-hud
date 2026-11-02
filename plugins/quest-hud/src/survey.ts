@@ -157,6 +157,49 @@ export const changedFiles = (files: readonly Transcript[], cached: Readonly<Reco
     return known === undefined || known.size !== file.size || known.mtimeMs !== file.mtimeMs
   })
 
+/**
+ * The cache after a scan: each changed file takes its tally, an unchanged one
+ * keeps its own, and a file no longer on disk goes. A scan that found nothing at
+ * all was no scan (grep did not run, or the format changed): nothing changes, so
+ * it is tried again next time and the old tallies stand.
+ */
+export const mergeSurvey = (
+  cached: Readonly<Record<string, Surveyed>>,
+  files: readonly Transcript[],
+  changed: readonly Transcript[],
+  tallies: Readonly<Record<string, Tally>>,
+): Record<string, Surveyed> => {
+  const hasAny = Object.keys(tallies).length > 0
+  const isChanged = new Set(changed.map(file => file.name))
+  const merged: Record<string, Surveyed> = {}
+
+  for (const { name, size, mtimeMs } of files) {
+    const known = cached[name]
+
+    if (hasAny && isChanged.has(name)) merged[name] = { size, mtimeMs, tally: tallies[name] ?? emptyTally() }
+    else if (known !== undefined) merged[name] = known
+  }
+
+  return merged
+}
+
+/** The tallies of a cache. */
+export const talliesOf = (survey: Readonly<Record<string, Surveyed>>): Record<string, Tally> =>
+  Object.fromEntries(Object.entries(survey).map(([name, { tally }]) => [name, tally]))
+
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null
+
+const isSurveyed = (value: unknown): value is Surveyed => {
+  if (!isRecord(value) || typeof value.size !== 'number' || typeof value.mtimeMs !== 'number' || !isRecord(value.tally)) return false
+
+  const { calls, mcp, skills, extensions, kinds } = value.tally
+  return isRecord(calls) && isRecord(mcp) && isRecord(skills) && isRecord(extensions) && isRecord(kinds)
+}
+
+/** A cache as `$.store` gave it back: a broken entry is dropped, and read again. */
+export const asSurvey = (value: unknown): Record<string, Surveyed> =>
+  isRecord(value) ? Object.fromEntries(Object.entries(value).filter((entry): entry is [string, Surveyed] => isSurveyed(entry[1]))) : {}
+
 const DAY_MS = 86_400_000
 
 /** A browser the session drove, by its MCP server's name. */

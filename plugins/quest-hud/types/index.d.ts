@@ -47,7 +47,7 @@ export type Allies = Readonly<{ octopus: boolean; fox: boolean }>
 /** One line of the pane's log: what Claude did, as Claude Code reported it. */
 export type LogEntry = {
   at: number
-  kind: 'skill' | 'scout' | 'cast' | 'fork' | 'task' | 'plan' | 'camp' | 'fight' | 'loot' | 'ally'
+  kind: 'skill' | 'scout' | 'cast' | 'fork' | 'task' | 'plan' | 'camp' | 'fight' | 'loot' | 'ally' | 'level'
   text: string
   /** The main turn it happened in: scout lines of one turn merge. */
   turn?: string
@@ -125,6 +125,8 @@ declare module 'claude-code' {
       allies: Allies
       /** /quest-hud:off is in force: nothing is drawn. Read from `$.store` at each start. */
       hidden: boolean
+      /** What /quest-hud:level last worked out; kept in `$.store`, loaded at each start. Null before the first run. */
+      level: LevelCard | null
     }
   }
 }

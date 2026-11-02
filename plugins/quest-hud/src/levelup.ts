@@ -13,6 +13,8 @@ export const MAX_QUESTS = 5
 
 export type LevelQuest = { title: string; tag: string; why: string; act: readonly string[] }
 
+const plural = (count: number, one: string): string => `${thousands(count)} ${one}${count === 1 ? '' : 's'}`
+
 const official = (plugin: string): string => `/plugin install ${plugin}@claude-plugins-official`
 
 const LONG_EDITS = 10
@@ -98,7 +100,7 @@ const CATALOGUE: readonly Row[] = [
     quest: ({ inventory: { hasHooks }, usage: { testRuns, lintRuns }, scores: { Checks: score } }) =>
       hasHooks || score === undefined || score < 1 ? undefined : {
         title: 'The Gatekeeper',
-        why: `${thousands(testRuns + lintRuns)} test and lint runs, each one asked for. A hook can run them after every edit.`,
+        why: `${plural(testRuns + lintRuns, 'test and lint run')}, each one asked for. A hook can run them after every edit.`,
         act: [official('hookify')],
       },
   },
@@ -203,8 +205,6 @@ export const pickQuests = (inventory: Inventory, usage: Usage, limit: number): L
   return shown.map(one => one.quest)
 }
 
-const plural = (count: number, one: string): string => `${thousands(count)} ${one}${count === 1 ? '' : 's'}`
-
 const sizeText = (bytes: number): string =>
   bytes >= 2 ** 30 ? `${(bytes / 2 ** 30).toFixed(1)} GB` : `${(bytes / 2 ** 20).toFixed(1)} MB`
 
@@ -214,6 +214,20 @@ export const scoutRidesText = (sessions: number, bytes: number): string =>
     `The scout rides out: ${plural(sessions, 'session')}, ${sizeText(bytes)}, read as counts only.`,
     'The level appears beside the bars on the Road when it is back (/quest-hud:pane opens the Road). /quest-hud:level then lists the parts.',
   ].join('\n')
+
+/** The line under the parts while a reading is under way. */
+export const rereadingText = (changed: number): string =>
+  `Rereading ${plural(changed, 'changed session')}: the Road shows any change.`
+
+/** The line under the parts while a reading started earlier is still going. */
+export const STILL_READING = 'Still reading the sessions: the Road shows the level when it is back.'
+
+/** What /quest-hud:level-up answers before there is any level. */
+export const NO_LEVEL_YET = 'No level yet: /quest-hud:level reads it first.'
+
+/** What the log says when the level could not be kept: it stays on screen, and the next run reads everything. */
+export const levelLogText = ({ level, title }: LevelCard, isKept: boolean): string =>
+  `Lv ${level} ${title}${isKept ? '' : ' · not kept, read again next time'}`
 
 const PART_WIDTH = 12
 

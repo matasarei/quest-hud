@@ -2,6 +2,8 @@
 // Pure. The scale and its thresholds are this game's own, not a benchmark; the
 // guides and sensors follow Böckeler's split (martinfowler.com, 2026). Installed
 // but unused never passes 1 in Skills, Tools or Delegation.
+import type { CommandInfo } from 'claude-code'
+
 import type { HarnessPart, LevelCard, Usage } from '../types'
 import { cleanTitle } from './quest'
 
@@ -26,6 +28,48 @@ export type Inventory = {
   hasPermissionRules: boolean
   hasAutoMode: boolean
   hasProjectSettings: boolean
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null
+
+const holdsAny = (value: unknown): boolean => Array.isArray(value) && value.length > 0
+
+/** What a settings object says of the guardrails. Nothing else in it is looked at: it can hold secrets. */
+export const settingsFacts = (settings: unknown): Pick<Inventory, 'hasHooks' | 'hasDenyRules' | 'hasPermissionRules' | 'hasAutoMode'> => {
+  const { hooks, permissions, autoMode } = isRecord(settings) ? settings : ({} as Record<string, unknown>)
+  const { allow, ask, deny, defaultMode } = isRecord(permissions) ? permissions : ({} as Record<string, unknown>)
+
+  return {
+    hasHooks: isRecord(hooks) && Object.keys(hooks).length > 0,
+    hasDenyRules: holdsAny(deny),
+    hasPermissionRules: holdsAny(allow) || holdsAny(ask) || holdsAny(deny),
+    hasAutoMode: autoMode !== undefined || defaultMode === 'auto',
+  }
+}
+
+const OWN_PLUGIN = 'quest-hud'
+
+/** The enabled plugins by name, without their marketplace and without this mod. */
+export const enabledPlugins = (settings: unknown): string[] => {
+  const enabled = isRecord(settings) ? settings.enabledPlugins : undefined
+  if (!isRecord(enabled)) return []
+
+  return Object.entries(enabled)
+    .filter(([, isOn]) => isOn === true)
+    .map(([id]) => id.split('@')[0] ?? id)
+    .filter(name => name !== OWN_PLUGIN)
+}
+
+/** What the command list says of the skills: a plugin's and the person's own, not this mod's or the built-ins. */
+export const commandFacts = (commands: readonly CommandInfo[]): Pick<Inventory, 'skills' | 'commands' | 'ownSkills'> => {
+  const isOwnMod = (command: CommandInfo): boolean => command.plugin === OWN_PLUGIN || command.name === OWN_PLUGIN || command.name.startsWith(`${OWN_PLUGIN}:`)
+  const skills = commands.filter(command => (command.source === 'plugin' || command.source === 'user') && !isOwnMod(command))
+
+  return {
+    skills: skills.map(command => command.name),
+    commands: commands.map(command => command.name),
+    ownSkills: skills.filter(command => command.source === 'user').length,
+  }
 }
 
 /** The titles, level 1 first: where the wizard stands. */
@@ -94,7 +138,7 @@ const instructions = ({ workedProjects: worked, instructedProjects: instructed }
 const memory = ({ memoryProjects: projects, memoryFiles: files, hasGlobalInstructions }: Inventory): HarnessPart => {
   const score = projects >= MEMORY_PROJECTS ? (files >= MEMORY_FILES ? 3 : 2) : projects > 0 || hasGlobalInstructions ? 1 : 0
 
-  return part('Memory', score, projects === 0 ? (hasGlobalInstructions ? 'a global CLAUDE.md' : 'no notes kept') : `${thousands(files)} notes in ${projects} ${projects === 1 ? 'project' : 'projects'}`)
+  return part('Memory', score, projects === 0 ? (hasGlobalInstructions ? 'a global CLAUDE.md' : 'no notes kept') : `${thousands(files)} ${files === 1 ? 'note' : 'notes'} in ${projects} ${projects === 1 ? 'project' : 'projects'}`)
 }
 
 const skills = ({ skills: present, ownSkills }: Inventory, { skillSessions, allSessions, skillRuns }: Usage): HarnessPart => {
@@ -178,8 +222,6 @@ export const cardOf = (inventory: Inventory, usage: Usage): LevelCard => {
 
   return { level, title: TITLES[level - 1] ?? '', points, outOf, parts, usage }
 }
-
-const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null
 
 /** A card as `$.store` gave it back, or null for anything else: an older mod may have written it. */
 export const asCard = (value: unknown): LevelCard | null => {

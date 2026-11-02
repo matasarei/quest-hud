@@ -7,18 +7,22 @@ import type { EngineInterface, Register, Timer } from 'claude-code'
 import { gridToSvg } from '../src/avatar'
 import { commandKinds, endFights, fightKinds, fightOutcome, fightText, forgeEvent, holdsTheRoad, lootText, NO_FOES, startFights, stdoutOf } from '../src/bash'
 import { activeCompanions, sameCompanions } from '../src/companions'
+import { asCard, cardOf, type Inventory } from '../src/harness'
 import { unknownText, usageText } from '../src/help'
+import { levelLogText, levelText, levelUpText, NO_LEVEL_YET, rereadingText, scoutRidesText, STILL_READING } from '../src/levelup'
 import { appendEntry, castText, scoutCounts, scoutText } from '../src/log'
 import { bandModel, fromMeasure, hintText, shortTokens, statusText, TONE_COLOR, ZONE_LABEL, zoneLine, type Bars } from '../src/meters'
 import { downsample } from '../src/paint/pixels'
 import { afterPrompt, cleanTitle, fromSkill } from '../src/quest'
 import { road, roadArt, SCENE_MIN_COLUMNS, sceneZone } from '../src/road'
 import { atRest, BAND, bandPortrait, nextMotion, REST, TRANSITION_STEPS, type Motion, type Transition } from '../src/scene'
+import { asSurvey, changedFiles, mergeSurvey, talliesOf, usageFrom, type History, type Surveyed, type Transcript } from '../src/survey'
 import { applyTaskCall } from '../src/tasks'
 import { ART_SCALE } from '../src/world/sprites'
 import { parseZones, zoneFor } from '../src/zones'
-import type { Allies, FightKind, Foes, LogEntry, Meters, Zone } from '../types'
+import type { Allies, FightKind, Foes, LevelCard, LogEntry, Meters, Usage, Zone } from '../types'
 import { artCells, drawRoad, PANE_ID, PANE_TITLE, SCENE_IMAGE_KEY, SCENE_KEY, sceneImage, type PngSource, type SceneMode } from './pane'
+import { configDir, readHistory, readInventory, readProjects, scanTranscripts } from './survey'
 
 // The values the HUD keeps for the session, each declared in types/index.d.ts.
 // The engine lists what a module reads and writes from atoms defined in the
@@ -37,6 +41,7 @@ const loot = atom({ plugin: 'quest-hud', key: 'loot' } as const, 0)
 const NO_ALLIES: Allies = { octopus: false, fox: false }
 const allies = atom({ plugin: 'quest-hud', key: 'allies' } as const, NO_ALLIES)
 const hidden = atom({ plugin: 'quest-hud', key: 'hidden' } as const, false)
+const level = atom({ plugin: 'quest-hud', key: 'level' } as const, null)
 
 /** off, the bars on the hint line, the band, or the band and the Road pane opened at the start. */
 type Detail = 'off' | 'status' | 'band' | 'pane'
@@ -316,6 +321,97 @@ async function turnOn($: EngineInterface, detail: Detail): Promise<string> {
   return detail === 'off' ? 'Quest HUD is on, but the detail option is off: /plugin configure quest-hud@quest-hud changes it.' : 'Quest HUD is back.'
 }
 
+/** One reading of the transcripts at a time; a reload starts this over, and the engine ends its child. */
+const reading: { isRunning: boolean } = { isRunning: false }
+
+/** The level as last worked out: a /clear wipes the atom and no start follows, so the store still has it. */
+async function currentLevel($: EngineInterface): Promise<LevelCard | null> {
+  return (await read($, level)) ?? asCard(await $.store.get('level'))
+}
+
+/** What the sessions came to, from the cache: the transcripts' tallies and the prompt history. */
+function usageOf(survey: Readonly<Record<string, Surveyed>>, files: readonly Transcript[], history: History, inventory: Inventory, now: number): Usage {
+  const read = files.filter(file => survey[file.name] !== undefined).map(file => file.mtimeMs)
+  return usageFrom(talliesOf(survey), history, inventory.skills, now, read.length > 0 ? Math.min(...read) : undefined)
+}
+
+/** Keeps the card, then shows it: a /clear between the two loses nothing. Answers whether the store took it. */
+async function keepCard($: EngineInterface, card: LevelCard): Promise<boolean> {
+  const isKept = await $.store.set('level', card).then(() => true, () => false)
+  await update($, level, () => card)
+  return isKept
+}
+
+/**
+ * Reads the changed transcripts in the background and keeps what they came to.
+ * A grep that cannot start reads as nothing found, so the card says usage
+ * unread; the log carries the level when it first arrives or moves.
+ */
+async function readSessions($: EngineInterface, files: readonly Transcript[], changed: readonly Transcript[], cached: Readonly<Record<string, Surveyed>>, history: History, inventory: Inventory): Promise<void> {
+  const before = await currentLevel($)
+  const tallies = await scanTranscripts($, changed).catch(() => ({}))
+  const survey = mergeSurvey(cached, files, changed, tallies)
+  const card = cardOf(inventory, usageOf(survey, files, history, inventory, await $.clock.now()))
+  const isCardKept = await keepCard($, card)
+  const isSurveyKept = await $.store.set('survey', survey).then(() => true, () => false)
+  const isKept = isCardKept && isSurveyKept
+
+  if (before?.level !== card.level || !isKept) await addLog($, { kind: 'level', text: levelLogText(card, isKept) })
+}
+
+/**
+ * What /quest-hud:level answers, at once: the parts from a fresh look at the
+ * setup and the tallies kept so far, while changed transcripts are read in the
+ * background. The only place transcripts are read: never at a start, never on a timer.
+ */
+async function levelCommand($: EngineInterface): Promise<string> {
+  const config = await configDir($)
+  const history = await readHistory($, config)
+  const { transcripts, ...notes } = await readProjects($, config)
+  const inventory = await readInventory($, config, history, notes)
+  const kept = asSurvey(await $.store.get('survey'))
+  // Sessions the retention sweep took leave the count, whether or not anything else changed.
+  const cached = mergeSurvey(kept, transcripts, [], {})
+  const changed = changedFiles(transcripts, cached)
+  const hasLevel = (await currentLevel($)) !== null
+  const scout = scoutRidesText(changed.length, changed.reduce((sum, file) => sum + file.size, 0))
+  const card = cardOf(inventory, usageOf(cached, transcripts, history, inventory, await $.clock.now()))
+
+  if (reading.isRunning) return hasLevel ? `${levelText(card)}\n${STILL_READING}` : STILL_READING
+
+  if (changed.length > 0) {
+    reading.isRunning = true
+    void readSessions($, transcripts, changed, cached, history, inventory)
+      .catch(() => undefined)
+      .finally(() => {
+        reading.isRunning = false
+      })
+
+    if (!hasLevel) return scout
+  } else if (Object.keys(cached).length !== Object.keys(kept).length) {
+    await $.store.set('survey', cached).catch(() => undefined)
+  }
+
+  await keepCard($, card)
+
+  return changed.length > 0 ? `${levelText(card)}\n${rereadingText(changed.length)}` : levelText(card)
+}
+
+/** What /quest-hud:level-up answers: quests from the usage last read and a fresh look at the setup. No transcript is read. */
+async function levelUpCommand($: EngineInterface): Promise<string> {
+  const kept = await currentLevel($)
+  if (kept === null) return NO_LEVEL_YET
+
+  const config = await configDir($)
+  const history = await readHistory($, config)
+  const { transcripts: _, ...notes } = await readProjects($, config)
+  const inventory = await readInventory($, config, history, notes)
+  const card = cardOf(inventory, kept.usage)
+  await keepCard($, card)
+
+  return levelUpText(card, inventory)
+}
+
 /** One more line in the pane's log, stamped with the time now. */
 async function addLog($: EngineInterface, entry: Omit<LogEntry, 'at'>): Promise<void> {
   const at = await $.clock.now()
@@ -379,6 +475,8 @@ export const register: Register = (on, options) => {
     await $.command.register({ name: 'quest-hud', description: "List Quest HUD's commands and its options" })
     const isHidden = (await $.store.get('hidden')) === true
     await update($, hidden, () => isHidden)
+    const kept = asCard(await $.store.get('level'))
+    await update($, level, () => kept)
     const id = await $.session.id()
 
     if ((await read($, sessionId)) !== id) {
@@ -588,6 +686,10 @@ export const register: Register = (on, options) => {
 
   on('command.run', { command: 'quest-hud:status' }, async $ => ({ text: await statusLines($) })).catch(($, e, next) => next(e))
 
+  on('command.run', { command: 'quest-hud:level' }, async $ => ({ text: await levelCommand($) })).catch(($, e, next) => next(e))
+
+  on('command.run', { command: 'quest-hud:level-up' }, async $ => ({ text: await levelUpCommand($) })).catch(($, e, next) => next(e))
+
   on('command.run', { command: 'quest-hud:off' }, async $ => ({ text: await turnOff($) })).catch(($, e, next) => next(e))
 
   on('command.run', { command: 'quest-hud:on' }, async $ => ({ text: await turnOn($, detail) })).catch(($, e, next) => next(e))
@@ -601,6 +703,8 @@ export const register: Register = (on, options) => {
     if (word === 'status') return { text: await statusLines($) }
     if (word === 'pane') return { text: await openRoad($) }
     if (word === 'statusline') return { text: help($.plugin.root) }
+    if (word === 'level') return { text: await levelCommand($) }
+    if (word === 'level-up') return { text: await levelUpCommand($) }
     if (word === 'off') return { text: await turnOff($) }
     if (word === 'on') return { text: await turnOn($, detail) }
 
