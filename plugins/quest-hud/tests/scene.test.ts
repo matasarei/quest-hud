@@ -370,6 +370,12 @@ describe('a narrow pane', () => {
     }
   })
 
+  test('the Wilds give way to the narrow crystal, so a 60-column pane keeps a landmark', () => {
+    expect(layout({ columns: 120, zone: 'wilds', waypoints: five }).props).toEqual(['mushrooms', 'oak', 'crystal'])
+    expect(layout({ columns: 80, zone: 'wilds', waypoints: five }).props).toEqual(['oak', 'crystal'])
+    expect(layout({ columns: 60, zone: 'wilds', waypoints: five }).props).toEqual(['crystal'])
+  })
+
   test('things give way in order as the pane narrows: landmarks from the left, the fox, the Octocat, the chest, the last landmark', () => {
     const all = ZONE_PROPS.dungeon
     // How far down the order a layout is, and whether it is a state the order passes through.
