@@ -1,4 +1,14 @@
-# Quest HUD
+<p align="center">
+  <img src="assets/banner.png" alt="Quest HUD — the wizard and Claude's mascot walk the road; a dragon and bugs wait ahead" width="200">
+</p>
+
+<h1 align="center">Quest HUD</h1>
+
+<p align="center">A Claude Code mod that draws the session as a small game: HP and MP bars for the weekly limit and the context window, and the skill and tasks you are on.</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Claude_Code-D97757?style=for-the-badge&logo=claude&logoColor=white" alt="Claude Code" /> <img src="https://img.shields.io/badge/License-MIT-3DA639?style=for-the-badge" alt="License: MIT" /> <a href="https://github.com/matasarei/quest-hud/actions/workflows/checks.yml"><img src="https://img.shields.io/github/actions/workflow/status/matasarei/quest-hud/checks.yml?style=for-the-badge&label=checks" alt="checks" /></a>
+</p>
 
 A Claude Code mod that draws your session as a small game, above the prompt:
 
@@ -26,6 +36,15 @@ It works with whatever skills you use. A skill's zone comes from its name and de
 | Dungeon | auditing the whole repository | audit, security |
 | Camp | setup and docs | init, setup, config, docs |
 | Wilds | no skill running | anything else |
+
+## Contents
+
+- [The Road](#the-road)
+- [Install](#install)
+- [Options](#options)
+- [Without mods](#without-mods)
+- [Development](#development)
+- [License](#license)
 
 ## The Road
 
@@ -106,6 +125,7 @@ desktop app the scene is an SVG, still.
 [claude-rpg](https://github.com/matasarei/claude-rpg) banner: the landscapes are shapes painted as
 pixel art (`src/world/landscapes.ts`), the cast are pixel maps (`src/world/sprites.ts`). GitHub's
 Octocat, GitLab's fox and Claude's mascot are our own drawings of them, not their logo files.
+The banner above is claude-rpg's, with Quest HUD's wizard and Claude's mascot on the road.
 
 **It costs nothing.** No model calls, nothing added to the context, no network. Every hook
 only observes Claude Code's own events and passes them on unchanged, and nothing is written
