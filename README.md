@@ -10,7 +10,8 @@
   <img src="https://img.shields.io/badge/Claude_Code-D97757?style=for-the-badge&logo=claude&logoColor=white" alt="Claude Code" /> <img src="https://img.shields.io/badge/License-MIT-3DA639?style=for-the-badge" alt="License: MIT" /> <a href="https://github.com/matasarei/quest-hud/actions/workflows/checks.yml"><img src="https://img.shields.io/github/actions/workflow/status/matasarei/quest-hud/checks.yml?style=for-the-badge&label=checks" alt="checks" /></a>
 </p>
 
-A Claude Code mod that draws your session as a small game, above the prompt:
+A HUD is a heads-up display: the health bars and quest line a game keeps on screen while you
+play. Quest HUD is a Claude Code mod that draws your session that way, above the prompt:
 
 ```
 [avatar]  ⚔ gku:implement  Forge  task 2/5 · Write the CSV writer tests
