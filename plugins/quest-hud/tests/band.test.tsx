@@ -215,7 +215,7 @@ describe('/quest-hud:help and the options', () => {
 })
 
 describe('the /quest-hud: commands', () => {
-  test('the session registers /quest-hud, and no /hud', async ($, on) => {
+  test('the session registers only /quest-hud', async ($, on) => {
     engine(on)
     await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
     expect(registered).toEqual(['quest-hud'])

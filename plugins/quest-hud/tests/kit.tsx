@@ -20,6 +20,8 @@ export const world: {
   /** The monsters as the plugin had stored them when each Bash call ran. */
   foesDuringBash: unknown[]
   panes: Array<{ id: string; isShown: boolean }>
+  /** When true, the engine throws on opening a pane. */
+  failOpen: boolean
   /** The panes the plugin closed. */
   closed: string[]
   /** Every status entry the plugin set, undefined when it cleared one. */
@@ -37,6 +39,7 @@ export const world: {
   bash: {},
   foesDuringBash: [],
   panes: [],
+  failOpen: false,
   closed: [],
   statuses: [],
 }
@@ -54,6 +57,7 @@ export const engine = (on: On, store: Readonly<Record<string, unknown>> = {}) =>
   world.bash = {}
   world.foesDuringBash = []
   world.panes = []
+  world.failOpen = false
   world.closed = []
   world.statuses = []
   world.state = {}
@@ -78,12 +82,15 @@ export const engine = (on: On, store: Readonly<Record<string, unknown>> = {}) =>
     world.statuses.push(e.text)
     return { value: undefined }
   })
+  // Below the plugin's hooks, what the engine does with a command nobody answered: the skill's text.
+  on('command.run', () => ({ text: 'the skill ran' }))
   on('ui.close', (_, e) => {
     world.closed.push(e.id)
     world.panes = world.panes.filter(pane => pane.id !== e.id)
     return { value: undefined }
   })
   on('ui.open', (_, e) => {
+    if (world.failOpen) throw new Error('no pane today')
     world.opened.push(e.id)
     return { value: { isPlaced: true } }
   })

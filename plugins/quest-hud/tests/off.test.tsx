@@ -123,6 +123,15 @@ describe('/quest-hud:off', () => {
   })
 })
 
+describe('a command whose hook fails', () => {
+  test('passes on to the skill, whose text says the mod is not running', async ($, on) => {
+    engine(on)
+    await start($)
+    world.failOpen = true
+    expect(await run($, 'quest-hud:pane')).toBe('the skill ran')
+  })
+})
+
 describe('a session started while off', () => {
   test('draws no band and no status entry', { options: { detail: 'status' } }, async ($, on) => {
     engine(on, { hidden: true })

@@ -3,7 +3,7 @@
 A Claude Code marketplace with one mod, `quest-hud` (`plugins/quest-hud/`): a hooks module
 (`hooks/register.tsx`, with the Road pane's layout in `hooks/pane.tsx`) over pure modules
 (`src/`), a state contract (`types/index.d.ts`), and a status-line script
-(`scripts/hud-line.sh`). Tests are `plugins/quest-hud/tests/*.test.ts(x)`; `tests/kit.tsx`
+(`scripts/hud-line.sh`), and one user-only skill file per command (`skills/`). Tests are `plugins/quest-hud/tests/*.test.ts(x)`; `tests/kit.tsx`
 stands for the engine in the newer ones. TypeScript run by the Claude Code engine; there is no
 package.json, no build and no node_modules. The Road's art is drawn in code: `src/paint/`
 paints (shapes, pixel sprites, a rasteriser, a PNG encoder, an Svg writer) and `src/world/`
@@ -29,6 +29,12 @@ files only (`git grep -I`): perl dies on binary input.
   `$.session.usage({ breakdown })`; never `$.fs` writes. Nothing reaches the model.
 - **Every hook observes.** It returns what `next(e)` resolved, unchanged, and closes with
   `.catch(($, e, next) => next(e))`. The HUD never rewrites or refuses anything.
+- **Commands are user-only skills the mod answers.** A registered name cannot hold a colon, so
+  `skills/<name>/SKILL.md` gives each command its `/quest-hud:<name>`, and a `command.run` hook
+  answers it before any model turn. `disable-model-invocation: true` keeps it out of the context.
+  A new command needs its skill file, its literal hook (a computed name fails validate), its
+  word in the plain `/quest-hud` hook, its line in `src/help.ts`, and its name in
+  `tests/skills.sh`. The only thing stored is `/quest-hud:off`'s switch, in `$.store`.
 - **It knows no skill pack.** It reads only what the engine passes for every session: skill
   name and description, the task tools, usage. No reading of `.quests/`, `.tasks/`, `.gku/` or
   any pack's files.
