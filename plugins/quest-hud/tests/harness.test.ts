@@ -190,12 +190,12 @@ describe('notes', () => {
   test('say what was counted, thousands marked, a skill name cleaned', () => {
     const card = cardOf(
       inventory({ skills: ['gku:plan'] }),
-      usage({ testRuns: 5520, lintRuns: 3368, skillRuns: { 'gku:plan': 3500, 'bad‮name': 1 } }),
+      usage({ testRuns: 5520, lintRuns: 3368, skillRuns: { 'gku:plan': 3500, 'bad\u202ename': 1 } }),
     )
     const note = (name: string) => card.parts.find(part => part.name === name)?.note
     expect(note('Checks')).toBe('5,520 test and 3,368 lint runs')
     expect(note('Skills')).toBe('3,501 runs, mostly gku:plan')
-    expect(cardOf(inventory({ skills: ['x'] }), usage({ skillRuns: { 'bad‮name': 1 } })).parts[2]?.note).toBe('1 run, mostly bad name')
+    expect(cardOf(inventory({ skills: ['x'] }), usage({ skillRuns: { 'bad\u202ename': 1 } })).parts[2]?.note).toBe('1 run, mostly bad name')
   })
 
   test('name the missing language server', () => {
