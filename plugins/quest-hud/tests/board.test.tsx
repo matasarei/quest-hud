@@ -321,6 +321,13 @@ describe('the finished board', () => {
     await ui.unmount()
   })
 
+  test('a label keeps its width: a long one does not wrap, and the title gives way', async ($, on) => {
+    engine(on)
+    const ui = await posted($, sweepWith({ review: { issueCount: 1, nodes: [pull(7)] } }))
+    expect((await ui.find({ key: 'label' }))?.props.flexShrink).toBe(0)
+    await ui.unmount()
+  })
+
   test('a narrow pane still draws the link, the title and the age', async ($, on) => {
     engine(on)
     const ui = await posted($, sweepWith({ review: { issueCount: 1, nodes: [pull(7, 'Fix the door')] } }), 'terminal', 40)

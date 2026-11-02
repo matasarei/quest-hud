@@ -18,7 +18,12 @@ const ONE_LINE_COLUMNS = 72
 export function drawBoard($: EngineInterface, e: RenderInput<'Pane'>, view: BoardView, onFold: () => void) {
   const { Box, Text, Link, Button } = $.ui.resolve(e)
   const isOneLine = e.props.bodyColumns >= ONE_LINE_COLUMNS
-  const label = (row: BoardRow) => (row.href === undefined ? <Text dimColor>{row.label}</Text> : <Text><Link href={row.href} label={row.label} /></Text>)
+  // A label keeps its width, so a long one does not wrap: the title gives way.
+  const label = (row: BoardRow) => (
+    <Box key="label" flexShrink={0}>
+      {row.href === undefined ? <Text dimColor>{row.label}</Text> : <Text><Link href={row.href} label={row.label} /></Text>}
+    </Box>
+  )
 
   return (
     <Box flexDirection="column">
