@@ -17,17 +17,16 @@ const CAST: ReadonlyArray<readonly [string, Sprite, number, number]> = [
   ['band cast', BAND_CAST, 20, 12],
 ]
 
-describe("Claude's mascot's outline", () => {
+describe("Claude's mascot's left side", () => {
   for (const [name, frame] of [['still', MASCOT.still], ['hop', MASCOT.hop]] as const) {
-    test(`${name}: every pixel on its edge is the wizard's outline colour`, () => {
-      const grid = spriteGrid(frame)
-      grid.forEach((row, y) =>
-        row.forEach((pixel, x) => {
-          if (pixel === undefined) return
-          const onEdge = [[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]].some(([nx = 0, ny = 0]) => grid[ny]?.[nx] === undefined)
-          if (onEdge) expect(pixel).toBe(PALETTE.o)
-        }),
-      )
+    test(`${name}: the wizard's dark on the left of the body and arm, and on no right edge`, () => {
+      const rows = spriteGrid(frame).filter(cells => cells.some(pixel => pixel !== undefined))
+      // The last two rows are the legs, which keep their own shade.
+      for (const row of rows.slice(0, -2)) {
+        const filled = row.filter(pixel => pixel !== undefined)
+        expect(filled[0]).toBe(PALETTE.o)
+        expect(filled.at(-1)).not.toBe(PALETTE.o)
+      }
     })
   }
 })
