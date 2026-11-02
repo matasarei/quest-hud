@@ -95,13 +95,13 @@ export const propsWidth = (zone: Zone): number => propsUnits(ZONE_PROPS[zone]) +
 export type Extras = { loot?: number; allies?: Allies }
 
 /** GitHub's Octocat and GitLab's fox once they came, right to left, the fox turned to face the road. */
-const allyGrids = ({ allies }: Extras): Grid[] => [
-  ...(allies?.octopus ? [spriteGrid(OCTOCAT)] : []),
-  ...(allies?.fox ? [mirrorGrid(spriteGrid(FOX))] : []),
+const allyGrids = ({ allies }: Extras): Array<{ kind: 'octopus' | 'fox'; grid: Grid }> => [
+  ...(allies?.octopus ? [{ kind: 'octopus' as const, grid: spriteGrid(OCTOCAT) }] : []),
+  ...(allies?.fox ? [{ kind: 'fox' as const, grid: mirrorGrid(spriteGrid(FOX)) }] : []),
 ]
 
 /** The gathered things, right to left: the chest once there is loot, then the allies. */
-const extraGrids = (extras: Extras): Grid[] => [...((extras.loot ?? 0) > 0 ? [spriteGrid(CHEST)] : []), ...allyGrids(extras)]
+const extraGrids = (extras: Extras): Grid[] => [...((extras.loot ?? 0) > 0 ? [spriteGrid(CHEST)] : []), ...allyGrids(extras).map(ally => ally.grid)]
 
 /** Units between gathered things, and between them and the landmarks. */
 const EXTRA_GAP = 2
@@ -416,7 +416,7 @@ export const roadside = (args: SceneArgs): Roadside[] => {
 export type Party = {
   hero: number
   road: number
-  allies: Array<{ grid: Grid; x: number }>
+  allies: Array<{ kind: 'octopus' | 'fox'; grid: Grid; x: number }>
   ghosts: number[]
   flags: Array<{ state: Waypoint; x: number }>
   mascot: number
@@ -431,9 +431,9 @@ export const party = (args: SceneArgs): Party => {
 
   // GitHub's Octocat and GitLab's fox joined the party: they keep their places as it walks.
   let right = roadsideOf(kept, width, motion.step).right
-  const allies = allyGrids(kept.extras).map(grid => {
+  const allies = allyGrids(kept.extras).map(({ kind, grid }) => {
     right -= (grid[0]?.length ?? 0) / ART_SCALE + EXTRA_GAP
-    return { grid, x: right }
+    return { kind, grid, x: right }
   })
 
   const flags = fitWaypoints(waypoints, flagSlots(kept.flagRoad))
@@ -474,9 +474,50 @@ export const sceneArt = (args: SceneArgs): Grid => {
     ? slide(backdrop(transition.from), backdrop(zone), transition.progress)
     : backdrop(zone).map(row => [...row])
   for (const thing of roadside(args)) stamp(art, thing.grid, thing.x, GROUND_ROW * ART_SCALE - thing.grid.length, thing.from, thing.to)
-  drawParty(art, party(args), motion)
+  drawParty(art, partyAt(args), motion)
 
   return art
+}
+
+const lerp = (a: number, b: number, t: number): number => a + (b - a) * t
+
+/** Whether two lists hold the same things in the same order, by `key`: then each can walk to its new place. */
+const sameBy = <T>(a: readonly T[], b: readonly T[], key: (item: T) => string): boolean =>
+  a.length === b.length && a.every((item, i) => key(item) === key(b[i] as T))
+
+/**
+ * The party `progress` of the way from one zone's layout to another's: the
+ * wizard, the mascot, and the ghosts, flags, monsters and allies that are the
+ * same in both walk from their old places to their new ones; a set that
+ * differs — more or fewer flags, the spider in only one, an ally given way —
+ * swaps at the halfway frame, and so does a room's monster.
+ */
+export const glide = (from: Party, to: Party, progress: number): Party => {
+  const p = Math.max(0, Math.min(1, progress))
+  const half = p < 0.5 ? from : to
+  return {
+    hero: lerp(from.hero, to.hero, p),
+    road: half.road,
+    allies: sameBy(from.allies, to.allies, ally => ally.kind)
+      ? from.allies.map((ally, i) => ({ ...ally, x: lerp(ally.x, to.allies[i]?.x ?? ally.x, p) }))
+      : half.allies,
+    ghosts: from.ghosts.length === to.ghosts.length ? from.ghosts.map((x, i) => lerp(x, to.ghosts[i] ?? x, p)) : half.ghosts,
+    flags: sameBy(from.flags, to.flags, flag => flag.state)
+      ? from.flags.map((flag, i) => ({ ...flag, x: lerp(flag.x, to.flags[i]?.x ?? flag.x, p) }))
+      : half.flags,
+    mascot: lerp(from.mascot, to.mascot, p),
+    foes: sameBy(from.foes, to.foes, foe => foe.kind)
+      ? from.foes.map((foe, i) => ({ ...foe, x: lerp(foe.x, to.foes[i]?.x ?? foe.x, p), grid: half.foes[i]?.grid ?? foe.grid }))
+      : half.foes,
+  }
+}
+
+/** The party a frame draws: its zone's layout, or in a zone change the glide from the old zone's to it. */
+export const partyAt = (args: SceneArgs): Party => {
+  const { transition } = args
+  return transition === undefined || transition.from === args.zone || transition.progress >= 1
+    ? party(args)
+    : glide(party({ ...args, zone: transition.from }), party(args), transition.progress)
 }
 
 /** Paints the party over the scene, back to front: allies, ghosts, flags, the mascot, the monsters (the far one first), the wizard. */

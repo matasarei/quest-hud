@@ -2,7 +2,7 @@ import { describe, expect, test } from 'claude-code/testing'
 
 import { downsample } from '../src/paint/pixels'
 import {
-  atRest, avatarX, BAND, bandPortrait, figures, foesOnRoad, foesShown, FLAG_SLOT, FLAG_WIDTH, fitWaypoints, flagSlots, foeX, GROUND_ROW, layout, MAX_FLAGS, MAX_GHOSTS, MIN_FLAGS, propsWidth,
+  atRest, avatarX, BAND, bandPortrait, figures, foesOnRoad, foesShown, party, partyAt, FLAG_SLOT, FLAG_WIDTH, fitWaypoints, flagSlots, foeX, GROUND_ROW, layout, MAX_FLAGS, MAX_GHOSTS, MIN_FLAGS, propsWidth,
   nextMotion, REST, roadWidth, scene, sceneArt, SCENE_HEIGHT, SIZE, slide, slideShift, roadside, skyColor, waypointsOf, waypointX, ZONE_PROPS, type Waypoint,
 } from '../src/scene'
 import { PALETTE, PROPS } from '../src/world/sprites'
@@ -493,6 +493,59 @@ describe('the landmarks in a zone change', () => {
     expect(things.length).toBe(3)
     expect(things.every(t => t.from === 0 && t.to === WIDTH)).toBe(true)
     expect(roadside({ ...args, transition: { from: 'arena', progress: 0.5 } })).toEqual(things)
+  })
+})
+
+describe('the party in a zone change', () => {
+  const ZONES_ALL: readonly Zone[] = ['watchtower', 'harbour', 'dungeon', 'arena', 'forge', 'map', 'camp', 'wilds']
+  const TASKS: readonly Waypoint[] = ['done', 'done', 'now', 'todo', 'todo', 'todo', 'todo', 'todo']
+  const base = (columns: number, n: number) => ({ columns, waypoints: TASKS.slice(0, n), companions: 2, foes: { test: 'standing', lint: 'none' }, loot: 2, allies: { octopus: true, fox: false } }) as const
+
+  test('at its start the party stands where the old zone has it; at its end where the new one does', () => {
+    let moved = 0
+    for (const from of ZONES_ALL) {
+      for (const to of ZONES_ALL) {
+        if (from === to) continue
+        for (const [columns, n] of [[80, 3], [80, 5], [120, 5], [160, 8]] as const) {
+          const args = { ...base(columns, n), zone: to }
+          const old = party({ ...args, zone: from })
+          if (JSON.stringify(old) !== JSON.stringify(party(args))) moved++
+          expect([from, to, columns, n, JSON.stringify(partyAt({ ...args, transition: { from, progress: 0 } })) === JSON.stringify(old)]).toEqual([from, to, columns, n, true])
+          expect([from, to, columns, n, JSON.stringify(partyAt({ ...args, transition: { from, progress: 1 } })) === JSON.stringify(party(args))]).toEqual([from, to, columns, n, true])
+        }
+      }
+    }
+    expect(moved).toBeGreaterThan(20)
+  })
+
+  test('the first frame of a slide is the old scene, the last the new one, pixel for pixel', () => {
+    for (const [from, to, columns] of [['wilds', 'forge', 80], ['wilds', 'forge', 120], ['camp', 'dungeon', 80]] as const) {
+      const args = { ...base(columns, 5), zone: to }
+      expect(JSON.stringify(sceneArt({ ...args, transition: { from, progress: 0 } }))).toBe(JSON.stringify(sceneArt({ ...args, zone: from })))
+      expect(JSON.stringify(sceneArt({ ...args, transition: { from, progress: 1 } }))).toBe(JSON.stringify(sceneArt(args)))
+    }
+  })
+
+  test('glide: the wizard and a same-size set of flags walk; a different-size set swaps at half', () => {
+    const at = (columns: number, n: number, progress: number) => partyAt({ ...base(columns, n), zone: 'forge', transition: { from: 'wilds', progress } })
+    const [old, now] = [party({ ...base(120, 5), zone: 'wilds' }), party({ ...base(120, 5), zone: 'forge' })]
+    expect(old.flags.length).toBe(now.flags.length)
+    for (const p of [0.25, 0.5, 0.75]) {
+      expect(at(120, 5, p).hero).toBe(old.hero + (now.hero - old.hero) * p)
+      expect(at(120, 5, p).flags.map(f => f.x)).toEqual(old.flags.map((f, i) => f.x + ((now.flags[i]?.x ?? 0) - f.x) * p))
+    }
+    const [few, many] = [party({ ...base(80, 5), zone: 'wilds' }), party({ ...base(80, 5), zone: 'forge' })]
+    expect(few.flags.length === many.flags.length).toBe(false)
+    expect(at(80, 5, 0.25).flags.length).toBe(few.flags.length)
+    expect(at(80, 5, 0.5).flags.length).toBe(many.flags.length)
+  })
+
+  test('a room\'s monster takes over at half: wilds to dungeon, the dragon, then the skeleton', () => {
+    const args = { ...base(120, 3), zone: 'dungeon' } as const
+    const [dragon, skeleton] = [party({ ...args, zone: 'wilds' }).foes[0]?.grid, party(args).foes[0]?.grid]
+    expect(JSON.stringify(dragon) === JSON.stringify(skeleton)).toBe(false)
+    expect(partyAt({ ...args, transition: { from: 'wilds', progress: 0.25 } }).foes[0]?.grid).toEqual(dragon)
+    expect(partyAt({ ...args, transition: { from: 'wilds', progress: 0.5 } }).foes[0]?.grid).toEqual(skeleton)
   })
 })
 
