@@ -248,6 +248,41 @@ describe('pixel art', () => {
     expect(bayer(0, 0) < bayer(1, 1)).toBe(true)
   })
 
+  describe('for text cells, dithered in row pairs', () => {
+    // A gradient and a see-through shape, both dithered in pixel mode.
+    const picture: Picture = [
+      { kind: 'rect', x: 0, y: 0, w: 40, h: 56, fill: { top: 0x204060, bottom: 0xe0f0ff, y0: 0, y1: 56 } },
+      { kind: 'rect', x: 10, y: 20, w: 12, h: 12, fill: 0xffffff, opacity: 0.4 },
+    ]
+    const grid = (ditherRows?: number) =>
+      rgbToGrid(rasterize(picture, 40, 56, 1, 0, { pixel: true, bands: 5, ...(ditherRows === undefined ? {} : { ditherRows }) }))
+    /** Of the pixels that differ from their right neighbour, the share that match the one below: vertical stripes. */
+    const striping = (g: ReadonlyArray<ReadonlyArray<number | undefined>>): number => {
+      let mixed = 0
+      let striped = 0
+      for (let y = 0; y + 1 < g.length; y++) {
+        for (let x = 0; x + 1 < (g[y]?.length ?? 0); x++) {
+          if (g[y]?.[x] === g[y]?.[x + 1]) continue
+          mixed++
+          if (g[y]?.[x] === g[y + 1]?.[x]) striped++
+        }
+      }
+      return striped / Math.max(1, mixed)
+    }
+
+    test('each pair of rows is the same, and the default is today\'s dither', () => {
+      const paired = grid(2)
+      for (let y = 0; y < paired.length; y += 2) expect(JSON.stringify(paired[y + 1])).toBe(JSON.stringify(paired[y]))
+      expect(JSON.stringify(grid(1))).toBe(JSON.stringify(grid()))
+      expect(JSON.stringify(grid(2)) === JSON.stringify(grid())).toBe(false)
+    })
+
+    test('with its rows halved, it stripes no more than the art; today\'s dither stripes', () => {
+      expect(striping(downsample(grid(), 1, 2))).toBeGreaterThan(0.6)
+      expect(striping(downsample(grid(2), 1, 2))).toBeLessThanOrEqual(striping(grid()) + 0.05)
+    })
+  })
+
   test('sprites: palette keys to colours, \'.\' to nothing; mirrored; stamped where it fits', () => {
     const sprite = { rows: ['a.', 'bb'], palette: { a: 0x111111, b: 0x222222 } }
     expect(spriteGrid(sprite)).toEqual([[0x111111, undefined], [0x222222, 0x222222]])

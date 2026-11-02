@@ -1,8 +1,9 @@
 import { describe, expect, test } from 'claude-code/testing'
 
+import { downsample } from '../src/paint/pixels'
 import {
   atRest, avatarX, BAND, bandPortrait, figures, FLAG_SLOT, FLAG_WIDTH, fitWaypoints, flagSlots, foeX, GROUND_ROW, layout, MAX_FLAGS, MAX_GHOSTS, MIN_FLAGS, propsWidth,
-  nextMotion, REST, roadWidth, scene, SCENE_HEIGHT, SIZE, slide, skyColor, waypointsOf, waypointX, ZONE_PROPS, type Waypoint,
+  nextMotion, REST, roadWidth, scene, sceneArt, SCENE_HEIGHT, SIZE, slide, skyColor, waypointsOf, waypointX, ZONE_PROPS, type Waypoint,
 } from '../src/scene'
 import { PALETTE, PROPS } from '../src/world/sprites'
 import type { Task, Zone } from '../types'
@@ -70,6 +71,31 @@ describe('the road', () => {
 
 describe('scene', () => {
   const three: Waypoint[] = ['done', 'now', 'todo']
+
+  test('for text cells, the backdrop is dithered in row pairs: halved, it stripes less in every zone; images as before', () => {
+    /** Of the pixels that differ from their right neighbour, the share that match the one below: vertical stripes. */
+    const striping = (grid: Scene): number => {
+      let mixed = 0
+      let striped = 0
+      for (let y = 0; y + 1 < grid.length; y++) {
+        for (let x = 0; x + 1 < (grid[y]?.length ?? 0); x++) {
+          if (grid[y]?.[x] === grid[y]?.[x + 1]) continue
+          mixed++
+          if (grid[y]?.[x] === grid[y + 1]?.[x]) striped++
+        }
+      }
+      return striped / Math.max(1, mixed)
+    }
+    const SKIES: readonly Zone[] = ['watchtower', 'harbour', 'arena', 'camp', 'wilds']
+    for (const zone of ZONES) {
+      const args = { columns: 60, zone, waypoints: three, companions: 0 }
+      // The top rows as text cells show them, rows halved: where nothing stands.
+      const top = (cells?: boolean): Scene => downsample(sceneArt(cells === undefined ? args : { ...args, cells }), 1, 2).slice(0, 8)
+      expect([zone, striping(top(true)) < striping(top())]).toEqual([zone, true])
+      if (SKIES.includes(zone)) expect([zone, striping(top(true)) < 0.35]).toEqual([zone, true])
+      expect(JSON.stringify(sceneArt({ ...args, cells: false }))).toBe(JSON.stringify(sceneArt(args)))
+    }
+  })
 
   test('is columns × SCENE_HEIGHT pixels, every pixel filled, in every zone', () => {
     for (const zone of ZONES) {

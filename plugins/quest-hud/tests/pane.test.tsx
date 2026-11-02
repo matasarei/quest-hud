@@ -536,14 +536,56 @@ describe('a zone change while the pane is hidden', () => {
 })
 
 describe('the Road\'s text cells', () => {
-  /** Every cell's code point, read from the base64 words. */
-  const codePoints = (cells: string): number[] => {
+  /** The cells' little-endian u32 words, three a cell: code point, ink, paper. */
+  const words = (cells: string): number[] => {
     const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
     const clean = cells.replace(/=+$/, '')
     const bits = [...clean].map(c => alphabet.indexOf(c).toString(2).padStart(6, '0')).join('')
     const bytes = Array.from({ length: Math.floor(bits.length / 8) }, (_, i) => parseInt(bits.slice(i * 8, i * 8 + 8), 2))
-    return Array.from({ length: Math.floor(bytes.length / 12) }, (_, i) => bytes[i * 12]! | (bytes[i * 12 + 1]! << 8) | (bytes[i * 12 + 2]! << 16))
+    return Array.from({ length: Math.floor(bytes.length / 4) }, (_, i) => (bytes[i * 4]! | (bytes[i * 4 + 1]! << 8) | (bytes[i * 4 + 2]! << 16) | (bytes[i * 4 + 3]! << 24)) >>> 0)
   }
+  /** Every cell's code point. */
+  const codePoints = (cells: string): number[] => words(cells).filter((_, i) => i % 3 === 0)
+  /** The pixels the cells show, two by two a cell: a quadrant's bit is its ink, else its paper. */
+  const pixels = (cells: string, columns: number): number[][] => {
+    const w = words(cells)
+    const rows = Math.floor(w.length / 3 / columns)
+    return Array.from({ length: rows * 2 }, (_, y) => Array.from({ length: columns * 2 }, (_, x) => {
+      const i = (Math.floor(y / 2) * columns + Math.floor(x / 2)) * 3
+      const bit = 1 << ((y % 2) * 2 + (x % 2))
+      return (QUADRANT.indexOf(w[i]!) & bit) !== 0 ? w[i + 1]! : w[i + 2]!
+    }))
+  }
+  /** Of the pixels that differ from their right neighbour, the share that match the one below: vertical stripes. */
+  const striping = (grid: number[][]): number => {
+    let mixed = 0
+    let striped = 0
+    for (let y = 0; y + 1 < grid.length; y++) {
+      for (let x = 0; x + 1 < (grid[y]?.length ?? 0); x++) {
+        if (grid[y]![x] === grid[y]![x + 1]) continue
+        mixed++
+        if (grid[y]![x] === grid[y + 1]![x]) striped++
+      }
+    }
+    return striped / Math.max(1, mixed)
+  }
+
+  test('a dithered sky shows no vertical stripes, drawn or blitted', CELLS, async ($, on) => {
+    const clock = engine(on)
+    world.panes = [{ id: 'quest-hud', isShown: true }]
+    await start($)
+    const ui = await $.ui.mount(pane('terminal', 60))
+    const raster = await ui.find({ type: 'Raster', key: 'scene' })
+    // The sky: the top four cell rows, where nothing stands.
+    const drawn = pixels(String(raster?.props.cells), 60).slice(0, 8)
+    expect(new Set(drawn.flat()).size).toBeGreaterThan(1)
+    expect(striping(drawn)).toBeLessThan(0.4)
+    await $.turn.start({ text: 'go', turnId: 'turn-1' })
+    await clock.advance(250)
+    expect(world.blits.length).toBeGreaterThan(0)
+    expect(striping(pixels(world.blits[0]!, 60).slice(0, 8))).toBeLessThan(0.4)
+    await ui.unmount()
+  })
 
   test('are quadrants, two by two pixels a cell, every one a BMP character', CELLS, async ($, on) => {
     engine(on)
