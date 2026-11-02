@@ -60,10 +60,10 @@ export const rasterize = (picture: Picture, unitsWide: number, unitsHigh: number
         let hits = 0
         for (const [dx, dy] of samples) if (contains(shape, (x + dx) / s, (y + dy) / s)) hits++
         if (hits === 0) continue
-        const dy = Math.floor(y / ditherRows)
-        if (isPixel && !ditherOn(opacity, x, dy)) continue
+        const ditherY = Math.floor(y / ditherRows)
+        if (isPixel && !ditherOn(opacity, x, ditherY)) continue
         const a = isPixel ? 1 : (hits / samples.length) * opacity
-        const color = isPixel ? pixelColor(shape.fill, (dy * ditherRows + 0.5) / s, x, dy, bands) : colorAt(shape.fill, (y + 0.5) / s)
+        const color = isPixel ? pixelColor(shape.fill, (ditherY * ditherRows + 0.5) / s, x, ditherY, bands) : colorAt(shape.fill, (y + 0.5) / s)
         const i = y * width + x
         r[i] = (r[i] as number) + (((color >> 16) & 255) - (r[i] as number)) * a
         g[i] = (g[i] as number) + (((color >> 8) & 255) - (g[i] as number)) * a
