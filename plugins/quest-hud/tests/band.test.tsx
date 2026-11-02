@@ -9,13 +9,14 @@ import { downsample } from '../src/paint/pixels'
 import { bandPortrait } from '../src/scene'
 
 // The session id the engine answers; a test changes it to stand for /clear.
-const session = { id: 's1' }
+const session = { id: 's1', rateLimits: [] as Array<{ kind: string; percentUsed: number; resetsAt?: string }> }
 // The names the plugin registered, as the engine was asked.
 const registered: string[] = []
 
 // Nothing sits beneath the plugin in a test: these hooks stand for the engine.
 const engine = (on: On, statuses: Array<string | undefined> = [], store: Readonly<Record<string, unknown>> = {}) => {
   session.id = 's1'
+  session.rateLimits = []
   registered.length = 0
   mock.clock(on, { now: Date.parse('2026-11-01T10:00:00Z') })
   mock.store(on, store)
@@ -24,7 +25,7 @@ const engine = (on: On, statuses: Array<string | undefined> = [], store: Readonl
     return { value: { command: e.name } }
   })
   on('session.id', () => ({ value: session.id }))
-  on('session.usage', () => ({ value: { startedAt: 0, context: { window: 200_000 }, rateLimits: [] } }))
+  on('session.usage', () => ({ value: { startedAt: 0, context: { window: 200_000 }, rateLimits: session.rateLimits } }))
   on('session.start', (_, e) => ({ cwd: e.cwd }))
   on('skill.prompt', (_, e) => ({ text: e.text }))
   on('session.measure', (_, e) => ({ changed: e.changed }))
@@ -141,6 +142,25 @@ describe('the band', () => {
     expect(await ui.find({ type: 'Text', text: /HP/ })).toBeFalsy()
     expect((await ui.find({ type: 'Text', text: /^—$/ }))?.text).toBe('—')
     await ui.unmount()
+  })
+
+  // A /clear wipes the host's state, and neither session.start nor session.measure follows:
+  // the plugin's values are their initial ones while the engine still has the figures.
+  test('after a /clear, HP comes back from the engine with nothing fired, and MP waits', async ($, on) => {
+    engine(on)
+    session.rateLimits = SUBSCRIBER.rateLimits
+    const ui = await $.ui.mount(band('terminal'))
+    expect((await ui.find({ type: 'Text', text: /^♥ HP/ }))?.text).toBe('♥ HP ')
+    expect(await ui.find({ type: 'Text', text: / 62%$/ })).toBeTruthy()
+    expect((await ui.find({ type: 'Text', text: /^—$/ }))?.text).toBe('—')
+    await ui.unmount()
+  })
+
+  test('after a /clear, /quest-hud:status answers from the engine too', async ($, on) => {
+    engine(on)
+    session.rateLimits = SUBSCRIBER.rateLimits
+    const { text } = await $.command.run({ command: 'quest-hud:status', args: '', ...RUN })
+    expect(text?.split('\n')[0]).toBe('♥▰▰▰▰▰▰▱▱▱▱ 62% ✦ —')
   })
 
   test('a subagent\'s task list is not the session\'s', async ($, on) => {

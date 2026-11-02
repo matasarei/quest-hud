@@ -17,7 +17,7 @@ import { atRest, BAND, bandPortrait, nextMotion, REST, TRANSITION_STEPS, type Mo
 import { applyTaskCall } from '../src/tasks'
 import { ART_SCALE } from '../src/world/sprites'
 import { parseZones, zoneFor } from '../src/zones'
-import type { Allies, FightKind, Foes, LogEntry, Zone } from '../types'
+import type { Allies, FightKind, Foes, LogEntry, Meters, Zone } from '../types'
 import { artCells, drawRoad, PANE_ID, PANE_TITLE, SCENE_IMAGE_KEY, SCENE_KEY, sceneImage, type PngSource, type SceneMode } from './pane'
 
 // The values the HUD keeps for the session, each declared in types/index.d.ts.
@@ -81,13 +81,22 @@ async function openRoad($: EngineInterface): Promise<string> {
   return opened.isPlaced ? 'The Road is open.' : `The Road waits: ${opened.reason}`
 }
 
+/**
+ * The session's figures as last measured. A /clear wipes the host's state, and
+ * neither session.start nor session.measure follows it, so until a unit moves
+ * the engine's plain usage call, which costs nothing, is what still has them.
+ */
+async function currentMeters($: EngineInterface): Promise<Meters> {
+  return (await read($, meters)) ?? fromMeasure(await $.session.usage())
+}
+
 /** What /quest-hud:status answers: the quest, what its zone means, the tasks. */
 async function statusLines($: EngineInterface): Promise<string> {
   const current = await read($, quest)
   const list = await read($, tasks)
 
   return [
-    statusText(current, list, await read($, meters), 'all'),
+    statusText(current, list, await currentMeters($), 'all'),
     `  ${zoneLine(current?.zone ?? 'wilds')}`,
     ...list.map(task => `  ${task.status === 'completed' ? '✓' : task.status === 'in_progress' ? '▸' : '·'} ${cleanTitle(task.subject)}`),
   ].join('\n')
@@ -603,7 +612,7 @@ export const register: Register = (on, options) => {
   on('ui.render', { component: 'PromptHint' }, async ($, e, next) => {
     if (detail !== 'status' || (await read($, hidden))) return next(e)
 
-    const text = hintText(await read($, quest), await read($, tasks), await read($, meters), bars)
+    const text = hintText(await read($, quest), await read($, tasks), await currentMeters($), bars)
 
     return next({ ...e, props: { ...e.props, tail: e.props.tail === undefined ? text : `${e.props.tail} ${text}` } })
   }).catch(($, e, next) => next(e))
@@ -615,7 +624,7 @@ export const register: Register = (on, options) => {
       return below
     }
 
-    const band = bandModel(await read($, quest), await read($, tasks), await read($, meters), bars, await $.clock.now())
+    const band = bandModel(await read($, quest), await read($, tasks), await currentMeters($), bars, await $.clock.now())
     const elements = $.ui.resolve(e)
     const { Box, Text } = elements
     const hasRoom = e.props.maxRows >= BAND.rows
@@ -685,7 +694,7 @@ export const register: Register = (on, options) => {
     const view = road({
       quest: await read($, quest),
       tasks: await read($, tasks),
-      meters: await read($, meters),
+      meters: await currentMeters($),
       log: await read($, log),
       companions: await read($, companions),
       activity: await read($, activity),
