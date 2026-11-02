@@ -493,6 +493,86 @@ export const SKELETON = sprite([
   ])
 
 /**
+ * The fire golem of a test run in the Forge: a squat stone body with a molten
+ * core and glowing cracks, glowing eyes, lava in its fists. Facing left, rows
+ * doubled, as the skeleton.
+ */
+export const GOLEM = sprite([
+    '................................',
+    '................................',
+    '..........oooooo................',
+    '..........oooooo................',
+    '.........oBBBBBBo...ooooooo.....',
+    '.........oBBBBBBo...ooooooo.....',
+    '........oBYYBBYYIooBBBBBBBIo....',
+    '........oBYYBBYYIooBBBBBBBIo....',
+    '..oooooooBBBBBBBIIBBBBBBBBBIo...',
+    '..oooooooBBBBBBBIIBBBBBBBBBIo...',
+    '.oBBBBBBIIBB##BBBBBB##BBBBBIo...',
+    '.oBBBBBBIIBB##BBBBBB##BBBBBIo...',
+    '.oBBBIIBBBB#%%#BBBBBB#BBBIBBIo..',
+    '.oBBBIIBBBB#%%#BBBBBB#BBBIBBIo..',
+    'oBBIIoBBBB#%YY%#BBBBBBBBBIoBBIo.',
+    'oBBIIoBBBB#%YY%#BBBBBBBBBIoBBIo.',
+    'oBBIo.oBBB#%YY%#BBB#BBBBIo.oBIo.',
+    'oBBIo.oBBB#%YY%#BBB#BBBBIo.oBIo.',
+    'oBIIo.oBBBB#%%#BBBB##BBBIo.oBIo.',
+    'oBIIo.oBBBB#%%#BBBB##BBBIo.oBIo.',
+    'oBBIo.oIBBBB##BBBBBBBBBIIo.oBBIo',
+    'oBBIo.oIBBBB##BBBBBBBBBIIo.oBBIo',
+    'o#%#o..oIIBBBBBBBBBBBBIIo..o#%#o',
+    'o#%#o..oIIBBBBBBBBBBBBIIo..o#%#o',
+    '.ooo...oJIIIIIIIIIIIIIIJo...ooo.',
+    '.ooo...oJIIIIIIIIIIIIIIJo...ooo.',
+    '.......oBBBIo....oBBBBIo........',
+    '.......oBBBIo....oBBBBIo........',
+    '......oBBBBIIo..oBBBBBIIo.......',
+    '......oBBBBIIo..oBBBBBIIo.......',
+    '......oooooooo..ooooooooo.......',
+    '......oooooooo..ooooooooo.......',
+  ])
+
+/**
+ * The living spellbook of a test run in the Map room: a fat tome on page-legs,
+ * an eye on its cover, its pages a fanged mouth. Facing left, rows doubled, as
+ * the skeleton.
+ */
+export const TOME = sprite([
+    '................................',
+    '................................',
+    '......oooooooooooooooooooo......',
+    '......oooooooooooooooooooo......',
+    '.....o66KKKKKKKKKKKKKKKkk6o.....',
+    '.....o66KKKKKKKKKKKKKKKkk6o.....',
+    '....oKKKKKKK]]]]KKKKKKKkkKo.....',
+    '....oKKKKKKK]]]]KKKKKKKkkKo.....',
+    '....oKKKKKKK]11]KKKKKKKkkKo.....',
+    '....oKKKKKKK]11]KKKKKKKkkKo.....',
+    '...o66KKKKKKKKKKKKKKKKKkk6o.....',
+    '...o66KKKKKKKKKKKKKKKKKkk6o.....',
+    '..o????????????????????kKo......',
+    '..o????????????????????kKo......',
+    '..o]o]o]o]o]o//////////kKo......',
+    '..o]o]o]o]o]o//////////kKo......',
+    '..ooooooooooo??????????kKo......',
+    '..ooooooooooo??????????kKo......',
+    '..o-------_-o//////////kKo......',
+    '..o-------_-o//////////kKo......',
+    '..o]o]o]o]o]o??????????kKo......',
+    '..o]o]o]o]o]o??????????kKo......',
+    '..o????????????????????kKo......',
+    '..o????????????????????kKo......',
+    '...o66KKKKKKKKKKKKKKKKKkk6o.....',
+    '...o66KKKKKKKKKKKKKKKKKkk6o.....',
+    '....oooooooooooooooooooooo......',
+    '....oooooooooooooooooooooo......',
+    '.......o/o....o/o....o/o........',
+    '.......o/o....o/o....o/o........',
+    '......ooo....ooo....ooo.........',
+    '......ooo....ooo....ooo.........',
+  ])
+
+/**
  * GitHub's Octocat, brought by gh: our own drawing after the real one — a
  * wide black cat's head with pointed ears and whiskers, a peach face with
  * white-and-brown eyes, tentacles splaying into a blue puddle. 20 × 20, a

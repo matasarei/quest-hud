@@ -222,21 +222,30 @@ describe('the monsters', () => {
 })
 
 describe('the monster of a test run, by zone', () => {
-  /** The skeleton's eyes: red, and in no foe-free room scene. */
-  const SKULL_EYE = PALETTE['3'] as number
   const three: Waypoint[] = ['done', 'now', 'todo']
-  const at = (zone: Zone, test: 'none' | 'standing') => scene({ columns: 120, zone, waypoints: three, companions: 0, foes: { test, lint: 'none' } })
+  const at = (zone: Zone, foes: { test: 'none' | 'standing'; lint: 'none' | 'standing' }) => scene({ columns: 120, zone, waypoints: three, companions: 0, foes })
+  // Each room's monster by a colour of its own, in no foe-free scene of that room: the skull's red eyes, the golem's glowing core, the tome's tongue.
+  const ROOMS: ReadonlyArray<readonly [Zone, number]> = [['dungeon', PALETTE['3'] as number], ['forge', PALETTE.Y as number], ['map', PALETTE['-'] as number]]
+  const OUTDOORS: readonly Zone[] = ['wilds', 'camp', 'harbour', 'watchtower', 'arena']
+  const SPIDER = PALETTE[';'] as number
 
-  test('in the Dungeon a skeleton, not the dragon', () => {
-    expect(columnsOf(at('dungeon', 'none'), SKULL_EYE)).toEqual([])
-    const grid = at('dungeon', 'standing')
-    expect(columnsOf(grid, SKULL_EYE).length).toBeGreaterThan(0)
-    expect(columnsOf(grid, DRAGON)).toEqual([])
+  test('in each room its own monster, not the dragon', () => {
+    for (const [zone, mark] of ROOMS) {
+      expect([zone, columnsOf(at(zone, { test: 'none', lint: 'none' }), mark)]).toEqual([zone, []])
+      const grid = at(zone, { test: 'standing', lint: 'none' })
+      expect([zone, columnsOf(grid, mark).length > 0, columnsOf(grid, DRAGON)]).toEqual([zone, true, []])
+    }
   })
 
   test('outdoors the dragon, as before', () => {
-    for (const zone of ['wilds', 'camp', 'harbour', 'watchtower', 'arena'] as const) {
-      expect([zone, columnsOf(at(zone, 'standing'), DRAGON).length > 0]).toEqual([zone, true])
+    for (const zone of OUTDOORS) expect([zone, columnsOf(at(zone, { test: 'standing', lint: 'none' }), DRAGON).length > 0]).toEqual([zone, true])
+  })
+
+  test('the lint spider everywhere, the same', () => {
+    const ZONES_ALL: readonly Zone[] = [...ROOMS.map(([zone]) => zone), ...OUTDOORS]
+    for (const zone of ZONES_ALL) {
+      expect([zone, columnsOf(at(zone, { test: 'none', lint: 'none' }), SPIDER)]).toEqual([zone, []])
+      expect([zone, columnsOf(at(zone, { test: 'none', lint: 'standing' }), SPIDER).length > 0]).toEqual([zone, true])
     }
   })
 })

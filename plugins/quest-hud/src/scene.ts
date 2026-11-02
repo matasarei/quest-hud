@@ -11,7 +11,7 @@ import type { Grid } from './avatar'
 import { downsample, mirrorGrid, spriteGrid, stamp, type Canvas, type Sprite } from './paint/pixels'
 import { rasterize, rgbToGrid } from './paint/raster'
 import { landscape, PARALLAX } from './world/landscapes'
-import { ART_SCALE, BAND_CAST, BAND_ICON, CHEST, DRAGON, FLAG, FOX, GHOST, MASCOT, OCTOCAT, PROPS, SKELETON, SPIDER, WALK, WIZARD, type Pose, type PropName } from './world/sprites'
+import { ART_SCALE, BAND_CAST, BAND_ICON, CHEST, DRAGON, FLAG, FOX, GHOST, GOLEM, MASCOT, OCTOCAT, PROPS, SKELETON, SPIDER, TOME, WALK, WIZARD, type Pose, type PropName } from './world/sprites'
 
 /** Pixel rows: fourteen terminal rows of half blocks. */
 export const SCENE_HEIGHT = 28
@@ -294,7 +294,7 @@ export const foeX = (hero: number, width: number, count: number, index: number, 
  * The monster of a test run in a room, where a dragon would not fit; outdoors
  * it is the dragon. Each is drawn facing left, towards the wizard.
  */
-const ROOM_FOE: Readonly<Partial<Record<Zone, Sprite>>> = { dungeon: SKELETON }
+const ROOM_FOE: Readonly<Partial<Record<Zone, Sprite>>> = { dungeon: SKELETON, forge: GOLEM, map: TOME }
 
 /**
  * A monster facing left, towards the wizard: a lint run's spider anywhere; a
