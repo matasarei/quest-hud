@@ -162,8 +162,12 @@ export type Transition = { from: Zone; progress: number }
 /** How many frames a zone change takes: six, about a second and a half. */
 export const TRANSITION_STEPS = 6
 
-/** A frame of the walk: how many steps along the road, the wizard's pose, and whether the mascot is mid-hop. */
-export type Motion = { step: number; pose: Pose; hop: boolean }
+/**
+ * A frame of the walk: how many steps along the road, the wizard's pose,
+ * whether the mascot is mid-hop, and — on the frames a monster holding the
+ * Road strikes back, while the wizard stands — `lunge`.
+ */
+export type Motion = { step: number; pose: Pose; hop: boolean; lunge?: boolean }
 
 /** Standing at the start of the road. */
 export const REST: Motion = { step: 0, pose: 'stand', hop: false }
@@ -171,12 +175,14 @@ export const REST: Motion = { step: 0, pose: 'stand', hop: false }
 /**
  * The next frame of the animation, its `tick`th: a step further along the
  * road, the next of the walk's four poses, the mascot hopping every other
- * frame. While a fight is on, the wizard stops and strikes and stands in
- * turn, and the road stays where it is.
+ * frame. While a fight is on, the road stays where it is and the wizard and
+ * the monster trade blows: he strikes, then stands as it lunges.
  */
 export const nextMotion = (motion: Motion, tick: number, isFighting: boolean): Motion =>
   isFighting
-    ? { step: motion.step, pose: tick % 2 === 0 ? 'strike' : 'stand', hop: false }
+    ? tick % 2 === 0
+      ? { step: motion.step, pose: 'strike', hop: false }
+      : { step: motion.step, pose: 'stand', hop: false, lunge: true }
     : { step: motion.step + 1, pose: WALK[tick % WALK.length] ?? 'stand', hop: tick % 2 === 1 }
 
 /** The figures at rest where the walk got to. */

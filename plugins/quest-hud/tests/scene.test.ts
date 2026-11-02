@@ -438,10 +438,13 @@ describe('the walk', () => {
     expect(poses).toEqual(['walk1^', 'walk2', 'walk3^', 'walk0', 'walk1^', 'walk2', 'walk3^', 'walk0'])
   })
 
-  test('in a fight the wizard stops, and strikes and stands in turn', () => {
+  test('in a fight the wizard stops, and strikes and stands in turn; the monster lunges as he stands', () => {
     const walked = { step: 5, pose: 'walk2', hop: false } as const
     expect(nextMotion(walked, 6, true)).toEqual({ step: 5, pose: 'strike', hop: false })
-    expect(nextMotion(walked, 7, true)).toEqual({ step: 5, pose: 'stand', hop: false })
+    expect(nextMotion(walked, 7, true)).toEqual({ step: 5, pose: 'stand', hop: false, lunge: true })
+    // Walking, or at rest, nothing lunges.
+    expect(nextMotion(walked, 7, false).lunge).toBeUndefined()
+    expect(atRest({ step: 5, pose: 'stand', hop: false, lunge: true }).lunge).toBeUndefined()
     expect(atRest({ step: 9, pose: 'walk3', hop: true })).toEqual({ step: 9, pose: 'stand', hop: false })
   })
 
