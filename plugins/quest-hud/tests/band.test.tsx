@@ -169,8 +169,24 @@ describe('the detail option', () => {
     await implementWithTasks($)
     const ui = await $.ui.mount(band('terminal'))
     expect(await ui.find({ type: 'Text', text: /⚔/ })).toBeFalsy()
-    expect(statuses).toEqual([])
+    expect(statuses).toEqual([undefined])
     await ui.unmount()
+  })
+
+  for (const detail of ['off', 'band', 'pane']) {
+    test(`${detail}: a start clears the entry a load with detail = status pinned`, { options: { detail } }, async ($, on) => {
+      const statuses: Array<string | undefined> = []
+      engine(on, statuses)
+      await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+      expect(statuses).toEqual([undefined])
+    })
+  }
+
+  test('band: with no start, the next measure clears it, as after an option change', async ($, on) => {
+    const statuses: Array<string | undefined> = []
+    engine(on, statuses)
+    await $.session.measure(SUBSCRIBER)
+    expect(statuses).toEqual([undefined])
   })
 
   test('status: the one-line entry, and no band', { options: { detail: 'status' } }, async ($, on) => {
