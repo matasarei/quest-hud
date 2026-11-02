@@ -53,7 +53,7 @@ export type Waypoint = 'done' | 'now' | 'todo'
  */
 export type Prop = PropName
 export const ZONE_PROPS: Readonly<Record<Zone, readonly Prop[]>> = {
-  wilds: ['bush', 'signpost'],
+  wilds: ['mushrooms', 'oak', 'crystal'],
   map: ['lectern', 'globe'],
   forge: ['barrel', 'anvil'],
   arena: ['banner', 'rack'],

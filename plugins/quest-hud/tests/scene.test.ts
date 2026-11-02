@@ -575,7 +575,7 @@ describe('the landmarks on the walk', () => {
     expect(start.length > 0).toBe(true)
     expect(columnsOf(at(1), LEAF)[0]).toBe(start[0]! - 4)
     // One loop: the road's width, the landmarks' own, and twelve units of open road, four units a step.
-    const loop = (120 + units('bush') + units('signpost') + 12) / 4
+    const loop = (120 + units('mushrooms') + units('oak') + units('crystal') + 12) / 4
     expect(columnsOf(at(loop), LEAF)).toEqual(start)
   })
 
