@@ -50,14 +50,28 @@ const untilValue = async (read, what, ms = WAIT_MS) => {
   }
 }
 
-const port = await untilValue(() => readFileSync(join(profile, 'DevToolsActivePort'), 'utf8').split('\n')[0], "Chrome's port")
-// Chrome can answer before its first page exists, so an empty list is no answer yet.
-const target = await untilValue(async () => (await (await fetch(`http://127.0.0.1:${port}/json`)).json()).find(page => page.type === 'page'), "Chrome's page")
-const socket = new WebSocket(target.webSocketDebuggerUrl)
-await new Promise((resolve, reject) => {
-  socket.onopen = resolve
-  socket.onerror = reject
-})
+for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => finish(1))
+
+let socket
+try {
+  const port = await untilValue(() => readFileSync(join(profile, 'DevToolsActivePort'), 'utf8').split('\n')[0], "Chrome's port")
+  // Chrome can answer before its first page exists, so an empty list is no answer yet.
+  const target = await untilValue(async () => (await (await fetch(`http://127.0.0.1:${port}/json`)).json()).find(page => page.type === 'page'), "Chrome's page")
+  socket = new WebSocket(target.webSocketDebuggerUrl)
+  await new Promise((resolve, reject) => {
+    socket.onopen = resolve
+    socket.onerror = () => reject(new Error("could not reach Chrome's page"))
+  })
+} catch (error) {
+  console.error(`browser: ${error.message}`)
+  finish(1)
+}
+
+// Chrome going away mid-run would otherwise leave a check waiting for ever.
+socket.onclose = () => {
+  console.error('browser: Chrome went away')
+  finish(1)
+}
 
 let nextId = 0
 const waiting = new Map()
