@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 
 import { bandModel, hintText, TONE_COLOR } from '../../plugins/quest-hud/src/meters'
@@ -116,4 +117,25 @@ test('subagents join and leave, oldest first', () => {
 
 test('the hint line carries the real hint text', () => {
   assert.match(hintText(null, [], S.metersOf(sim(), NOW), 'hpmp'), /^♥▰+▱* 62% ✦▰+▱* 59%$/)
+})
+
+test('no timer while idle; one while working; none under reduced motion', () => {
+  const idle = sim({ detail: 'band' })
+  assert.equal(S.needsTimer(idle), false)
+  assert.equal(S.needsTimer(S.setWorking(idle, true)), true)
+  assert.equal(S.needsTimer(S.setWorking(sim({ detail: 'off' }), true)), false)
+  assert.equal(S.needsTimer(S.setWorking(S.startSim(BASE, true), true)), false)
+})
+
+test('the walk steps only while working, and rests at the end of a turn', () => {
+  const walking = S.tickSim(S.tickSim(S.setWorking(sim(), true)))
+  assert.notDeepEqual(walking.motion, sim().motion)
+  assert.equal(S.tickSim(sim()).tick, 0)
+  assert.equal(S.setWorking(walking, false).motion.pose, 'stand')
+})
+
+test("the page's frame time is the mod's", () => {
+  const source = readFileSync('plugins/quest-hud/hooks/register.tsx', 'utf8')
+  assert.match(source, /export const ANIM_MS = 250\b/)
+  assert.match(readFileSync('site/src/main.ts', 'utf8'), /const ANIM_MS = 250\b/)
 })

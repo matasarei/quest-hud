@@ -2,12 +2,13 @@
 // the engine's atoms, which cannot run here, so each event calls the same pure
 // functions from the mod's src/ that the matching hook does. Only the wiring is
 // this file's own: what it draws is all the mod's.
-import { commandKinds, endFights, fightKinds, fightOutcome, fightText, forgeEvent, lootText, NO_FOES, startFights } from '../../plugins/quest-hud/src/bash'
+import { commandKinds, endFights, fightKinds, fightOutcome, fightText, forgeEvent, holdsTheRoad, lootText, NO_FOES, startFights } from '../../plugins/quest-hud/src/bash'
 import { appendEntry, castText, scoutCounts, scoutText } from '../../plugins/quest-hud/src/log'
 import { shortTokens, ZONE_LABEL, type Bars } from '../../plugins/quest-hud/src/meters'
 import { cleanTitle, fromSkill } from '../../plugins/quest-hud/src/quest'
 import { applyTaskCall } from '../../plugins/quest-hud/src/tasks'
 import type { Avatar } from '../../plugins/quest-hud/src/world/sprites'
+import { atRest, nextMotion, REST, TRANSITION_STEPS, type Motion, type Transition } from '../../plugins/quest-hud/src/scene'
 import { parseZones, zoneFor } from '../../plugins/quest-hud/src/zones'
 import type { Allies, Companion, Foes, LogEntry, Meters, Quest, Task, Zone } from '../../plugins/quest-hud/types'
 
@@ -44,10 +45,20 @@ export type Sim = Readonly<{
   /** The session's text, oldest first. */
   transcript: readonly string[]
   nextId: number
+  /** The visitor asked for less motion: no timer runs, and nothing walks or slides. */
+  isStill: boolean
+  /** How far the walk has got, and the frame count it steps by. */
+  motion: Motion
+  tick: number
+  /** A zone change under way, counted in frames. */
+  slide?: { from: Zone; step: number }
 }>
 
-export const startSim = (settings: Settings): Sim => ({
+export const startSim = (settings: Settings, isStill = false): Sim => ({
   settings,
+  isStill,
+  motion: REST,
+  tick: 0,
   hp: 62,
   mp: 59,
   five: 34,
@@ -119,7 +130,29 @@ export const startSkill = (sim: Sim, name: string, now: number, description = ''
 /** The next prompt after a finished skill: the quest ends, and the road goes back to the Wilds or the last work. */
 export const endSkill = (sim: Sim): Sim => ({ ...sim, quest: null })
 
-export const setWorking = (sim: Sim, isWorking: boolean): Sim => ({ ...sim, isWorking })
+/** `turn.start` and `turn.complete`: when a turn ends, the figures come to rest where the walk got to. */
+export const setWorking = (sim: Sim, isWorking: boolean): Sim => ({ ...sim, isWorking, motion: isWorking ? sim.motion : atRest(sim.motion) })
+
+/** The animation's rule: only while a turn runs with the Road or the band to show it, or while the Road slides. */
+export const needsTimer = (sim: Sim): boolean =>
+  !sim.isStill && ((sim.isWorking && (isRoadShown(sim) || hasBand(sim))) || (sim.slide !== undefined && isRoadShown(sim)))
+
+/** One frame of the animation: the walk steps while working, unless a monster holds the road, and a slide moves on. */
+export const tickSim = (sim: Sim): Sim => {
+  const walked = sim.isWorking
+    ? { tick: sim.tick + 1, motion: nextMotion(sim.motion, sim.tick + 1, holdsTheRoad(sim.foes)) }
+    : {}
+  const step = (sim.slide?.step ?? 0) + 1
+  const { slide: _ended, ...rest } = sim
+
+  return sim.slide !== undefined && step < TRANSITION_STEPS
+    ? { ...sim, ...walked, slide: { from: sim.slide.from, step } }
+    : { ...rest, ...walked }
+}
+
+/** The zone change under way, as the scene takes it. */
+export const transitionOf = (sim: Sim): { transition?: Transition } =>
+  sim.slide === undefined ? {} : { transition: { from: sim.slide.from, progress: sim.slide.step / TRANSITION_STEPS } }
 
 /** `TaskCreate`. */
 export const addTask = (sim: Sim, subject: string): Sim => {
@@ -201,8 +234,8 @@ export const compact = (sim: Sim, percentUsedAfter: number, now: number): Sim =>
 }
 
 /** Where the page opens: part way through a skill, with something to look at. */
-export const exampleSession = (settings: Settings, now: number): Sim => {
-  let sim = startSim(settings)
+export const exampleSession = (settings: Settings, now: number, isStill = false): Sim => {
+  let sim = startSim(settings, isStill)
   sim = startSkill(sim, 'gku:implement', now)
   sim = addTask(sim, 'Read the exporter')
   sim = addTask(sim, 'Write the CSV writer tests')

@@ -3,7 +3,7 @@ import './engine'
 import plugin from '../../plugins/quest-hud/.claude-plugin/plugin.json'
 import { OPTIONS } from '../../plugins/quest-hud/src/help'
 import * as S from './session'
-import { drawAll, type Slots } from './view'
+import { drawAll, drawFrame, roadColumns, type Slots } from './view'
 
 const root = document.documentElement
 
@@ -17,16 +17,47 @@ const slotOf = (id: string): HTMLElement => {
   return found
 }
 
-const slots: Slots = { transcript: slotOf('transcript'), band: slotOf('band'), hint: slotOf('hint') }
+const slots: Slots = {
+  transcript: slotOf('transcript'),
+  band: slotOf('band'),
+  hint: slotOf('hint'),
+  pane: slotOf('pane'),
+  road: slotOf('road'),
+  ruler: slotOf('ruler'),
+}
 
-let sim = S.exampleSession({ detail: 'pane', bars: 'hpmp', avatar: 'wizard', graphics: 'auto', zones: '' }, Date.now())
+/** The mod's ANIM_MS, four frames a second; a test keeps it in step, as register.tsx cannot be imported here. */
+const ANIM_MS = 250
+const isStill = matchMedia('(prefers-reduced-motion: reduce)').matches
+
+let sim = S.exampleSession({ detail: 'pane', bars: 'hpmp', avatar: 'wizard', graphics: 'auto', zones: '' }, Date.now(), isStill)
 
 const redraw = (): void => drawAll(sim, slots, Date.now())
+
+// One timer at most, and only while the mod's own rule asks for one.
+let timer: ReturnType<typeof setInterval> | undefined
+
+const syncTimer = (): void => {
+  const needed = S.needsTimer(sim)
+
+  if (needed && timer === undefined) {
+    timer = setInterval(() => {
+      sim = S.tickSim(sim)
+      drawFrame(sim, slots)
+      syncTimer()
+    }, ANIM_MS)
+  } else if (!needed && timer !== undefined) {
+    clearInterval(timer)
+    timer = undefined
+    drawFrame(sim, slots)
+  }
+}
 
 const act = (event: (current: S.Sim, now: number) => S.Sim): void => {
   sim = event(sim, Date.now())
   redraw()
   syncControls()
+  syncTimer()
 }
 
 // Settings: built from the mod's own option list, with its own words for them.
@@ -154,6 +185,16 @@ const bindActions = (): void => {
     if (name !== '') act((current, now) => S.startSkill(current, name, now))
   })
 }
+
+// The Road re-lays out to the columns it has; only a change of whole columns redraws it.
+let lastColumns = 0
+new ResizeObserver(() => {
+  const columns = roadColumns(slots)
+  if (columns !== lastColumns && !slots.pane.hidden) {
+    lastColumns = columns
+    redraw()
+  }
+}).observe(slots.road)
 
 buildSettings()
 describe('detail')

@@ -42,8 +42,7 @@ const sizeInCells = (element: HTMLElement, columns: number, rows: number): void 
 
 const Box: Element = (props, children) => {
   const box = document.createElement('div')
-  box.className = 'box'
-  box.style.flexDirection = props.flexDirection === 'column' ? 'column' : 'row'
+  box.className = props.flexDirection === 'column' ? 'box column' : 'box row'
   if (typeof props.justifyContent === 'string') box.style.justifyContent = props.justifyContent
   if (typeof props.alignItems === 'string') box.style.alignItems = props.alignItems
   if (typeof props.gap === 'number') box.style.gap = `${props.gap}ch`
