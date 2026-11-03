@@ -94,6 +94,10 @@
               <li>Add the setting to <code>~/.claude/settings.json</code>:
                 <pre><code>"statusLine": { "type": "command", "command": "~/.claude/hud-line.sh" }</code></pre>
               </li>
+              <li>For the 5-hour window and the cost as well, end the command with <code>--all</code>:
+                <pre><code>"command": "~/.claude/hud-line.sh --all"</code></pre>
+                The script can't read the Bars setting. On this page, Bars <code>all</code> stands for this flag.
+              </li>
               <li>To show only this line, hide the mod's own: run <code>/plugin configure quest-hud@quest-hud</code>, set Detail to <code>off</code>, then run <code>/reload-plugins</code>.</li>
             </ol>
             <p>It needs <code>jq</code>. HP appears only on a Pro, Max or Ultra subscription. Where the mod can't run, copy the script from the repository, as the <a href="https://github.com/matasarei/quest-hud#without-mods">README</a> says.</p>

@@ -369,6 +369,7 @@ describe('the /quest-hud: commands', () => {
     await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
     const result = await $.command.run({ command: 'quest-hud:statusline', args: '', ...RUN })
     expect(result.text).toContain('/scripts/hud-line.sh" ~/.claude/hud-line.sh')
+    expect(result.text).toContain('--all')
     expect(result.text).toContain('"statusLine": { "type": "command", "command": "~/.claude/hud-line.sh" }')
   })
 
