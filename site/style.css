@@ -89,6 +89,9 @@ button.plain { min-height: 0; padding: 0; font: inherit; color: inherit; backgro
   .pane { border-top: 0; border-left: 1px solid var(--term-edge); }
 }
 
+.one-line { padding: 8px 12px; white-space: pre; overflow-x: auto; }
+.mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .95em; }
+
 /* What the stand-in engine draws */
 .box { display: flex; min-width: 0; }
 .column { flex-direction: column; }

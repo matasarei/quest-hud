@@ -9,6 +9,7 @@ import { bandModel, hintText } from '../../plugins/quest-hud/src/meters'
 import { road, roadArt, SCENE_MIN_COLUMNS } from '../../plugins/quest-hud/src/road'
 import { bandPortrait } from '../../plugins/quest-hud/src/scene'
 import { $, blit, show } from './engine'
+import { lineParts, XTERM } from './hudline'
 import { hasBand, hasHint, isBoardShown, isRoadShown, metersOf, transitionOf, type Sim } from './session'
 
 export type Slots = Readonly<{
@@ -21,6 +22,7 @@ export type Slots = Readonly<{
   roadTab: HTMLElement
   boardTab: HTMLElement
   paneExample: HTMLElement
+  statusLine: HTMLElement
   /** A run of zeros in the terminal's font, measured for the width of a cell. */
   ruler: HTMLElement
 }>
@@ -105,7 +107,20 @@ const drawTabs = (sim: Sim, slots: Slots): void => {
   slots.boardTab.setAttribute('aria-pressed', String(isBoardShown(sim)))
 }
 
+/** The classic status line, which runs where mods do not, so no setting of the mod's reaches it. */
+const drawStatusLine = (sim: Sim, slot: HTMLElement): void => {
+  const input = { context_window: { used_percentage: 100 - sim.mp }, rate_limits: { seven_day: { used_percentage: 100 - sim.hp } } }
+
+  slot.replaceChildren(...lineParts(input).flatMap((part, i) => {
+    const span = document.createElement('span')
+    span.textContent = part.text
+    span.style.color = XTERM[part.code] ?? ''
+    return i === 0 ? [span] : [' ', span]
+  }))
+}
+
 export const drawAll = (sim: Sim, slots: Slots, now: number, onFold: () => void): void => {
+  drawStatusLine(sim, slots.statusLine)
   drawTranscript(sim, slots.transcript)
   drawTabs(sim, slots)
   drawRoadSlot(sim, slots, now)

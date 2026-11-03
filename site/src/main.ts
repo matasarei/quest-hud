@@ -29,6 +29,7 @@ const slots: Slots = {
   roadTab: slotOf('road-tab'),
   boardTab: slotOf('board-tab'),
   paneExample: slotOf('pane-example'),
+  statusLine: slotOf('status-line'),
   ruler: slotOf('ruler'),
 }
 
