@@ -107,8 +107,10 @@ export const tipFor = ({ foes, hp, mp }: FlavorFacts): string | undefined => {
  * and a line that never changes stops being read.
  */
 export const bandLine = (facts: FlavorFacts, step: number): string => {
-  const tip = step % 2 === 0 ? tipFor(facts) : undefined
-  const lines = FLAVOR[facts.zone]
+  const tip = tipFor(facts)
+  if (tip !== undefined && step % 2 === 0) return tip
 
-  return tip ?? lines[step % lines.length] ?? ''
+  // Between tips only odd steps reach here: halved, they still walk through every line.
+  const lines = FLAVOR[facts.zone]
+  return lines[(tip === undefined ? step : Math.ceil(step / 2)) % lines.length] ?? ''
 }

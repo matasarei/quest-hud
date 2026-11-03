@@ -65,6 +65,23 @@ describe('bandLine', () => {
   })
 })
 
+describe('bandLine, while a tip stands', () => {
+  test('every line of the zone still comes round on the turns between tips', () => {
+    const low = { ...calm, hp: 10 }
+    const lines = FLAVOR.forge
+    const shown = new Set<string>()
+    for (let step = 1; step < lines.length * 2; step += 2) shown.add(bandLine(low, step))
+    expect(shown.size).toBe(lines.length)
+  })
+
+  test('the same holds from any start', () => {
+    const low = { ...calm, hp: 10 }
+    const shown = new Set<string>()
+    for (let step = 3615; step < 3615 + FLAVOR.forge.length * 2; step += 2) shown.add(bandLine(low, step))
+    expect(shown.size).toBe(FLAVOR.forge.length)
+  })
+})
+
 describe('the lines', () => {
   const all = ZONES.flatMap(zone => [...FLAVOR[zone]])
 
