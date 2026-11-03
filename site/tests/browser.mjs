@@ -131,6 +131,9 @@ await send('Page.addScriptToEvaluateOnNewDocument', { source: TIMERS })
 /** Linux and Windows scrollbars take width, where macOS overlays them: check the harder case everywhere. */
 const CLASSIC_SCROLLBARS = '::-webkit-scrollbar { width: 15px; height: 15px }'
 
+/** Linux has no macOS system font, and its fallback wraps the page's text onto more lines. */
+const WIDE_FONT = 'body { font-family: Verdana, "DejaVu Sans", sans-serif !important }'
+
 /** A fresh page at a size. */
 const load = async (width, height, reduced = false) => {
   await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false })
@@ -139,7 +142,7 @@ const load = async (width, height, reduced = false) => {
   await ev('window.__leaving = true')
   await send('Page.navigate', { url })
   await untilValue(() => ev(`document.documentElement.dataset.ready === 'yes' && !window.__leaving`), 'the page')
-  await ev(`document.styleSheets[0].insertRule(${JSON.stringify(CLASSIC_SCROLLBARS)}, 0)`)
+  for (const rule of [CLASSIC_SCROLLBARS, WIDE_FONT]) await ev(`document.styleSheets[0].insertRule(${JSON.stringify(rule)}, 0)`)
 }
 
 const text = id => ev(`document.getElementById(${JSON.stringify(id)}).textContent`)
@@ -441,6 +444,8 @@ await section('the view stays on screen', async () => {
 })
 
 await section('what the page promises', async () => {
+  await load(1280, 680)
+  ok('says so on a short screen too', (await ev(`document.querySelector('footer').textContent`)).includes('Nothing here is sent anywhere'))
   const outside = requests.filter(address => !address.startsWith(url) && !address.startsWith('data:') && address !== 'about:blank')
   ok('no outside requests', outside.length === 0, outside.join(', '))
   ok('no console errors', consoleErrors.length === 0, consoleErrors.join(' | '))
