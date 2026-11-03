@@ -3,6 +3,7 @@
 // functions from the mod's src/ that the matching hook does. Only the wiring is
 // this file's own: what it draws is all the mod's.
 import { commandKinds, endFights, fightKinds, fightOutcome, fightText, forgeEvent, holdsTheRoad, lootText, NO_FOES, startFights } from '../../plugins/quest-hud/src/bash'
+import { bandLine } from '../../plugins/quest-hud/src/flavor'
 import { appendEntry, castText, scoutCounts, scoutText } from '../../plugins/quest-hud/src/log'
 import { shortTokens, ZONE_LABEL, type Bars } from '../../plugins/quest-hud/src/meters'
 import { cleanTitle, fromSkill } from '../../plugins/quest-hud/src/quest'
@@ -15,7 +16,7 @@ import type { Allies, Board, Companion, FightKind, Foes, LevelCard, LogEntry, Me
 
 export type Detail = 'off' | 'status' | 'band' | 'pane'
 export type Graphics = 'auto' | 'cells' | 'images'
-export type Settings = Readonly<{ detail: Detail; bars: Bars; avatar: Avatar; graphics: Graphics }>
+export type Settings = Readonly<{ detail: Detail; bars: Bars; avatar: Avatar; flavor: 'on' | 'off'; graphics: Graphics }>
 
 export const WINDOW = 200_000
 /** How long until the weekly window heals, as the sample shows it. */
@@ -60,6 +61,8 @@ export type Sim = Readonly<{
   /** How far the walk has got, and the frame count it steps by. */
   motion: Motion
   tick: number
+  /** Main turns so far: it moves the band's flavour line along. */
+  flavorStep: number
   /** The zone last drawn. */
   zone: Zone
   /** A zone change under way, counted in frames. */
@@ -71,6 +74,7 @@ export const startSim = (settings: Settings, isStill = false): Sim => ({
   isStill,
   motion: REST,
   tick: 0,
+  flavorStep: 0,
   zone: 'wilds',
   hp: 62,
   mp: 59,
@@ -201,6 +205,15 @@ export const tickSim = (sim: Sim): Sim => {
 /** The zone change under way, as the scene takes it. */
 export const transitionOf = (sim: Sim): { transition?: Transition } =>
   sim.slide === undefined ? {} : { transition: { from: sim.slide.from, progress: sim.slide.step / TRANSITION_STEPS } }
+
+/** `turn.start` in the main loop, as far as the flavour line is concerned. */
+export const nextTurn = (sim: Sim): Sim => ({ ...sim, flavorStep: sim.flavorStep + 1 })
+
+/** The band's flavour line, from the zone its own label names; none when the setting is off. */
+export const flavorOf = (sim: Sim): string | undefined =>
+  sim.settings.flavor === 'on'
+    ? bandLine({ zone: sim.quest?.zone ?? 'wilds', foes: sim.foes, hp: sim.hp, mp: sim.mp }, sim.flavorStep)
+    : undefined
 
 /** `TaskCreate`. */
 export const addTask = (sim: Sim, subject: string): Sim => {

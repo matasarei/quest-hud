@@ -10,7 +10,7 @@ import { road, roadArt, SCENE_MIN_COLUMNS } from '../../plugins/quest-hud/src/ro
 import { bandPortrait } from '../../plugins/quest-hud/src/scene'
 import { $, blit, show } from './engine'
 import { lineParts, XTERM } from './hudline'
-import { hasBand, hasHint, isBoardShown, isRoadShown, metersOf, transitionOf, type Sim } from './session'
+import { flavorOf, hasBand, hasHint, isBoardShown, isRoadShown, metersOf, transitionOf, type Sim } from './session'
 
 export type Slots = Readonly<{
   transcript: HTMLElement
@@ -46,7 +46,7 @@ const drawBandSlot = (sim: Sim, slot: HTMLElement, now: number): void => {
   }
 
   const band = bandModel(sim.quest, sim.tasks, metersOf(sim, now), sim.settings.bars, now)
-  show(slot, drawBand($, {} as RenderInput<'AbovePrompt'>, band, 'raster', sim.motion.pose, sim.settings.avatar))
+  show(slot, drawBand($, {} as RenderInput<'AbovePrompt'>, band, 'raster', sim.motion.pose, sim.settings.avatar, flavorOf(sim)))
 }
 
 const drawHint = (sim: Sim, slot: HTMLElement, now: number): void => {

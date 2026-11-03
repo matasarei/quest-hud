@@ -8,7 +8,7 @@ import { sampleBoard, sampleCard } from '../src/samples'
 import * as S from '../src/session'
 
 const NOW = Date.parse('2026-11-03T10:00:00Z')
-const BASE: S.Settings = { detail: 'pane', bars: 'all', avatar: 'octocat', graphics: 'cells' }
+const BASE: S.Settings = { detail: 'pane', bars: 'all', avatar: 'octocat', flavor: 'off', graphics: 'cells' }
 const sim = () => S.startSim(BASE)
 const last = (s: S.Sim) => s.transcript.at(-1) ?? ''
 
@@ -17,6 +17,7 @@ test('help is the mod own list, with the settings in force', () => {
   assert.match(text, /\/quest-hud:status/)
   assert.match(text, /detail\s+off \| status \| band \| pane\s+now pane \(default band\)/)
   assert.match(text, /avatar\s+wizard \| claude \| octocat\s+now octocat/)
+  assert.match(text, /flavor\s+on \| off\s+now off \(default on\)/)
   assert.match(text, /zones\s+name=zone, …\s+now none/)
 })
 
