@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Loads the built page in headless Chrome and checks that the mod's band drew,
-# with no script error. Build first: site/build.sh. CHROME names the browser.
+# with no script error, failed promise or CSP violation, which main.ts records
+# as data-error. Build first: site/build.sh. CHROME names the browser.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
@@ -34,7 +35,7 @@ if ! grep -q 'data-ready="yes"' <<<"$dom"; then
   exit 1
 fi
 if grep -q 'data-error=' <<<"$dom"; then
-  echo "smoke: a script failed:" >&2
+  echo "smoke: the page reported an error:" >&2
   grep -o 'data-error="[^"]*"' <<<"$dom" >&2
   exit 1
 fi

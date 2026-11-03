@@ -9,8 +9,15 @@ import { drawAll, drawFrame, roadColumns, type Slots } from './view'
 
 const root = document.documentElement
 
+// Anything that goes wrong is written where site/tests/smoke.sh reads it.
 addEventListener('error', event => {
   root.dataset.error = event.message
+})
+addEventListener('unhandledrejection', event => {
+  root.dataset.error = String(event.reason)
+})
+addEventListener('securitypolicyviolation', event => {
+  root.dataset.error = `CSP blocked ${event.blockedURI} (${event.effectiveDirective})`
 })
 
 const slotOf = (id: string): HTMLElement => {
