@@ -44,7 +44,22 @@ jobs:
       # ubuntu-latest ships jq and shellcheck.
       - run: bash plugins/quest-hud/tests/hud-line.sh
       - run: bash plugins/quest-hud/tests/skills.sh
-      - run: shellcheck --severity=warning plugins/quest-hud/scripts/*.sh plugins/quest-hud/tests/*.sh
+      - run: shellcheck --severity=warning plugins/quest-hud/scripts/*.sh plugins/quest-hud/tests/*.sh site/*.sh site/tests/*.sh
+
+  site:
+    name: live preview
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      # The page imports the mod's src/ and layouts, so a change there can break it.
+      - run: bash site/build.sh
+      - run: bash site/test.sh
+      # ubuntu-latest ships Chrome.
+      - run: bash site/tests/smoke.sh
 
   source-text:
     name: no bidirectional control characters
