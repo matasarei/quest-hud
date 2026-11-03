@@ -10,8 +10,9 @@ import { boardOf, boardView, failedBoard, failureOf, isFullPage, NOTIFICATIONS_A
 import { asCard, cardOf, type Inventory } from '../src/harness'
 import { unknownText, usageText } from '../src/help'
 import { levelLogText, levelText, levelUpText, NO_LEVEL_YET, rereadingText, scoutRidesText, STILL_READING } from '../src/levelup'
+import { bandLine } from '../src/flavor'
 import { appendEntry, castText, scoutCounts, scoutText } from '../src/log'
-import { bandModel, fromMeasure, hintText, shortTokens, statusText, TONE_COLOR, ZONE_LABEL, zoneLine, type Bars } from '../src/meters'
+import { bandModel, fromMeasure, hintText, hpLeft, mpLeft, shortTokens, statusText, TONE_COLOR, ZONE_LABEL, zoneLine, type Bars } from '../src/meters'
 import { afterPrompt, cleanTitle, fromSkill } from '../src/quest'
 import { road, roadArt, SCENE_MIN_COLUMNS, sceneZone } from '../src/road'
 import { atRest, BAND, bandPortrait, nextMotion, REST, TRANSITION_STEPS, type Motion, type Transition } from '../src/scene'
@@ -47,6 +48,7 @@ const level = atom({ plugin: 'quest-hud', key: 'level' } as const, null)
 const board = atom({ plugin: 'quest-hud', key: 'board' } as const, null)
 const isTrivialOpen = atom({ plugin: 'quest-hud', key: 'isTrivialOpen' } as const, false)
 const posted = atom({ plugin: 'quest-hud', key: 'posted' } as const, {})
+const flavorStep = atom({ plugin: 'quest-hud', key: 'flavorStep' } as const, 0)
 
 /** off, the bars on the hint line, the band, or the band and the Road pane opened at the start. */
 type Detail = 'off' | 'status' | 'band' | 'pane'
@@ -594,6 +596,7 @@ export const register: Register = (on, options) => {
       await update($, board, () => null)
       await update($, isTrivialOpen, () => false)
       await update($, posted, () => ({}))
+      await update($, flavorStep, () => 0)
       anim.tick = 0
       anim.motion = REST
       anim.zone = undefined
@@ -727,6 +730,7 @@ export const register: Register = (on, options) => {
 
     if (e.agentId === undefined) {
       turn = e.turnId
+      await update($, flavorStep, step => step + 1)
       await update($, isWorking, () => true)
       await startAnim($)
     } else {
@@ -837,7 +841,9 @@ export const register: Register = (on, options) => {
       return below
     }
 
-    const band = bandModel(await read($, quest), await read($, tasks), await currentMeters($), bars, await $.clock.now())
+    const current = await read($, quest)
+    const measured = await currentMeters($)
+    const band = bandModel(current, await read($, tasks), measured, bars, await $.clock.now())
     const elements = $.ui.resolve(e)
     const { Box } = elements
     const hasRoom = e.props.maxRows >= BAND.rows
@@ -847,10 +853,13 @@ export const register: Register = (on, options) => {
     anim.band = isRaster ? e.requestId : undefined
     // A turn that began before the band's first draw: the draw starts it, as the pane's draw does.
     if (anim.band !== undefined && (await read($, isWorking))) startAnim($).catch(() => stopTimer())
+    // The zone the band's own label names, and no line where the portrait has no room: the band stays two rows there.
+    const facts = { zone: current?.zone ?? 'wilds', foes: await read($, foes), hp: hpLeft(measured), mp: mpLeft(measured) } as const
+    const line = hasRoom ? bandLine(facts, await read($, flavorStep)) : undefined
 
     return (
       <Box flexDirection="column">
-        {drawBand($, e, band, hasRoom ? (isRaster ? 'raster' : 'svg') : 'none', anim.motion.pose, anim.avatar)}
+        {drawBand($, e, band, hasRoom ? (isRaster ? 'raster' : 'svg') : 'none', anim.motion.pose, anim.avatar, line)}
         {below}
       </Box>
     )
