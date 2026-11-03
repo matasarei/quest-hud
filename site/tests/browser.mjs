@@ -239,6 +239,18 @@ await section('commands', async () => {
   ok('closing the board shows the Road', await shown('#road'))
 })
 
+await section('the flag caption', async () => {
+  await load(1280, 800)
+  ok('says what flags need', (await text('flag-note')) === 'One flag per task. They appear only when Claude uses its task list.', await text('flag-note'))
+  ok('shows with the Road', await shown('#flag-note'))
+  await pick('detail', 'band')
+  ok('hides without it', !(await shown('#flag-note')))
+  await command('pane')
+  ok('returns with /quest-hud:pane', await shown('#flag-note'))
+  await command('quests')
+  ok('hides behind the Quest Board', !(await shown('#flag-note')))
+})
+
 await section('how to switch', async () => {
   await load(1280, 800)
   ok('closed at first', !(await ev(`document.querySelector('.howto').open`)))

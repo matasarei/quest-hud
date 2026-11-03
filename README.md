@@ -184,6 +184,8 @@ with Explore
 19:11 ally  PR #3 opened
 ```
 
+One flag per task. They appear only when Claude uses its task list.
+
 Your prompts are never shown. A skill's quest ends when you
 ask for something new (three words or more) with no task open, and `/clear` starts the Road over.
 

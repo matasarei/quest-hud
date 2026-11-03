@@ -115,3 +115,9 @@ test("the page's steps for the classic status line are the mod's", () => {
   assert.ok(page.includes('"command": "~/.claude/hud-line.sh --all"'))
   assert.ok(readFileSync('README.md', 'utf8').includes('## Without mods'))
 })
+
+test('the README says what flags need, as the page does', () => {
+  const words = 'They appear only when Claude uses its task list.'
+  assert.ok(readFileSync('README.md', 'utf8').includes(words))
+  assert.ok(readFileSync('site/index.html', 'utf8').includes(words))
+})

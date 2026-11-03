@@ -57,6 +57,7 @@ h2 { margin: 0 0 10px; font-size: 1.05rem; }
 .controls { display: grid; gap: 20px; min-width: 0; }
 .stage { order: -1; position: sticky; top: 0; z-index: 1; padding: 8px 0; background: var(--page); max-height: 62vh; overflow: auto; min-width: 0; }
 .notes .note:first-child { margin-top: 0; }
+.flag-note { margin: 6px 0 0; font-size: .8125rem; }
 .without-mods { margin-top: 12px; }
 .without-mods h2 { margin-bottom: 4px; font-size: .8125rem; }
 
