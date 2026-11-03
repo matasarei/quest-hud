@@ -280,6 +280,17 @@ await section('how to switch', async () => {
 await section('Play a session', async () => {
   await load(1280, 800)
   await pick('bars', 'all')
+  // The page records every band it draws, so no line goes unseen however slow this script runs.
+  await ev(`(() => {
+    window.__lines = new Set()
+    window.__colours = new Set()
+    new MutationObserver(() => {
+      const line = document.querySelector('#band .text')
+      const hp = [...document.querySelectorAll('#band .text')].find(e => e.textContent.includes('♥'))
+      if (line) window.__lines.add(line.textContent)
+      if (hp) window.__colours.add(hp.style.color)
+    }).observe(document.getElementById('band'), { childList: true })
+  })()`)
   await click('play')
   const figures = async () => {
     const found = /⚡5h (\d+)%.*◉ \$([\d.]+)/.exec(await text('band'))
@@ -287,13 +298,9 @@ await section('Play a session', async () => {
   }
   const before = await figures()
   ok('a turn walks, on one timer at the mod\'s pace', await until(`window.__timers.size === 1 && [...window.__timers.values()][0] === 250`))
-  const colours = new Set()
-  const lines = new Set()
-  await untilValue(async () => {
-    colours.add(await hpColour('#band'))
-    lines.add(await firstLine())
-    return !(await isPlaying())
-  }, 'Play to end', PLAY_MS)
+  await untilValue(async () => !(await isPlaying()), 'Play to end', PLAY_MS)
+  const colours = new Set(await ev('[...window.__colours]'))
+  const lines = new Set(await ev('[...window.__lines]'))
   const after = await figures()
   ok('HP goes through all three colours', colours.size === 3, [...colours].join(', '))
   ok('the 5-hour window rises', after[0] > before[0], `${before} to ${after}`)
