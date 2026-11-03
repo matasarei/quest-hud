@@ -44,7 +44,7 @@ const slots: Slots = {
 const ANIM_MS = 250
 const isStill = matchMedia('(prefers-reduced-motion: reduce)').matches
 
-let sim = S.exampleSession({ detail: 'pane', bars: 'hpmp', avatar: 'wizard', graphics: 'auto', zones: '' }, Date.now(), isStill)
+let sim = S.exampleSession({ detail: 'pane', bars: 'hpmp', avatar: 'wizard', graphics: 'auto' }, Date.now(), isStill)
 
 const redraw = (): void => drawAll(sim, slots, Date.now(), () => act(S.toggleTrivial))
 
@@ -87,49 +87,34 @@ const describe = (name: string): void => {
 const buildSettings = (): void => {
   const box = slotOf('settings')
 
-  for (const option of OPTIONS) {
+  // Zones are left out: they take a skill's name, and the page runs no skill of the visitor's.
+  for (const option of OPTIONS.filter(({ values }) => values.length > 0)) {
     const name = option.name as OptionName
     const group = document.createElement('fieldset')
     group.className = 'setting'
     const legend = document.createElement('legend')
     legend.textContent = CONFIG[name]?.title ?? name
-    group.append(legend)
+    const choices = document.createElement('div')
+    choices.className = 'choices'
 
-    if (option.values.length === 0) {
+    for (const value of option.values) {
+      const label = document.createElement('label')
       const input = document.createElement('input')
-      input.type = 'text'
-      input.id = 'zones'
-      input.placeholder = 'deploy=arena'
-      input.spellcheck = false
-      input.autocomplete = 'off'
-      input.setAttribute('aria-label', 'Zone overrides')
-      input.addEventListener('input', () => act(current => S.withSetting(current, 'zones', input.value)))
-      input.addEventListener('focus', () => describe(name))
-      group.append(input)
-    } else {
-      const choices = document.createElement('div')
-      choices.className = 'choices'
-
-      for (const value of option.values) {
-        const label = document.createElement('label')
-        const input = document.createElement('input')
-        input.type = 'radio'
-        input.name = name
-        input.value = value
-        input.checked = sim.settings[name] === value
-        input.addEventListener('change', () => {
-          describe(name)
-          act(current => S.withSetting(current, name, value as never))
-        })
-        const word = document.createElement('span')
-        word.textContent = value
-        label.append(input, word)
-        choices.append(label)
-      }
-
-      group.append(choices)
+      input.type = 'radio'
+      input.name = name
+      input.value = value
+      input.checked = sim.settings[name] === value
+      input.addEventListener('change', () => {
+        describe(name)
+        act(current => S.withSetting(current, name, value as never))
+      })
+      const word = document.createElement('span')
+      word.textContent = value
+      label.append(input, word)
+      choices.append(label)
     }
 
+    group.append(legend, choices)
     box.append(group)
   }
 }
@@ -141,8 +126,6 @@ type Range = { id: string; value: () => number; set: (current: S.Sim, value: num
 const RANGES: readonly Range[] = [
   { id: 'hp', value: () => sim.hp, set: S.withHp, shown: () => `${sim.hp}%` },
   { id: 'mp', value: () => sim.mp, set: S.withMp, shown: () => `${sim.mp}%` },
-  { id: 'five', value: () => sim.five, set: S.withFive, shown: () => `${sim.five}%` },
-  { id: 'cost', value: () => sim.cost, set: S.withCost, shown: () => `$${sim.cost.toFixed(2)}` },
 ]
 
 const bindRanges = (): void => {
@@ -157,18 +140,10 @@ const syncControls = (): void => {
     (slotOf(range.id) as HTMLInputElement).value = String(range.value())
     slotOf(`${range.id}-value`).textContent = range.shown()
   }
-  slotOf('extra-bars').hidden = sim.settings.bars !== 'all'
   slotOf('graphics-note').hidden = sim.settings.graphics !== 'auto' || !S.isRoadShown(sim)
-  const working = slotOf('working')
-  working.setAttribute('aria-pressed', String(sim.isWorking))
-  working.textContent = sim.isWorking ? 'Claude is working' : 'Claude is idle'
 }
 
-/** How long a run's fight lasts on the page, so the strike can be seen. */
-const FIGHT_MS = 1600
-
-// What a button left running: a test run's answer, the herald's return. A new
-// session has no such run, so Play cancels them rather than let one land in it.
+// The herald's return, which a new session has no use for: Play cancels it.
 const waiting = new Set<ReturnType<typeof setTimeout>>()
 
 const later = (ms: number, then: () => void): void => {
@@ -184,29 +159,6 @@ const cancelWaiting = (): void => {
   waiting.clear()
 }
 
-const run = (command: string, stdout: string, isError: boolean, line: string): void => {
-  act(current => S.say(S.bashStart(current, command), `$ ${command}`))
-  later(FIGHT_MS, () => act((current, now) => S.say(S.bashEnd(current, command, stdout, isError, now), line)))
-}
-
-const ACTIONS: Readonly<Record<string, () => void>> = {
-  working: () => act(current => S.setWorking(current, !current.isWorking)),
-  'next-task': () => act((current, now) => S.nextTask(current.tasks.some(t => t.status !== 'completed') ? current : S.addTask(current, `Another task (${current.tasks.length + 1})`), now)),
-  'test-fail': () => run('npm test', '231 pass\n1 fail', true, '231 pass, 1 fail'),
-  'test-pass': () => run('npm test', '232 pass\n0 fail', false, '232 pass, 0 fail'),
-  'lint-fail': () => run('npx eslint .', '1 problem (1 error, 0 warnings)', true, '1 problem'),
-  'lint-pass': () => run('npx eslint .', '', false, 'lint is clean'),
-  commit: () => run('git commit -m "Write the CSV writer tests"', `[main ${Math.random().toString(16).slice(2, 9)}] Write the CSV writer tests\n 1 file changed`, false, '1 file changed'),
-  gh: () => run('gh pr view 42', '', false, 'read pull request 42'),
-  glab: () => run('glab mr view 42', '', false, 'read merge request 42'),
-  read: () => act((current, now) => S.say(S.toolCall(current, 'Read', { file_path: '/repo/src/export.ts' }, {}, now), 'Read src/export.ts')),
-  edit: () => act((current, now) => S.say(S.toolCall(current, 'Edit', { file_path: '/repo/src/export.ts' }, {}, now), 'Edited src/export.ts')),
-  'add-agent': () => act(current => S.addCompanion(current, 'Explore')),
-  'drop-agent': () => act(S.dropCompanion),
-  compact: () => act((current, now) => S.say(S.compact(current, 18, now), 'Compacted the conversation.')),
-  'end-skill': () => act(S.endSkill),
-}
-
 /** How long the herald is out on the page. */
 const HERALD_MS = 1200
 
@@ -217,7 +169,8 @@ const buildCommands = (): void => {
     const button = document.createElement('button')
     button.type = 'button'
     button.className = 'command'
-    button.textContent = `/quest-hud:${command}`
+    button.textContent = command
+    button.setAttribute('aria-label', `/quest-hud:${command}`)
     button.addEventListener('click', () => {
       act((current, now) => runCommand(current, command, now))
       if (command === 'quests' && !sim.isHidden) later(HERALD_MS, () => act(postBoard))
@@ -248,7 +201,7 @@ const beatFrom = (index: number): void => {
     return
   }
 
-  act(beat.apply)
+  act((current, now) => S.spend(beat.apply(current, now), Math.random))
   playing = setTimeout(() => beatFrom(index + 1), beat.wait)
 }
 
@@ -260,22 +213,10 @@ const togglePlay = (): void => {
     act(current => S.setWorking(S.interruptFights(current), false))
   } else {
     cancelWaiting()
-    sim = S.startSim(sim.settings, sim.isStill)
+    sim = S.startSpending(S.startSim(sim.settings, sim.isStill), Math.random)
     beatFrom(0)
   }
   showPlaying()
-}
-
-const bindActions = (): void => {
-  for (const [id, action] of Object.entries(ACTIONS)) slotOf(id).addEventListener('click', action)
-  slotOf('play').addEventListener('click', togglePlay)
-
-  const skill = slotOf('skill-form') as HTMLFormElement
-  skill.addEventListener('submit', event => {
-    event.preventDefault()
-    const name = (slotOf('skill') as HTMLInputElement).value.trim()
-    if (name !== '') act((current, now) => S.startSkill(current, name, now))
-  })
 }
 
 // The Road re-lays out to the columns it has; only a change of whole columns redraws it.
@@ -307,7 +248,7 @@ buildCommands()
 bindInstall()
 describe('detail')
 bindRanges()
-bindActions()
+slotOf('play').addEventListener('click', togglePlay)
 redraw()
 syncControls()
 showPlaying()

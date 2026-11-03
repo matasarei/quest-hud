@@ -10,12 +10,12 @@ import { sceneZone } from '../../plugins/quest-hud/src/road'
 import { applyTaskCall } from '../../plugins/quest-hud/src/tasks'
 import type { Avatar } from '../../plugins/quest-hud/src/world/sprites'
 import { atRest, nextMotion, REST, TRANSITION_STEPS, type Motion, type Transition } from '../../plugins/quest-hud/src/scene'
-import { parseZones, zoneFor } from '../../plugins/quest-hud/src/zones'
+import { zoneFor } from '../../plugins/quest-hud/src/zones'
 import type { Allies, Board, Companion, FightKind, Foes, LevelCard, LogEntry, Meters, Quest, Task, Zone } from '../../plugins/quest-hud/types'
 
 export type Detail = 'off' | 'status' | 'band' | 'pane'
 export type Graphics = 'auto' | 'cells' | 'images'
-export type Settings = Readonly<{ detail: Detail; bars: Bars; avatar: Avatar; graphics: Graphics; zones: string }>
+export type Settings = Readonly<{ detail: Detail; bars: Bars; avatar: Avatar; graphics: Graphics }>
 
 export const WINDOW = 200_000
 /** How long until the weekly window heals, as the sample shows it. */
@@ -147,30 +147,36 @@ export const toggleTrivial = (sim: Sim): Sim => ({ ...sim, isTrivialOpen: !sim.i
 /** A setting as a reloaded session takes it: `pane` opens the Road at the start, and the others start without it. */
 export const withSetting = <K extends keyof Settings>(sim: Sim, name: K, value: Settings[K]): Sim => {
   const settings = { ...sim.settings, [name]: value }
-  if (name === 'detail') return { ...sim, settings, isRoadOpen: value === 'pane' }
-  if (name !== 'zones' || sim.quest === null) return { ...sim, settings }
 
-  // The option is read as the skill starts: the running skill is placed as it would be now.
-  return noteZone({ ...sim, settings, quest: { ...sim.quest, zone: zoneFor(sim.quest.skill, '', parseZones(String(value))) } })
+  return name === 'detail' ? { ...sim, settings, isRoadOpen: value === 'pane' } : { ...sim, settings }
 }
 
 const percent = (value: number): number => Math.min(100, Math.max(0, Math.round(value)))
 
 export const withHp = (sim: Sim, value: number): Sim => ({ ...sim, hp: percent(value) })
 export const withMp = (sim: Sim, value: number): Sim => ({ ...sim, mp: percent(value) })
-export const withFive = (sim: Sim, value: number): Sim => ({ ...sim, five: percent(value) })
-export const withCost = (sim: Sim, value: number): Sim => ({ ...sim, cost: Math.max(0, value) })
 
-/** `skill.prompt`: the skill's quest, in the zone the rules and the `zones` option give it. */
-export const startSkill = (sim: Sim, name: string, now: number, description = ''): Sim => {
-  const started = fromSkill(name, zoneFor(name, description, parseZones(sim.settings.zones)), now)
+/** Where a played session's 5-hour window and cost start: no two plays alike. */
+export const startSpending = (sim: Sim, random: () => number): Sim => ({
+  ...sim,
+  five: percent(5 + random() * 30),
+  cost: 0.1 + random(),
+})
+
+/** What a step of a played session spends: both only ever go up, as the real ones do within a session. */
+export const spend = (sim: Sim, random: () => number): Sim => ({
+  ...sim,
+  five: percent(sim.five + random() * 3),
+  cost: sim.cost + random() * 0.35,
+})
+
+/** `skill.prompt`: the skill's quest, in the zone the rules give it. */
+export const startSkill = (sim: Sim, name: string, now: number): Sim => {
+  const started = fromSkill(name, zoneFor(name), now)
   const next = addLog(noteZone({ ...sim, quest: started }), { kind: 'skill', text: `${started.title} · ${ZONE_LABEL[started.zone]}` }, now)
 
   return say(next, `> /${started.title}`)
 }
-
-/** The next prompt after a finished skill: the quest ends, and the road goes back to the Wilds or the last work. */
-export const endSkill = (sim: Sim): Sim => noteZone({ ...sim, quest: null })
 
 /** `turn.start` and `turn.complete`: when a turn ends, the figures come to rest where the walk got to. */
 export const setWorking = (sim: Sim, isWorking: boolean): Sim => ({ ...sim, isWorking, motion: isWorking ? sim.motion : atRest(sim.motion) })

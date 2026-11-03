@@ -8,7 +8,7 @@ import { sampleBoard, sampleCard } from '../src/samples'
 import * as S from '../src/session'
 
 const NOW = Date.parse('2026-11-03T10:00:00Z')
-const BASE: S.Settings = { detail: 'pane', bars: 'all', avatar: 'octocat', graphics: 'cells', zones: 'deploy=arena' }
+const BASE: S.Settings = { detail: 'pane', bars: 'all', avatar: 'octocat', graphics: 'cells' }
 const sim = () => S.startSim(BASE)
 const last = (s: S.Sim) => s.transcript.at(-1) ?? ''
 
@@ -17,7 +17,7 @@ test('help is the mod own list, with the settings in force', () => {
   assert.match(text, /\/quest-hud:status/)
   assert.match(text, /detail\s+off \| status \| band \| pane\s+now pane \(default band\)/)
   assert.match(text, /avatar\s+wizard \| claude \| octocat\s+now octocat/)
-  assert.match(text, /zones\s+name=zone, …\s+now deploy=arena/)
+  assert.match(text, /zones\s+name=zone, …\s+now none/)
 })
 
 test('status lists the quest, its zone and its tasks', () => {
@@ -99,4 +99,17 @@ test('the page offers every command the mod has, by its help list', () => {
   const list = last(runCommand(sim(), 'help', NOW))
   for (const command of COMMANDS) assert.ok(list.includes(`/quest-hud:${command}`), command)
   assert.equal([...list.matchAll(/^ {2}\/quest-hud:/gm)].length, COMMANDS.length)
+})
+
+test("the page's steps for the classic status line are the mod's", () => {
+  const page = readFileSync('site/index.html', 'utf8')
+  const source = readFileSync('plugins/quest-hud/hooks/register.tsx', 'utf8')
+  const setting = '"statusLine": { "type": "command", "command": "~/.claude/hud-line.sh" }'
+
+  assert.ok(source.includes(setting))
+  assert.ok(page.includes(`<code>${setting}</code>`))
+  assert.ok(source.includes('/scripts/hud-line.sh" ~/.claude/hud-line.sh'))
+  assert.ok(page.includes('/scripts/hud-line.sh" ~/.claude/hud-line.sh'))
+  assert.ok(page.includes('/quest-hud:statusline'))
+  assert.ok(readFileSync('README.md', 'utf8').includes('## Without mods'))
 })

@@ -28,93 +28,80 @@
     </header>
     <noscript><p>The preview needs JavaScript. The <a href="https://github.com/matasarei/quest-hud">README</a> shows what it looks like.</p></noscript>
 
-    <section aria-labelledby="settings-title">
-      <h2 id="settings-title">Settings</h2>
-      <div id="settings" class="settings"></div>
-      <p id="setting-note" class="note" aria-live="polite"></p>
-      <p id="graphics-note" class="note" hidden>In a browser, <span class="mono">auto</span> finds that images work and draws them. A terminal without images falls back to text cells.</p>
-    </section>
+    <div class="layout">
+      <div class="controls">
+        <section aria-labelledby="session-title">
+          <h2 id="session-title">The session</h2>
+          <button id="play" class="primary" type="button" aria-pressed="false"></button>
+          <div class="meters">
+            <div class="meter">
+              <label for="hp">♥ HP, weekly limit left <output id="hp-value"></output></label>
+              <input id="hp" type="range" min="0" max="100" step="1">
+            </div>
+            <div class="meter">
+              <label for="mp">✦ MP, context left <output id="mp-value"></output></label>
+              <input id="mp" type="range" min="0" max="100" step="1">
+            </div>
+          </div>
+        </section>
 
-    <section class="terminal" aria-label="A simulated terminal showing the mod">
-      <span id="ruler" class="ruler" aria-hidden="true">0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000</span>
-      <div id="upper" class="upper">
-        <pre id="transcript" class="transcript" tabindex="0"></pre>
-        <aside id="pane" class="pane" aria-label="The Road pane">
-          <div class="pane-title">
-            <button id="road-tab" class="tab" type="button">The Road</button>
-            <button id="board-tab" class="tab" type="button">The Quest Board</button>
-            <span id="pane-example" class="example">example data</span>
-            <button id="pane-close" class="tab close" type="button" aria-label="Close this pane">×</button>
-          </div>
-          <div id="road" class="pane-body"></div>
-          <div id="board" class="pane-body"></div>
-        </aside>
-      </div>
-      <div id="band" class="band"></div>
-      <div class="prompt"><span aria-hidden="true">&gt;</span> <span class="caret" aria-hidden="true"></span></div>
-      <div id="hint" class="hint"></div>
-    </section>
+        <section aria-labelledby="settings-title">
+          <h2 id="settings-title">Settings</h2>
+          <div id="settings" class="settings"></div>
+        </section>
 
-    <section aria-labelledby="session-title">
-      <div class="session-head">
-        <h2 id="session-title">The session</h2>
-        <button id="play" class="primary" type="button" aria-pressed="false"></button>
-      </div>
-      <div class="meters">
-        <div class="meter">
-          <label for="hp">♥ HP, weekly limit left <output id="hp-value"></output></label>
-          <input id="hp" type="range" min="0" max="100" step="1">
-        </div>
-        <div class="meter">
-          <label for="mp">✦ MP, context left <output id="mp-value"></output></label>
-          <input id="mp" type="range" min="0" max="100" step="1">
-        </div>
-        <div id="extra-bars" class="extra" hidden>
-          <div class="meter">
-            <label for="five">⚡ 5-hour window used <output id="five-value"></output></label>
-            <input id="five" type="range" min="0" max="100" step="1">
-          </div>
-          <div class="meter">
-            <label for="cost">◉ Session cost <output id="cost-value"></output></label>
-            <input id="cost" type="range" min="0" max="50" step="0.01">
-          </div>
+        <section aria-labelledby="commands-title">
+          <h2 id="commands-title">Commands <span class="mono muted">/quest-hud:…</span></h2>
+          <div id="commands" class="actions"></div>
+        </section>
+
+        <div class="notes">
+          <p id="setting-note" class="note" aria-live="polite"></p>
+          <p id="graphics-note" class="note" hidden>In a browser, <span class="mono">auto</span> finds that images work and draws them. A terminal without images falls back to text cells.</p>
+          <p class="note">The level and the Quest Board show invented examples.</p>
         </div>
       </div>
-      <form id="skill-form" class="skill">
-        <label for="skill">Run a skill</label>
-        <input id="skill" type="text" value="deploy" spellcheck="false" autocomplete="off">
-        <button type="submit">Start</button>
-        <button id="end-skill" type="button">End</button>
-      </form>
-      <div class="actions">
-        <button id="working" type="button" aria-pressed="false"></button>
-        <button id="next-task" type="button">Next task</button>
-        <button id="test-fail" type="button">Tests fail</button>
-        <button id="test-pass" type="button">Tests pass</button>
-        <button id="lint-fail" type="button">Lint fails</button>
-        <button id="lint-pass" type="button">Lint passes</button>
-        <button id="commit" type="button">Commit</button>
-        <button id="gh" type="button">Run gh</button>
-        <button id="glab" type="button">Run glab</button>
-        <button id="read" type="button">Read a file</button>
-        <button id="edit" type="button">Edit a file</button>
-        <button id="add-agent" type="button">Add a subagent</button>
-        <button id="drop-agent" type="button">Subagent done</button>
-        <button id="compact" type="button">Compact</button>
+
+      <div class="stage">
+        <section class="terminal" aria-label="A simulated terminal showing the mod">
+          <span id="ruler" class="ruler" aria-hidden="true">0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000</span>
+          <div id="upper" class="upper">
+            <pre id="transcript" class="transcript" tabindex="0"></pre>
+            <aside id="pane" class="pane" aria-label="The Road pane">
+              <div class="pane-title">
+                <button id="road-tab" class="tab" type="button">The Road</button>
+                <button id="board-tab" class="tab" type="button">The Quest Board</button>
+                <span id="pane-example" class="example">example data</span>
+                <button id="pane-close" class="tab close" type="button" aria-label="Close this pane">×</button>
+              </div>
+              <div id="road" class="pane-body"></div>
+              <div id="board" class="pane-body"></div>
+            </aside>
+          </div>
+          <div id="band" class="band"></div>
+          <div class="prompt"><span aria-hidden="true">&gt;</span> <span class="caret" aria-hidden="true"></span></div>
+          <div id="hint" class="hint"></div>
+        </section>
+        <section class="without-mods" aria-labelledby="line-title">
+          <h2 id="line-title" class="muted">Without mods, the classic status line</h2>
+          <div id="status-line" class="terminal one-line"></div>
+          <details class="howto">
+            <summary>How to switch to it</summary>
+            <ol>
+              <li>In Claude Code, run <code>/quest-hud:statusline</code>. It prints this command with your plugin's folder filled in. Run it:
+                <pre><code>cp "&lt;plugin folder&gt;/scripts/hud-line.sh" ~/.claude/hud-line.sh</code></pre>
+              </li>
+              <li>Add the setting to <code>~/.claude/settings.json</code>:
+                <pre><code>"statusLine": { "type": "command", "command": "~/.claude/hud-line.sh" }</code></pre>
+              </li>
+              <li>To show only this line, hide the mod's own: run <code>/plugin configure quest-hud@quest-hud</code>, set Detail to <code>off</code>, then run <code>/reload-plugins</code>.</li>
+            </ol>
+            <p>It needs <code>jq</code>. HP appears only on a Pro, Max or Ultra subscription. Where the mod can't run, copy the script from the repository, as the <a href="https://github.com/matasarei/quest-hud#without-mods">README</a> says.</p>
+          </details>
+        </section>
       </div>
-    </section>
+    </div>
 
-    <section aria-labelledby="line-title">
-      <h2 id="line-title">Without mods</h2>
-      <div class="terminal one-line"><div id="status-line"></div></div>
-      <p class="note">The classic status line, for sessions where mods do not run. It follows the HP and MP sliders, and no setting changes it. <span class="mono">/quest-hud:statusline</span> sets it up.</p>
-    </section>
-
-    <section aria-labelledby="commands-title">
-      <h2 id="commands-title">Commands</h2>
-      <div id="commands" class="actions"></div>
-      <p class="note">Answers appear in the terminal. The level and the Quest Board show invented examples: this page reads nothing from your machine or GitHub.</p>
-    </section>
     <footer class="note">
       <p>Quest HUD is an unofficial community mod under the MIT licence, not made or endorsed by Anthropic, GitHub or GitLab. The Octocat, fox and Claude's mascot in it are the project's own drawings, not their logo files. The desktop app draws the Road differently; this page shows the terminal.</p>
     </footer>

@@ -8,7 +8,7 @@ import { SESSION } from '../src/script'
 import * as S from '../src/session'
 
 const NOW = Date.parse('2026-11-03T10:00:00Z')
-const BASE: S.Settings = { detail: 'band', bars: 'hpmp', avatar: 'wizard', graphics: 'auto', zones: '' }
+const BASE: S.Settings = { detail: 'band', bars: 'hpmp', avatar: 'wizard', graphics: 'auto' }
 const sim = (settings: Partial<S.Settings> = {}) => S.startSim({ ...BASE, ...settings })
 const text = (segments: ReadonlyArray<{ text: string }>) => segments.map(segment => segment.text).join('')
 
@@ -28,7 +28,6 @@ test('HP takes its colour from the real rule at each boundary', () => {
 test('the sliders stay in range', () => {
   assert.equal(S.withHp(sim(), 140).hp, 100)
   assert.equal(S.withHp(sim(), -3).hp, 0)
-  assert.equal(S.withCost(sim(), -1).cost, 0)
 })
 
 test('bars = all adds the 5-hour window and the cost', () => {
@@ -52,7 +51,6 @@ test('a skill starts a quest in its zone, and logs it', () => {
   const s = S.startSkill(sim(), 'gku:implement', NOW)
   assert.equal(s.quest?.zone, 'forge')
   assert.equal(s.log.at(-1)?.text, 'gku:implement · Forge')
-  assert.equal(S.endSkill(s).quest, null)
 })
 
 test('a skill with no rule is in the Wilds', () => {
@@ -144,22 +142,6 @@ test("the page's frame time is the mod's", () => {
 
 const pane = () => sim({ detail: 'pane' })
 
-test('a zones override places a skill, and the running one moves with a slide', () => {
-  assert.equal(S.startSkill(sim({ zones: 'deploy=harbour' }), 'deploy', NOW).quest?.zone, 'harbour')
-  assert.equal(S.startSkill(sim({ zones: 'deploy=arena' }), 'plugin:deploy', NOW).quest?.zone, 'arena')
-
-  const running = S.tickSim(S.startSkill(pane(), 'zzz', NOW))
-  const started = { ...running, slide: undefined, zone: 'wilds' as const }
-  const moved = S.withSetting(started, 'zones', 'zzz=harbour')
-  assert.equal(moved.quest?.zone, 'harbour')
-  assert.deepEqual(moved.slide, { from: 'wilds', step: 0 })
-  assert.equal(S.needsTimer(moved), true)
-})
-
-test('an invalid zones rule is skipped, as parseZones skips it', () => {
-  assert.equal(S.startSkill(sim({ zones: 'zzz=nowhere, broken, =forge' }), 'zzz', NOW).quest?.zone, 'wilds')
-})
-
 test('a slide ends after TRANSITION_STEPS frames, on the new zone, and the timer stops', () => {
   let s = S.startSkill(pane(), 'gku:implement', NOW)
   assert.equal(s.slide?.from, 'wilds')
@@ -179,12 +161,6 @@ test('no slide where the Road is closed, or the visitor asked for less motion', 
   assert.equal(closed.slide, undefined)
   assert.equal(closed.zone, 'forge')
   assert.equal(S.startSkill(S.startSim({ ...BASE, detail: 'pane' }, true), 'gku:implement', NOW).slide, undefined)
-})
-
-test('ending a skill goes back to the last work, or the Wilds', () => {
-  const skill = S.startSkill(S.toolCall(pane(), 'Read', { file_path: '/a' }, {}, NOW), 'gku:implement', NOW)
-  assert.equal(S.endSkill(skill).zone, 'map')
-  assert.equal(S.endSkill(S.startSkill(pane(), 'gku:implement', NOW)).zone, 'wilds')
 })
 
 test('the page opens at rest, with no slide waiting and no timer', () => {
@@ -247,4 +223,31 @@ test('a fight stopped part way through Play a session leaves no monster', () => 
   }
   assert.equal(s.foes.test, 'fighting')
   assert.equal(S.interruptFights(s).foes.test, 'none')
+})
+
+test('a played session spends: the 5-hour window and the cost only go up, and stay in range', () => {
+  const steps = [0.9, 0.1, 0.5, 1, 0, 0.7]
+  let i = 0
+  const random = () => steps[i++ % steps.length] ?? 0
+  let s = S.startSpending(sim(), random)
+  assert.ok(s.five >= 5 && s.five <= 35)
+  assert.ok(s.cost >= 0.1 && s.cost <= 1.1)
+  const start = { five: s.five, cost: s.cost }
+
+  for (let n = 0; n < 200; n++) {
+    const next = S.spend(s, random)
+    assert.ok(next.five >= s.five && next.five <= 100)
+    assert.ok(next.cost >= s.cost)
+    s = next
+  }
+  assert.ok(s.five > start.five && s.cost > start.cost)
+})
+
+test('no two plays start alike, and spending shows on the bars', () => {
+  const low = S.startSpending(sim(), () => 0)
+  const high = S.startSpending(sim(), () => 1)
+  assert.notEqual(low.five, high.five)
+  assert.notEqual(low.cost, high.cost)
+  const all = text(bandModel(null, [], S.metersOf(S.spend(high, () => 1), NOW), 'all', NOW).meters)
+  assert.match(all, /⚡5h 38%.*◉ \$1\.45/)
 })
