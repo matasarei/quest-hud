@@ -6,7 +6,7 @@ import type { EngineInterface, RenderInput } from 'claude-code'
 import { gridToSvg } from '../src/avatar'
 import { TONE_COLOR, type Band } from '../src/meters'
 import { downsample } from '../src/paint/pixels'
-import { BAND, bandPortrait } from '../src/scene'
+import { BAND, BAND_GAP, bandPortrait } from '../src/scene'
 import { ART_SCALE, BAND_AVATARS, type Avatar, type Pose } from '../src/world/sprites'
 import { artCells } from './pane'
 
@@ -22,10 +22,13 @@ export function drawBand($: EngineInterface, e: RenderInput<'AbovePrompt'>, band
   const { Box, Text } = elements
   const row = (key: string, segments: Band['head']) => (
     <Box key={key} flexDirection="row">
-      {segments.map(segment => (
-        <Text color={TONE_COLOR[segment.tone]} dimColor={segment.tone === 'dim'} wrap="truncate-end">
-          {segment.text}
-        </Text>
+      {segments.map((segment, i) => (
+        // Only the last piece may be cut: Texts alone in a row would all shrink at once.
+        <Box flexShrink={i === segments.length - 1 ? 1 : 0}>
+          <Text color={TONE_COLOR[segment.tone]} dimColor={segment.tone === 'dim'} wrap="truncate-end">
+            {segment.text}
+          </Text>
+        </Box>
       ))}
     </Box>
   )
@@ -36,7 +39,7 @@ export function drawBand($: EngineInterface, e: RenderInput<'AbovePrompt'>, band
       : null
 
   return (
-    <Box key="band" flexDirection="row" gap={1} alignItems="center">
+    <Box key="band" flexDirection="row" gap={BAND_GAP} alignItems="center">
       {portrait}
       <Box flexDirection="column">
         {line === undefined ? null : <Text dimColor wrap="truncate-end">{line}</Text>}

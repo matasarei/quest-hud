@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { bandModel, bar, fromMeasure, healsIn, hintText, hpLeft, hpTone, mpLeft, shortTokens, statusText, TONE_COLOR, ZONE_MEANING, zoneLine } from '../src/meters'
+import { bandModel, bar, cellWidth, fromMeasure, healsIn, hintText, hpLeft, hpTone, mpLeft, shortTokens, statusText, TONE_COLOR, ZONE_MEANING, zoneLine } from '../src/meters'
 import type { Meters, Quest, Task } from '../types'
 
 const NOW = Date.parse('2026-11-01T10:00:00Z')
@@ -235,4 +235,101 @@ describe('zone meanings', () => {
     expect(zoneLine('map')).toBe('Map room — planning and research')
     expect(zoneLine('wilds')).toBe('Wilds — no skill running')
   })
+})
+
+describe('the bars row in the room it has', () => {
+  const measured = fromMeasure(SUBSCRIBER)
+  const row = (room: number, bars: 'hpmp' | 'all' = 'hpmp', meters: Meters | null = measured) => bandModel(quest, tasks, meters, bars, NOW, room).meters
+
+  const forms = [
+    [86, '♥ HP █████████░░░░░ 62% week · heals in 2d 4h   ✦ MP ████████░░░░░░ 59% ctx · 82k/200k'],
+    [70, '♥ HP █████████░░░░░ 62% heals 2d 4h   ✦ MP ████████░░░░░░ 59% 82k/200k'],
+    [62, '♥ HP ██████░░░░ 62% heals 2d 4h   ✦ MP ██████░░░░ 59% 82k/200k'],
+    [53, '♥ HP ██████░░░░ 62% heals 2d 4h   ✦ MP ██████░░░░ 59%'],
+    [41, '♥ HP ██████░░░░ 62%   ✦ MP ██████░░░░ 59%'],
+    [30, '♥ █████░░░ 62%  ✦ █████░░░ 59%'],
+    [22, '♥ ██░░ 62%  ✦ ██░░ 59%'],
+    [12, '♥ 62%  ✦ 59%'],
+  ] as const
+
+  forms.forEach(([room, expected], i) => {
+    test(`${room} cells: ${expected}`, () => {
+      expect(text(row(room))).toBe(expected)
+      expect(cellWidth(row(room))).toBe(room)
+    })
+
+    const narrower = forms[i + 1]
+    if (narrower) {
+      test(`${room - 1} cells: the next form down`, () => {
+        expect(text(row(room - 1))).toBe(narrower[1])
+      })
+    }
+  })
+
+  test('with no room given, the full row', () => {
+    expect(text(bandModel(quest, tasks, measured, 'hpmp', NOW).meters)).toBe(forms[0][1])
+    expect(text(bandModel(quest, tasks, measured, 'hpmp', NOW, Number.POSITIVE_INFINITY).meters)).toBe(forms[0][1])
+  })
+
+  test('with less room than the figures need, still the figures', () => {
+    expect(text(row(5))).toBe('♥ 62%  ✦ 59%')
+    expect(text(row(0))).toBe('♥ 62%  ✦ 59%')
+    expect(text(row(-3))).toBe('♥ 62%  ✦ 59%')
+  })
+
+  test('bars = all: the full words only in the full form, then the short ones to the end', () => {
+    expect(text(row(107, 'all')).endsWith('ctx · 82k/200k   ⚡5h 24%   ◉ $1.84')).toBe(true)
+    expect(text(row(106, 'all'))).toBe('♥ HP █████████░░░░░ 62% heals 2d 4h   ✦ MP ████████░░░░░░ 59% 82k/200k  ⚡24%  ◉$1.84')
+    expect(text(row(56, 'all'))).toBe('♥ HP ██████░░░░ 62%   ✦ MP ██████░░░░ 59%  ⚡24%  ◉$1.84')
+    expect(text(row(27, 'all'))).toBe('♥ 62%  ✦ 59%  ⚡24%  ◉$1.84')
+  })
+
+  test('⚡ takes two cells, as the terminal draws it', () => {
+    expect(cellWidth([{ text: '⚡5h', tone: 'five' }])).toBe(4)
+    expect(cellWidth([{ text: '♥ █░', tone: 'hp' }, { text: ' 62%', tone: 'hp' }])).toBe(8)
+    expect(cellWidth(row(85, 'all'))).toBe(85)
+  })
+
+  test('no HP: the MP row takes the room, and its token count stays longer', () => {
+    const noHp = fromMeasure({ context: { tokens: 82_000, window: 200_000, percent: 41 }, rateLimits: [] })
+    expect(text(row(38, 'hpmp', noHp))).toBe('✦ MP ████████░░░░░░ 59% ctx · 82k/200k')
+    expect(text(row(32, 'hpmp', noHp))).toBe('✦ MP ████████░░░░░░ 59% 82k/200k')
+    expect(text(row(19, 'hpmp', noHp))).toBe('✦ MP ██████░░░░ 59%')
+    expect(text(row(5, 'hpmp', noHp))).toBe('✦ 59%')
+  })
+
+  test('no token count or heal time yet: no gap left behind, and no words made up', () => {
+    const bare: Meters = { window: 200_000, weekUsed: 38 }
+    expect(text(row(59, 'hpmp', bare))).toBe('♥ HP █████████░░░░░ 62% week   ✦ MP ██████████████ 100% ctx')
+    expect(text(row(58, 'hpmp', bare))).toBe('♥ HP █████████░░░░░ 62%   ✦ MP ██████████████ 100%')
+    expect(text(row(31, 'hpmp', bare))).toBe('♥ █████░░░ 62%  ✦ ████████ 100%')
+  })
+
+  test('each form keeps its tones', () => {
+    const tones = (room: number) => row(room).map(segment => segment.tone)
+    expect(tones(62)).toEqual(['hp', 'hp', 'hp', 'dim', 'mp', 'mp', 'mp', 'dim'])
+    const low = bandModel(quest, [], { window: 200_000, weekUsed: 85 }, 'hpmp', NOW, 12).meters
+    expect(low.filter(segment => segment.text.includes('15%') || segment.text.startsWith('♥')).map(segment => segment.tone)).toEqual(['hpCritical', 'hpCritical'])
+  })
+
+  // The widest figures there are, in every combination: nothing may overflow, so nothing is cut.
+  const WIDEST: Meters = { window: 1_000_000, contextPercent: 0, contextTokens: 1_250_000, weekUsed: 0, weekResetsAt: '2026-11-08T07:30:00Z', fiveHourUsed: 100, costUsd: 123.45 }
+  const noWeek: Meters = { window: 1_000_000, contextPercent: 0, contextTokens: 1_250_000, fiveHourUsed: 100, costUsd: 123.45 }
+
+  for (const [name, meters, hasHp] of [['with HP', WIDEST, true], ['without HP', noWeek, false]] as const) {
+    for (const bars of ['hpmp', 'all'] as const) {
+      test(`${name}, bars = ${bars}: from 12 to 130 cells the row fits or is the figures, its percentages whole`, () => {
+        const figures = cellWidth(row(0, bars, meters))
+
+        for (let room = 12; room <= 130; room++) {
+          const drawn = row(room, bars, meters)
+
+          expect(cellWidth(drawn) <= room || cellWidth(drawn) === figures).toBe(true)
+          expect(text(drawn).split('100%').length - 1).toBeGreaterThanOrEqual(hasHp ? 2 : 1)
+          expect(text(drawn).startsWith(hasHp ? '♥' : '✦')).toBe(true)
+          if (bars === 'all') expect(/⚡.*◉/.test(text(drawn))).toBe(true)
+        }
+      })
+    }
+  }
 })

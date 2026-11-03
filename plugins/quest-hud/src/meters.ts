@@ -122,8 +122,75 @@ export type Band = { head: Segment[]; meters: Segment[] }
 
 export const BAND_WIDTH = 14
 
-/** The band's two rows as text segments, each with the tone it is drawn in. */
-export const bandModel = (quest: Quest | null, tasks: readonly Task[], meters: Meters | null, bars: Bars, now: number): Band => {
+/** The cells a row takes: ⚡ is the one wide character the band's own words draw. */
+export const cellWidth = (segments: readonly Segment[]): number =>
+  segments.reduce((sum, { text }) => sum + [...text].length + (text.match(/⚡/g)?.length ?? 0), 0)
+
+/** A form of the bars row. `notes` is what the words beside the bars say: all of it, in short, the heal time alone, or nothing. */
+type MeterForm = { barWidth: number; labels: boolean; notes: 'long' | 'short' | 'heals' | 'none'; gap: string }
+
+const FIGURES: MeterForm = { barWidth: 0, labels: false, notes: 'none', gap: '  ' }
+
+/**
+ * Widest first, and the first that fits is drawn: the words go, then the bars
+ * shorten, and the percentages stay to the end. The token count goes before the
+ * heal time, as the MP bar says what is left and nothing else says when HP returns.
+ */
+const METER_FORMS: readonly MeterForm[] = [
+  { barWidth: BAND_WIDTH, labels: true, notes: 'long', gap: '   ' },
+  { barWidth: BAND_WIDTH, labels: true, notes: 'short', gap: '   ' },
+  { barWidth: 10, labels: true, notes: 'short', gap: '   ' },
+  { barWidth: 10, labels: true, notes: 'heals', gap: '   ' },
+  { barWidth: 10, labels: true, notes: 'none', gap: '   ' },
+  { barWidth: 8, labels: false, notes: 'none', gap: '  ' },
+  { barWidth: 4, labels: false, notes: 'none', gap: '  ' },
+  FIGURES,
+]
+
+/** The bars row in one form. */
+const meterRow = (form: MeterForm, meters: Meters | null, bars: Bars, now: number): Segment[] => {
+  const { barWidth, labels, notes, gap } = form
+  const gauge = (glyph: string, name: string, left: number, tone: Tone): Segment[] => [
+    { text: `${glyph}${labels ? ` ${name}` : ''}${barWidth > 0 ? ' ' : ''}`, tone },
+    { text: bar(left, barWidth), tone },
+    { text: ` ${left}%`, tone },
+  ]
+  const row: Segment[] = []
+  const hp = hpLeft(meters)
+
+  if (hp !== undefined) {
+    const heals = healsIn(meters?.weekResetsAt, now)
+    const healNote = notes === 'long'
+      ? (heals ? ` week · heals in ${heals}` : ' week')
+      : notes !== 'none' && heals ? ` heals ${heals}` : ''
+
+    row.push(...gauge('♥', 'HP', hp, hpTone(hp)), { text: `${healNote}${gap}`, tone: 'dim' })
+  }
+
+  const tokens = meters?.contextTokens
+  const count = tokens !== undefined && meters ? `${shortTokens(tokens)}/${shortTokens(meters.window)}` : undefined
+  const tokenNote = notes === 'long' ? (count ? ` ctx · ${count}` : ' ctx') : notes === 'short' && count ? ` ${count}` : ''
+
+  row.push(...gauge('✦', 'MP', mpLeft(meters), 'mp'), { text: tokenNote, tone: 'dim' })
+
+  if (bars === 'all' && meters?.fiveHourUsed !== undefined) {
+    const used = Math.round(meters.fiveHourUsed)
+    row.push({ text: notes === 'long' ? `   ⚡5h ${used}%` : `  ⚡${used}%`, tone: 'five' })
+  }
+
+  if (bars === 'all' && meters?.costUsd !== undefined) {
+    const cost = meters.costUsd.toFixed(2)
+    row.push({ text: notes === 'long' ? `   ◉ $${cost}` : `  ◉$${cost}`, tone: 'gold' })
+  }
+
+  return row.filter(segment => segment.text !== '')
+}
+
+/**
+ * The band's two rows as text segments, each with the tone it is drawn in, for
+ * `room` cells. With no room given, every word.
+ */
+export const bandModel = (quest: Quest | null, tasks: readonly Task[], meters: Meters | null, bars: Bars, now: number, room = Number.POSITIVE_INFINITY): Band => {
   // A skill's quest names the skill and its zone; with none running, the Wilds.
   const head: Segment[] = quest
     ? [{ text: `⚔ ${quest.title}`, tone: 'accent' }, { text: `  ${ZONE_LABEL[quest.zone]}`, tone: 'dim' }]
@@ -139,39 +206,9 @@ export const bandModel = (quest: Quest | null, tasks: readonly Task[], meters: M
     head.push({ text: ` · ${cleanTitle(current.subject)}`, tone: 'plain' })
   }
 
-  const row: Segment[] = []
-  const hp = hpLeft(meters)
+  const form = METER_FORMS.find(candidate => cellWidth(meterRow(candidate, meters, bars, now)) <= room) ?? FIGURES
 
-  if (hp !== undefined) {
-    const heals = healsIn(meters?.weekResetsAt, now)
-    const tone = hpTone(hp)
-    row.push(
-      { text: '♥ HP ', tone },
-      { text: bar(hp, BAND_WIDTH), tone },
-      { text: ` ${hp}%`, tone },
-      { text: heals ? ` week · heals in ${heals}   ` : ' week   ', tone: 'dim' },
-    )
-  }
-
-  const mp = mpLeft(meters)
-  const tokens = meters?.contextTokens
-
-  row.push(
-    { text: '✦ MP ', tone: 'mp' },
-    { text: bar(mp, BAND_WIDTH), tone: 'mp' },
-    { text: ` ${mp}%`, tone: 'mp' },
-    { text: tokens !== undefined && meters ? ` ctx · ${shortTokens(tokens)}/${shortTokens(meters.window)}` : ' ctx', tone: 'dim' },
-  )
-
-  if (bars === 'all' && meters?.fiveHourUsed !== undefined) {
-    row.push({ text: `   ⚡5h ${Math.round(meters.fiveHourUsed)}%`, tone: 'five' })
-  }
-
-  if (bars === 'all' && meters?.costUsd !== undefined) {
-    row.push({ text: `   ◉ $${meters.costUsd.toFixed(2)}`, tone: 'gold' })
-  }
-
-  return { head, meters: row }
+  return { head, meters: meterRow(form, meters, bars, now) }
 }
 
 /** The pieces of the one-line forms, for each form to put in its own order. */
