@@ -95,6 +95,7 @@ files only (`git grep -I`): perl dies on binary input.
   level's survey counts kinds the same way, from what grep cut of a transcript's command.
   Scores read at most the last `SCORE_TAIL` characters of the output. A new shape is a row
   in `tests/bash.test.ts`'s table first.
+- **The band's flavour line is a fixed catalogue in our own words.** `src/flavor.ts` holds it, in the spirit of table and raid games: never a quoted line, a named character or a setting's name, as MIT cannot cover other people's text. A tip names only a command that exists, and speaks only about this session, as Claude Code's spinner already rotates general tips. The line moves with `flavorStep`, at a main `turn.start`, and never on a timer.
 - **The art is drawn in code, as pixel art.** Sprites in `src/world/sprites.ts` are pixel maps
   over `PALETTE`, two art pixels a unit, outlined and shaded from the upper left; a figure
   keeps its size (`tests/world.test.ts`), and a row is single-quoted, so no palette key is a

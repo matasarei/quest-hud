@@ -14,13 +14,15 @@ A HUD is a heads-up display: the health bars and quest line a game keeps on scre
 play. Quest HUD is a Claude Code mod that draws your session that way, above the prompt:
 
 ```
-[avatar]  ⚔ gku:implement  Forge  task 2/5 · Write the CSV writer tests
+[avatar]  The anvil is hot. Strike while it lasts.
+          ⚔ gku:implement  Forge  task 2/5 · Write the CSV writer tests
           ♥ HP █████████░░░░░ 62% week · heals in 2d 4h   ✦ MP ████████░░░░░░ 59% ctx · 82k/200k
 ```
 
 - **♥ HP**: what is left of your weekly usage window. It turns yellow below 40% and red below 20%.
 - **✦ MP**: what is left of the context window.
 - **⚔ the quest**: the running skill, from any plugin, and its zone, with Claude Code's task list.
+- **The line above it**: a tip when this session calls for one, otherwise a word from the zone. It changes at each turn, and `flavor = off` removes it.
 
 It costs nothing: no model calls, nothing added to the context, and nothing written into your
 project. It reads your past sessions only if you ask it to, with
@@ -258,7 +260,8 @@ The `status` hint line takes no colours: Claude Code draws it dim.
 
 ## Art
 
-The art in the mod is drawn in code, as shapes (`src/world/landscapes.ts`) and pixel maps
+The band's flavour lines are written for this mod, in the spirit of table and raid games. None is
+quoted from a game. The art in the mod is drawn in code, as shapes (`src/world/landscapes.ts`) and pixel maps
 (`src/world/sprites.ts`). GitHub's Octocat, GitLab's fox and Claude's mascot are our own drawings of
 them, not their logo files.
 
