@@ -2,12 +2,14 @@
 import type { RenderInput } from 'claude-code'
 
 import { BAND_KEY, drawBand } from '../../plugins/quest-hud/hooks/band'
+import { drawBoard } from '../../plugins/quest-hud/hooks/board'
 import { artCells, drawRoad, SCENE_IMAGE_KEY, SCENE_KEY, sceneImage, type SceneMode } from '../../plugins/quest-hud/hooks/pane'
+import { boardView } from '../../plugins/quest-hud/src/github'
 import { bandModel, hintText } from '../../plugins/quest-hud/src/meters'
 import { road, roadArt, SCENE_MIN_COLUMNS } from '../../plugins/quest-hud/src/road'
 import { bandPortrait } from '../../plugins/quest-hud/src/scene'
 import { $, blit, show } from './engine'
-import { hasBand, hasHint, isRoadShown, metersOf, transitionOf, type Sim } from './session'
+import { hasBand, hasHint, isBoardShown, isRoadShown, metersOf, transitionOf, type Sim } from './session'
 
 export type Slots = Readonly<{
   transcript: HTMLElement
@@ -15,6 +17,10 @@ export type Slots = Readonly<{
   hint: HTMLElement
   pane: HTMLElement
   road: HTMLElement
+  board: HTMLElement
+  roadTab: HTMLElement
+  boardTab: HTMLElement
+  paneExample: HTMLElement
   /** A run of zeros in the terminal's font, measured for the width of a cell. */
   ruler: HTMLElement
 }>
@@ -49,11 +55,13 @@ const drawHint = (sim: Sim, slot: HTMLElement, now: number): void => {
 /** A browser shows images, so `auto` finds out as a terminal that can would. */
 const modeOf = (sim: Sim): Exclude<SceneMode, 'svg'> => (sim.settings.graphics === 'cells' ? 'raster' : 'image')
 
-/** How many terminal columns the Road has on the page. */
-export const roadColumns = (slots: Slots): number => {
+const columnsOf = (slot: HTMLElement, slots: Slots): number => {
   const cell = slots.ruler.getBoundingClientRect().width / RULER_CHARACTERS
-  return cell > 0 ? Math.floor(slots.road.clientWidth / cell) : 0
+  return cell > 0 ? Math.floor(slot.clientWidth / cell) : 0
 }
+
+/** How many terminal columns the Road has on the page. */
+export const roadColumns = (slots: Slots): number => columnsOf(slots.road, slots)
 
 const sceneInputs = (sim: Sim, columns: number) => ({
   quest: sim.quest,
@@ -71,17 +79,37 @@ const sceneInputs = (sim: Sim, columns: number) => ({
 
 const drawRoadSlot = (sim: Sim, slots: Slots, now: number): void => {
   const isShown = isRoadShown(sim)
-  slots.pane.hidden = !isShown
+  slots.road.hidden = !isShown
   if (!isShown) return
 
   const columns = roadColumns(slots)
-  const drawn = road({ ...sceneInputs(sim, columns), meters: metersOf(sim, now), log: sim.log, bars: sim.settings.bars, rows: ROAD_ROWS })
+  const drawn = road({ ...sceneInputs(sim, columns), meters: metersOf(sim, now), log: sim.log, bars: sim.settings.bars, rows: ROAD_ROWS, level: sim.level })
   show(slots.road, drawRoad($, {} as RenderInput<'Pane'>, drawn, modeOf(sim)))
 }
 
-export const drawAll = (sim: Sim, slots: Slots, now: number): void => {
+const drawBoardSlot = (sim: Sim, slots: Slots, now: number, onFold: () => void): void => {
+  const isShown = isBoardShown(sim)
+  slots.board.hidden = !isShown
+  slots.paneExample.hidden = !isShown
+  if (!isShown) return
+
+  const e = { props: { bodyColumns: columnsOf(slots.board, slots) } } as RenderInput<'Pane'>
+  show(slots.board, drawBoard($, e, boardView(sim.board, now, sim.isTrivialOpen), onFold))
+}
+
+const drawTabs = (sim: Sim, slots: Slots): void => {
+  slots.pane.hidden = !isRoadShown(sim) && !isBoardShown(sim)
+  slots.roadTab.hidden = !sim.isRoadOpen
+  slots.boardTab.hidden = !sim.isBoardOpen
+  slots.roadTab.setAttribute('aria-pressed', String(isRoadShown(sim)))
+  slots.boardTab.setAttribute('aria-pressed', String(isBoardShown(sim)))
+}
+
+export const drawAll = (sim: Sim, slots: Slots, now: number, onFold: () => void): void => {
   drawTranscript(sim, slots.transcript)
+  drawTabs(sim, slots)
   drawRoadSlot(sim, slots, now)
+  drawBoardSlot(sim, slots, now, onFold)
   drawBandSlot(sim, slots.band, now)
   drawHint(sim, slots.hint, now)
 }

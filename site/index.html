@@ -24,8 +24,14 @@
       <div id="upper" class="upper">
         <pre id="transcript" class="transcript" tabindex="0"></pre>
         <aside id="pane" class="pane" aria-label="The Road pane">
-          <div class="pane-title">The Road</div>
+          <div class="pane-title">
+            <button id="road-tab" class="tab" type="button">The Road</button>
+            <button id="board-tab" class="tab" type="button">The Quest Board</button>
+            <span id="pane-example" class="example">example data</span>
+            <button id="pane-close" class="tab close" type="button" aria-label="Close this pane">×</button>
+          </div>
           <div id="road" class="pane-body"></div>
+          <div id="board" class="pane-body"></div>
         </aside>
       </div>
       <div id="band" class="band"></div>
@@ -80,6 +86,12 @@
         <button id="drop-agent" type="button">Subagent done</button>
         <button id="compact" type="button">Compact</button>
       </div>
+    </section>
+
+    <section aria-labelledby="commands-title">
+      <h2 id="commands-title">Commands</h2>
+      <div id="commands" class="actions"></div>
+      <p class="note">Answers appear in the terminal. The level and the Quest Board show invented examples: this page reads nothing from your machine or GitHub.</p>
     </section>
   </main>
   <script src="preview.js"></script>

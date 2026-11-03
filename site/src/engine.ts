@@ -86,7 +86,24 @@ const Image_: Element = props => {
   return remember(props.key, image)
 }
 
-const ELEMENTS: Readonly<Record<string, Element>> = { Box, Text, Raster, Image: Image_ }
+/** A link drawn and not followed: the page's board holds only invented rows. */
+const Link: Element = props => {
+  const link = document.createElement('span')
+  link.className = 'link'
+  link.textContent = typeof props.label === 'string' ? props.label : ''
+  return link
+}
+
+const Button: Element = props => {
+  const button = document.createElement('button')
+  button.type = 'button'
+  button.className = 'plain'
+  button.textContent = typeof props.label === 'string' ? props.label : ''
+  if (typeof props.onPress === 'function') button.addEventListener('click', props.onPress as () => void)
+  return button
+}
+
+const ELEMENTS: Readonly<Record<string, Element>> = { Box, Text, Raster, Image: Image_, Link, Button }
 
 const FRAGMENT = Symbol('Fragment')
 

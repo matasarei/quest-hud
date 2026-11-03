@@ -2,6 +2,7 @@
 import './engine'
 import plugin from '../../plugins/quest-hud/.claude-plugin/plugin.json'
 import { OPTIONS } from '../../plugins/quest-hud/src/help'
+import { COMMANDS, postBoard, runCommand } from './commands'
 import { SESSION } from './script'
 import * as S from './session'
 import { drawAll, drawFrame, roadColumns, type Slots } from './view'
@@ -24,6 +25,10 @@ const slots: Slots = {
   hint: slotOf('hint'),
   pane: slotOf('pane'),
   road: slotOf('road'),
+  board: slotOf('board'),
+  roadTab: slotOf('road-tab'),
+  boardTab: slotOf('board-tab'),
+  paneExample: slotOf('pane-example'),
   ruler: slotOf('ruler'),
 }
 
@@ -33,7 +38,7 @@ const isStill = matchMedia('(prefers-reduced-motion: reduce)').matches
 
 let sim = S.exampleSession({ detail: 'pane', bars: 'hpmp', avatar: 'wizard', graphics: 'auto', zones: '' }, Date.now(), isStill)
 
-const redraw = (): void => drawAll(sim, slots, Date.now())
+const redraw = (): void => drawAll(sim, slots, Date.now(), () => act(S.toggleTrivial))
 
 // One timer at most, and only while the mod's own rule asks for one.
 let timer: ReturnType<typeof setInterval> | undefined
@@ -176,6 +181,29 @@ const ACTIONS: Readonly<Record<string, () => void>> = {
   'end-skill': () => act(S.endSkill),
 }
 
+/** How long the herald is out on the page. */
+const HERALD_MS = 1200
+
+const buildCommands = (): void => {
+  const box = slotOf('commands')
+
+  for (const command of COMMANDS) {
+    const button = document.createElement('button')
+    button.type = 'button'
+    button.className = 'command'
+    button.textContent = `/quest-hud:${command}`
+    button.addEventListener('click', () => {
+      act((current, now) => runCommand(current, command, now))
+      if (command === 'quests' && !sim.isHidden) setTimeout(() => act(postBoard), HERALD_MS)
+    })
+    box.append(button)
+  }
+
+  slotOf('road-tab').addEventListener('click', () => act(current => S.showPane(current, 'road')))
+  slotOf('board-tab').addEventListener('click', () => act(current => S.showPane(current, 'board')))
+  slotOf('pane-close').addEventListener('click', () => act(S.closePane))
+}
+
 // Play a session: one beat at a time, until it ends or the visitor stops it.
 let playing: ReturnType<typeof setTimeout> | undefined
 
@@ -226,13 +254,14 @@ const bindActions = (): void => {
 let lastColumns = 0
 new ResizeObserver(() => {
   const columns = roadColumns(slots)
-  if (columns !== lastColumns && !slots.pane.hidden) {
+  if (columns !== lastColumns && !slots.road.hidden) {
     lastColumns = columns
     redraw()
   }
 }).observe(slots.road)
 
 buildSettings()
+buildCommands()
 describe('detail')
 bindRanges()
 bindActions()

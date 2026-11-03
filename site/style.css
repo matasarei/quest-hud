@@ -67,7 +67,15 @@ input[type="text"] { width: 100%; padding: 6px 8px; font: 14px/1.4 ui-monospace,
 .upper { display: grid; grid-template-columns: minmax(0, 1fr); border-bottom: 1px solid var(--term-edge); }
 .transcript { margin: 0; padding: 12px; min-height: 180px; max-height: 420px; overflow: auto; font: inherit; white-space: pre-wrap; overflow-wrap: anywhere; }
 .pane { border-top: 1px solid var(--term-edge); min-width: 0; padding: 0 12px 12px; }
-.pane-title { padding: 6px 0; opacity: .6; }
+.pane-title { display: flex; align-items: center; gap: 4px; padding: 4px 0; }
+.tab { min-height: 28px; padding: 2px 8px; font: inherit; color: inherit; background: transparent; border: 1px solid transparent; border-radius: 4px; opacity: .65; }
+.tab[aria-pressed="true"] { background: transparent; color: inherit; border-color: var(--term-edge); opacity: 1; }
+.tab:hover { border-color: var(--term-edge); }
+.close { margin-left: auto; }
+.example { opacity: .6; font-size: .85em; padding-left: 8px; }
+.link { color: #8ab4ff; }
+button.plain { min-height: 0; padding: 0; font: inherit; color: inherit; background: none; border: 0; opacity: .65; text-decoration: underline; }
+.command { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .8125rem; }
 .pane-body { min-width: 0; overflow: hidden; }
 .band { padding: 8px 12px 0; overflow-x: auto; }
 .band > .box { width: max-content; }

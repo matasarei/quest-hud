@@ -11,7 +11,7 @@ import { applyTaskCall } from '../../plugins/quest-hud/src/tasks'
 import type { Avatar } from '../../plugins/quest-hud/src/world/sprites'
 import { atRest, nextMotion, REST, TRANSITION_STEPS, type Motion, type Transition } from '../../plugins/quest-hud/src/scene'
 import { parseZones, zoneFor } from '../../plugins/quest-hud/src/zones'
-import type { Allies, Companion, Foes, LogEntry, Meters, Quest, Task, Zone } from '../../plugins/quest-hud/types'
+import type { Allies, Board, Companion, Foes, LevelCard, LogEntry, Meters, Quest, Task, Zone } from '../../plugins/quest-hud/types'
 
 export type Detail = 'off' | 'status' | 'band' | 'pane'
 export type Graphics = 'auto' | 'cells' | 'images'
@@ -43,6 +43,15 @@ export type Sim = Readonly<{
   /** What /quest-hud:off switched off. */
   isHidden: boolean
   isRoadOpen: boolean
+  /** Whether /quest-hud:off closed the Road, so /quest-hud:on brings it back. */
+  roadWasOpen: boolean
+  isBoardOpen: boolean
+  /** Which pane is in front, when both are open. */
+  pane: 'road' | 'board'
+  board: Board | null
+  isTrivialOpen: boolean
+  /** What /quest-hud:level last worked out. */
+  level: LevelCard | null
   /** The session's text, oldest first. */
   transcript: readonly string[]
   nextId: number
@@ -79,6 +88,12 @@ export const startSim = (settings: Settings, isStill = false): Sim => ({
   isWorking: false,
   isHidden: false,
   isRoadOpen: settings.detail === 'pane',
+  roadWasOpen: false,
+  isBoardOpen: false,
+  pane: 'road',
+  board: null,
+  isTrivialOpen: false,
+  level: null,
   transcript: [],
   nextId: 1,
 })
@@ -116,7 +131,18 @@ export const hasBand = (sim: Sim): boolean => !sim.isHidden && (sim.settings.det
 
 export const hasHint = (sim: Sim): boolean => !sim.isHidden && sim.settings.detail === 'status'
 
-export const isRoadShown = (sim: Sim): boolean => !sim.isHidden && sim.isRoadOpen
+/** The Road is shown when it is open and not behind the board. */
+export const isRoadShown = (sim: Sim): boolean => !sim.isHidden && sim.isRoadOpen && (sim.pane === 'road' || !sim.isBoardOpen)
+
+export const isBoardShown = (sim: Sim): boolean => !sim.isHidden && sim.isBoardOpen && (sim.pane === 'board' || !sim.isRoadOpen)
+
+/** A pane brought to the front, or closed. */
+export const showPane = (sim: Sim, pane: Sim['pane']): Sim => ({ ...sim, pane })
+
+export const closePane = (sim: Sim): Sim =>
+  isBoardShown(sim) ? { ...sim, isBoardOpen: false, pane: 'road' } : { ...sim, isRoadOpen: false, pane: 'board' }
+
+export const toggleTrivial = (sim: Sim): Sim => ({ ...sim, isTrivialOpen: !sim.isTrivialOpen })
 
 /** A setting as a reloaded session takes it: `pane` opens the Road at the start, and the others start without it. */
 export const withSetting = <K extends keyof Settings>(sim: Sim, name: K, value: Settings[K]): Sim => {
