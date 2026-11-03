@@ -1048,6 +1048,14 @@ describe('the band\'s flavour line', () => {
     await ui.unmount()
   })
 
+  test('a band drawn before session.start already opens on the session\'s own line', async ($, on) => {
+    engine(on)
+    const ui = await $.ui.mount(band())
+    expect(await lineOf(ui)).toBe(calmLine('wilds'))
+    expect(await lineOf(ui)).not.toBe(FLAVOR.wilds[0] ?? '')
+    await ui.unmount()
+  })
+
   test('a new session starts its lines from its own place; a reload keeps its place', async ($, on) => {
     engine(on)
     await implementing($)

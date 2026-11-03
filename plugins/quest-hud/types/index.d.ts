@@ -167,7 +167,7 @@ declare module 'claude-code' {
       board: Board | null
       /** The board's Trivial rows are unfolded. */
       isTrivialOpen: boolean
-      /** Where the band's flavour line is: starts from the session's id, and moves on at each main turn. */
+      /** Main turns this session: added to where the session's id starts the band's flavour line. */
       flavorStep: number
       /** The counts each read placed in the transcript, by row id: counts only, never a title. */
       posted: Record<string, string>

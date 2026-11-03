@@ -597,7 +597,7 @@ export const register: Register = (on, options) => {
       await update($, board, () => null)
       await update($, isTrivialOpen, () => false)
       await update($, posted, () => ({}))
-      await update($, flavorStep, () => flavorStart(id))
+      await update($, flavorStep, () => 0)
       anim.tick = 0
       anim.motion = REST
       anim.zone = undefined
@@ -856,7 +856,8 @@ export const register: Register = (on, options) => {
     if (anim.band !== undefined && (await read($, isWorking))) startAnim($).catch(() => stopTimer())
     // The zone the band's own label names, and no line where the portrait has no room: the band stays two rows there.
     const facts = { zone: current?.zone ?? 'wilds', foes: await read($, foes), hp: hpLeft(measured), mp: mpLeft(measured) } as const
-    const line = hasFlavor && hasRoom ? bandLine(facts, await read($, flavorStep)) : undefined
+    // The start comes from the id here, not from session.start: the first draw can come before it, and /clear fires none.
+    const line = hasFlavor && hasRoom ? bandLine(facts, flavorStart(await $.session.id()) + (await read($, flavorStep))) : undefined
 
     return (
       <Box flexDirection="column">
