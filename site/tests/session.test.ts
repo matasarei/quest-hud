@@ -223,3 +223,28 @@ test('Play a session reaches every part of the story, and ends at rest', () => {
   assert.equal(s.motion.pose, 'stand')
   assert.ok(s.tasks.every(task => task.status === 'completed'))
 })
+
+test('an interrupted fight has no outcome: the monsters go back to what they were', () => {
+  const clear = S.interruptFights(S.bashStart(sim(), 'npm test'))
+  assert.equal(clear.foes.test, 'none')
+
+  const lost = S.bashEnd(S.bashStart(sim(), 'npm test'), 'npm test', '231 pass\n1 fail', true, NOW)
+  const again = S.interruptFights(S.bashStart(lost, 'npm test'))
+  assert.equal(again.foes.test, 'standing')
+  assert.equal(again.log.length, lost.log.length)
+})
+
+test('interrupting with no fight on changes nothing', () => {
+  const lost = S.bashEnd(S.bashStart(sim(), 'npm test'), 'npm test', '231 pass\n1 fail', true, NOW)
+  assert.equal(S.interruptFights(lost), lost)
+})
+
+test('a fight stopped part way through Play a session leaves no monster', () => {
+  let s = S.startSim({ ...BASE, detail: 'pane' })
+  for (const beat of SESSION) {
+    s = beat.apply(s, NOW)
+    if (s.foes.test === 'fighting') break
+  }
+  assert.equal(s.foes.test, 'fighting')
+  assert.equal(S.interruptFights(s).foes.test, 'none')
+})

@@ -11,7 +11,7 @@ import { applyTaskCall } from '../../plugins/quest-hud/src/tasks'
 import type { Avatar } from '../../plugins/quest-hud/src/world/sprites'
 import { atRest, nextMotion, REST, TRANSITION_STEPS, type Motion, type Transition } from '../../plugins/quest-hud/src/scene'
 import { parseZones, zoneFor } from '../../plugins/quest-hud/src/zones'
-import type { Allies, Board, Companion, Foes, LevelCard, LogEntry, Meters, Quest, Task, Zone } from '../../plugins/quest-hud/types'
+import type { Allies, Board, Companion, FightKind, Foes, LevelCard, LogEntry, Meters, Quest, Task, Zone } from '../../plugins/quest-hud/types'
 
 export type Detail = 'off' | 'status' | 'band' | 'pane'
 export type Graphics = 'auto' | 'cells' | 'images'
@@ -246,6 +246,13 @@ export const bashEnd = (sim: Sim, command: string, stdout: string, isError: bool
   }
 
   return next
+}
+
+/** A run stopped before it answered: `tool.call`'s no-outcome path, so the monsters go back to what they were. */
+export const interruptFights = (sim: Sim): Sim => {
+  const fights = (Object.keys(sim.foes) as FightKind[]).filter(kind => sim.foes[kind] === 'fighting')
+
+  return fights.length === 0 ? sim : { ...sim, foes: endFights(sim.foes, fights, { result: 'none' }, sim.foesBefore) }
 }
 
 /** A read or an edit: the log, and what work the Wilds show when no skill runs. */

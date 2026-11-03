@@ -167,9 +167,26 @@ const syncControls = (): void => {
 /** How long a run's fight lasts on the page, so the strike can be seen. */
 const FIGHT_MS = 1600
 
+// What a button left running: a test run's answer, the herald's return. A new
+// session has no such run, so Play cancels them rather than let one land in it.
+const waiting = new Set<ReturnType<typeof setTimeout>>()
+
+const later = (ms: number, then: () => void): void => {
+  const timeout = setTimeout(() => {
+    waiting.delete(timeout)
+    then()
+  }, ms)
+  waiting.add(timeout)
+}
+
+const cancelWaiting = (): void => {
+  for (const timeout of waiting) clearTimeout(timeout)
+  waiting.clear()
+}
+
 const run = (command: string, stdout: string, isError: boolean, line: string): void => {
   act(current => S.say(S.bashStart(current, command), `$ ${command}`))
-  setTimeout(() => act((current, now) => S.say(S.bashEnd(current, command, stdout, isError, now), line)), FIGHT_MS)
+  later(FIGHT_MS, () => act((current, now) => S.say(S.bashEnd(current, command, stdout, isError, now), line)))
 }
 
 const ACTIONS: Readonly<Record<string, () => void>> = {
@@ -203,7 +220,7 @@ const buildCommands = (): void => {
     button.textContent = `/quest-hud:${command}`
     button.addEventListener('click', () => {
       act((current, now) => runCommand(current, command, now))
-      if (command === 'quests' && !sim.isHidden) setTimeout(() => act(postBoard), HERALD_MS)
+      if (command === 'quests' && !sim.isHidden) later(HERALD_MS, () => act(postBoard))
     })
     box.append(button)
   }
@@ -239,8 +256,10 @@ const togglePlay = (): void => {
   if (playing !== undefined) {
     clearTimeout(playing)
     playing = undefined
-    act(current => S.setWorking(current, false))
+    // A beat's fight has no answer coming now.
+    act(current => S.setWorking(S.interruptFights(current), false))
   } else {
+    cancelWaiting()
     sim = S.startSim(sim.settings, sim.isStill)
     beatFrom(0)
   }
