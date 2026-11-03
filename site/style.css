@@ -33,7 +33,7 @@ body {
   font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
-main { max-width: 1120px; margin: 0 auto; padding: 24px 16px 64px; display: grid; gap: 24px; min-width: 0; }
+main { max-width: 1360px; margin: 0 auto; padding: 24px 16px 64px; display: grid; gap: 24px; min-width: 0; }
 section { min-width: 0; }
 h1 { margin: 0; font-size: 2rem; line-height: 1.2; }
 a { color: var(--accent); }
@@ -48,13 +48,26 @@ a { color: var(--accent); }
 footer p { margin: 0; }
 footer { min-height: 0; }
 @media (min-width: 1000px) { .intro { grid-template-columns: minmax(0, 1fr) 520px; } }
-h2 { margin: 0 0 12px; font-size: 1.05rem; }
-.note { margin: 12px 0 0; color: var(--muted); font-size: .875rem; min-height: 2.6em; }
+h2 { margin: 0 0 10px; font-size: 1.05rem; }
+.note { margin: 12px 0 0; color: var(--muted); font-size: .875rem; }
+.muted { color: var(--muted); font-weight: 400; }
+
+/* The view stays on screen while any control is used. */
+.layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
+.controls { display: grid; gap: 20px; min-width: 0; }
+.stage { order: -1; position: sticky; top: 0; z-index: 1; padding: 8px 0; background: var(--page); max-height: 62vh; overflow: auto; min-width: 0; }
+.notes .note:first-child { margin-top: 0; }
+.without-mods { margin-top: 12px; }
+.without-mods h2 { margin-bottom: 4px; font-size: .8125rem; }
+
+@media (min-width: 1100px) {
+  .layout { grid-template-columns: 300px minmax(0, 1fr); gap: 24px; }
+  .stage { order: 0; top: 8px; padding: 0; max-height: calc(100vh - 16px); }
+}
 
 /* Settings */
-.settings { display: flex; flex-wrap: wrap; gap: 12px 24px; }
+.settings { display: flex; flex-wrap: wrap; gap: 10px 24px; }
 .setting { margin: 0; padding: 0; border: 0; min-width: 0; }
-.setting:last-child { flex: 1 1 180px; }
 .setting legend { padding: 0 0 4px; font-size: .8125rem; color: var(--muted); }
 .choices { display: inline-flex; border: 1px solid var(--edge); border-radius: 6px; overflow: hidden; background: var(--panel); }
 .choices label { position: relative; cursor: pointer; }
@@ -79,7 +92,7 @@ input[type="text"] { width: 100%; padding: 6px 8px; font: 14px/1.4 ui-monospace,
 }
 .ruler { position: absolute; visibility: hidden; white-space: pre; pointer-events: none; }
 .upper { display: grid; grid-template-columns: minmax(0, 1fr); border-bottom: 1px solid var(--term-edge); }
-.transcript { margin: 0; padding: 12px; min-height: 180px; max-height: 420px; overflow: auto; font: inherit; white-space: pre-wrap; overflow-wrap: anywhere; }
+.transcript { margin: 0; padding: 12px; min-height: 96px; max-height: 420px; overflow: auto; font: inherit; white-space: pre-wrap; overflow-wrap: anywhere; }
 .pane { border-top: 1px solid var(--term-edge); min-width: 0; padding: 0 12px 12px; }
 .pane-title { display: flex; align-items: center; gap: 4px; padding: 4px 0; }
 .tab { min-height: 28px; padding: 2px 8px; font: inherit; color: inherit; background: transparent; border: 1px solid transparent; border-radius: 4px; opacity: .65; }
@@ -91,6 +104,7 @@ input[type="text"] { width: 100%; padding: 6px 8px; font: 14px/1.4 ui-monospace,
 button.plain { min-height: 0; padding: 0; font: inherit; color: inherit; background: none; border: 0; opacity: .65; text-decoration: underline; }
 .command { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .8125rem; }
 .pane-body { min-width: 0; overflow: hidden; }
+#board { max-height: 420px; overflow: auto; }
 .band { padding: 8px 12px 0; overflow-x: auto; }
 .band > .box { width: max-content; }
 .band .truncate { overflow: visible; }
@@ -101,10 +115,31 @@ button.plain { min-height: 0; padding: 0; font: inherit; color: inherit; backgro
 @media (min-width: 960px) {
   .upper:has(.pane:not([hidden])) { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .pane { border-top: 0; border-left: 1px solid var(--term-edge); }
+  .transcript { min-height: 180px; }
+}
+
+/* On a phone the band comes first after the text, so a slider's change is in sight, and the Road scrolls below. */
+@media (max-width: 959px) {
+  .terminal:not(.one-line) { display: flex; flex-direction: column; }
+  .upper { display: contents; }
+  .transcript { order: 1; max-height: 96px; border-bottom: 1px solid var(--term-edge); }
+  .band { order: 2; }
+  .prompt { order: 3; }
+  .hint { order: 4; }
+  .pane { order: 5; }
 }
 
 .one-line { padding: 8px 12px; white-space: pre; overflow-x: auto; }
 .mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .95em; }
+
+.howto { margin-top: 8px; font-size: .875rem; color: var(--muted); }
+.howto summary { cursor: pointer; color: var(--accent); }
+.howto summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.howto ol { margin: 8px 0; padding-left: 20px; }
+.howto li { margin-bottom: 6px; }
+.howto p { margin: 0; }
+.howto code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .95em; color: var(--ink); }
+.howto pre { margin: 4px 0 0; padding: 6px 8px; background: var(--panel); border: 1px solid var(--edge); border-radius: 4px; white-space: pre-wrap; overflow-wrap: anywhere; }
 
 /* What the stand-in engine draws */
 .box { display: flex; min-width: 0; }
@@ -119,19 +154,13 @@ button.plain { min-height: 0; padding: 0; font: inherit; color: inherit; backgro
 .cells, .picture { display: block; image-rendering: pixelated; flex-shrink: 0; align-self: flex-start; }
 
 /* The session */
-.session-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
-.session-head h2 { margin: 0; }
-.primary { background: var(--accent); color: var(--page); border-color: var(--accent); font-weight: 600; }
-.meters { display: grid; gap: 8px 24px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.primary { width: 100%; background: var(--accent); color: var(--page); border-color: var(--accent); font-weight: 600; }
+.meters { display: grid; gap: 8px; margin-top: 12px; }
 .meter { min-width: 0; }
 .meters label { font-variant-emoji: text; display: flex; justify-content: space-between; font-size: .875rem; color: var(--muted); }
 .meters output { color: var(--ink); font-variant-numeric: tabular-nums; }
 .meters input { width: 100%; accent-color: var(--accent); }
-.extra { display: contents; }
-.skill { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 16px; }
-.skill label { font-size: .875rem; color: var(--muted); }
-.skill input { flex: 1 1 160px; width: auto; }
-.actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.actions { display: flex; flex-wrap: wrap; gap: 6px; }
 button { padding: 6px 10px; min-height: 36px; font: inherit; font-size: .875rem; color: inherit; background: var(--panel); border: 1px solid var(--edge); border-radius: 6px; cursor: pointer; }
 button:hover { border-color: var(--accent); }
 button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }

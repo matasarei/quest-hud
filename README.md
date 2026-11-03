@@ -27,7 +27,7 @@ project. It reads your past sessions only if you ask it to, with
 [`/quest-hud:level`](#your-level), and then keeps counts, not what they said. It uses the network
 only if you ask it to, with [`/quest-hud:quests`](#the-quest-board), through your own `gh`.
 
-**[Try it live in your browser](https://matasarei.github.io/quest-hud/)**: every setting, on the mod's real drawing code and an invented session.
+**[Try it live in your browser](https://matasarei.github.io/quest-hud/)**: the settings and commands, on the mod's real drawing code and an invented session.
 
 [Install](#install) · [Update](#update) · [Settings](#settings) · [Commands](#commands) · [Your level](#your-level) · [The Quest Board](#the-quest-board) · [The Road](#the-road) · [Without mods](#without-mods) · [Art](#art) · [Development](#development) · [License](#license)
 

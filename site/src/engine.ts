@@ -1,7 +1,6 @@
 // What the engine is to the mod's layouts, in a browser: `h` builds DOM, and
 // `$.ui.resolve()` names the elements hooks/pane.tsx, board.tsx and band.tsx draw
-// with. Their text goes in as text, never as markup: the mod's rule on outside
-// text, and the only path anything a visitor types can take onto the page.
+// with. Their text goes in as text, never as markup: the mod's rule on outside text.
 import type { EngineInterface } from 'claude-code'
 
 import { DEFAULT_COLOR } from '../../plugins/quest-hud/src/avatar'
