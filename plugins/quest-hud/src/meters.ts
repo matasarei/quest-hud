@@ -186,29 +186,40 @@ const meterRow = (form: MeterForm, meters: Meters | null, bars: Bars, now: numbe
   return row.filter(segment => segment.text !== '')
 }
 
+/** The cells worth keeping for the current task: ` · ` and ten of its own. */
+const MIN_TASK_CELLS = 13
+
+/**
+ * The quest row, for `room` cells: everything, then no zone, then no current
+ * task, then the quest alone. The current task comes last, so it is what the
+ * engine cuts, and a wide character in it cannot upset this sum.
+ */
+const headRow = (quest: Quest | null, tasks: readonly Task[], room: number): Segment[] => {
+  // A skill's quest names the skill and its zone; with none running, the Wilds.
+  const name: Segment[] = [quest ? { text: `⚔ ${quest.title}`, tone: 'accent' } : { text: ZONE_LABEL.wilds, tone: 'dim' }]
+  const zone: Segment[] = quest ? [{ text: `  ${ZONE_LABEL[quest.zone]}`, tone: 'dim' }] : []
+  const { done, total, current } = progress(tasks)
+  const count: Segment[] = total > 0 ? [{ text: `  task ${done}/${total}`, tone: 'dim' }] : []
+  const task: Segment[] = current ? [{ text: ` · ${cleanTitle(current.subject)}`, tone: 'plain' }] : []
+  const forms: ReadonlyArray<readonly [Segment[], Segment[]]> = [
+    [[...name, ...zone, ...count], task],
+    [[...name, ...count], task],
+    [[...name, ...count], []],
+    [name, []],
+  ]
+  const [fixed, tail] = forms.find(([kept, last]) => cellWidth(kept) + Math.min(MIN_TASK_CELLS, cellWidth(last)) <= room) ?? [name, []]
+
+  return [...fixed, ...tail]
+}
+
 /**
  * The band's two rows as text segments, each with the tone it is drawn in, for
  * `room` cells. With no room given, every word.
  */
 export const bandModel = (quest: Quest | null, tasks: readonly Task[], meters: Meters | null, bars: Bars, now: number, room = Number.POSITIVE_INFINITY): Band => {
-  // A skill's quest names the skill and its zone; with none running, the Wilds.
-  const head: Segment[] = quest
-    ? [{ text: `⚔ ${quest.title}`, tone: 'accent' }, { text: `  ${ZONE_LABEL[quest.zone]}`, tone: 'dim' }]
-    : [{ text: ZONE_LABEL.wilds, tone: 'dim' }]
-
-  const { done, total, current } = progress(tasks)
-
-  if (total > 0) {
-    head.push({ text: `  task ${done}/${total}`, tone: 'dim' })
-  }
-
-  if (current) {
-    head.push({ text: ` · ${cleanTitle(current.subject)}`, tone: 'plain' })
-  }
-
   const form = METER_FORMS.find(candidate => cellWidth(meterRow(candidate, meters, bars, now)) <= room) ?? FIGURES
 
-  return { head, meters: meterRow(form, meters, bars, now) }
+  return { head: headRow(quest, tasks, room), meters: meterRow(form, meters, bars, now) }
 }
 
 /** The pieces of the one-line forms, for each form to put in its own order. */

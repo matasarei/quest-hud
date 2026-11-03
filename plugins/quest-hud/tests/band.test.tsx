@@ -256,6 +256,17 @@ describe('the band', () => {
     await ui.unmount()
   })
 
+  test('in 55 cells the quest row gives up the zone and keeps the task', async ($, on) => {
+    engine(on)
+    await implementWithTasks($)
+    const ui = await $.ui.mount(band('terminal', 6, 55))
+    expect(await ui.find({ type: 'Text', text: /Forge/ })).toBeFalsy()
+    expect((await ui.find({ type: 'Text', text: /⚔/ }))?.text).toBe('⚔ gku:implement')
+    expect((await ui.find({ type: 'Text', text: /task \d/ }))?.text).toBe('  task 0/2')
+    expect((await ui.find({ type: 'Text', text: /Write the tests/ }))?.text).toBe(' · Write the tests')
+    await ui.unmount()
+  })
+
   test('only a row\'s last piece may be cut', async ($, on) => {
     engine(on)
     await implementWithTasks($)

@@ -333,3 +333,59 @@ describe('the bars row in the room it has', () => {
     }
   }
 })
+
+describe('the quest row in the room it has', () => {
+  const head = (room: number, onQuest: Quest | null = quest, list: readonly Task[] = tasks) => text(bandModel(onQuest, list, null, 'hpmp', NOW, room).head)
+  const ALL = '⚔ gku:implement  Forge  task 1/3 · Write the CSV writer tests'
+  const NO_ZONE = '⚔ gku:implement  task 1/3 · Write the CSV writer tests'
+  const NO_TASK = '⚔ gku:implement  task 1/3'
+  const ALONE = '⚔ gku:implement'
+
+  const steps = [
+    [100, ALL],
+    [45, ALL],
+    [44, NO_ZONE],
+    [38, NO_ZONE],
+    [37, NO_TASK],
+    [25, NO_TASK],
+    [24, ALONE],
+    [5, ALONE],
+    [0, ALONE],
+  ] as const
+
+  for (const [room, expected] of steps) {
+    test(`${room} cells: ${expected}`, () => {
+      expect(head(room)).toBe(expected)
+    })
+  }
+
+  test('the current task comes last, so it is the piece the engine may cut', () => {
+    const row = bandModel(quest, tasks, null, 'hpmp', NOW, 45).head
+    expect(row[row.length - 1]).toEqual({ text: ' · Write the CSV writer tests', tone: 'plain' })
+  })
+
+  test('a short task needs only its own cells', () => {
+    const short: Task[] = [{ id: '1', subject: 'a', status: 'in_progress' }]
+    expect(head(36, quest, short)).toBe('⚔ gku:implement  Forge  task 0/1 · a')
+    expect(head(35, quest, short)).toBe('⚔ gku:implement  task 0/1 · a')
+  })
+
+  test('no tasks: the zone goes when it does not fit', () => {
+    expect(head(22, quest, [])).toBe('⚔ gku:implement  Forge')
+    expect(head(21, quest, [])).toBe(ALONE)
+  })
+
+  test('tasks with none in progress: the count stays as long as it fits', () => {
+    const waiting: Task[] = [{ id: '1', subject: 'a', status: 'pending' }]
+    expect(head(32, quest, waiting)).toBe('⚔ gku:implement  Forge  task 0/1')
+    expect(head(31, quest, waiting)).toBe('⚔ gku:implement  task 0/1')
+    expect(head(24, quest, waiting)).toBe(ALONE)
+  })
+
+  test('no quest: the Wilds is the zone and it stays', () => {
+    expect(head(30, null, tasks)).toBe('Wilds  task 1/3 · Write the CSV writer tests')
+    expect(head(27, null, tasks)).toBe('Wilds  task 1/3')
+    expect(head(14, null, tasks)).toBe('Wilds')
+    expect(head(3, null, [])).toBe('Wilds')
+  })
+})
