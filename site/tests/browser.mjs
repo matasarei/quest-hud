@@ -343,9 +343,24 @@ await section('reduced motion', async () => {
   await click('play')
 })
 
+await section('the band fits', async () => {
+  for (const width of [1920, 1600, 1440, 1366, 1300, 1299, 1280, 1230, 1229, 1100, 1000, 904]) {
+    await load(width, 800)
+    await pick('bars', 'all')
+    const room = await ev(`(() => {
+      const band = document.getElementById('band')
+      const road = document.getElementById('road')
+      const scene = road.querySelector('img, canvas')
+      return { over: band.scrollWidth - band.clientWidth, roadOver: road.scrollWidth - road.clientWidth, sceneOver: scene ? scene.getBoundingClientRect().right - road.getBoundingClientRect().right : 0 }
+    })()`)
+    ok(`${width} px: the band's figures fit`, room.over <= 0, `${room.over} px over`)
+    ok(`${width} px: the Road fits its pane`, room.roadOver <= 0 && room.sceneOver <= 1, JSON.stringify(room))
+  }
+})
+
 // Every control in reach with the view on screen, at each size: the page's main promise.
 await section('the view stays on screen', async () => {
-  for (const [width, height] of [[1920, 1080], [1440, 900], [1280, 800], [1280, 680], [1100, 800], [1000, 800], [768, 1024], [390, 844], [360, 640]]) {
+  for (const [width, height] of [[1920, 1080], [1440, 900], [1280, 800], [1280, 680], [1230, 800], [1229, 800], [1100, 800], [1000, 800], [768, 1024], [390, 844], [360, 640]]) {
     await load(width, height)
     const count = await ev(`[...document.querySelectorAll('.controls button, .controls input')].map((e, i) => { e.dataset.check = i; return i }).length`)
     const hidden = []
@@ -356,7 +371,7 @@ await section('the view stays on screen', async () => {
         const control = element.closest('label') ?? element
         control.scrollIntoView({ block: 'nearest' })
         const stage = document.querySelector('.stage')
-        if (getComputedStyle(stage).position === 'sticky' && innerWidth < 1100) {
+        if (getComputedStyle(stage).position === 'sticky' && innerWidth < 1230) {
           const covers = stage.getBoundingClientRect().bottom - control.getBoundingClientRect().top
           if (covers > 0) scrollBy(0, -covers - 8)
         }

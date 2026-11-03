@@ -60,7 +60,8 @@ h2 { margin: 0 0 10px; font-size: 1.05rem; }
 .without-mods { margin-top: 12px; }
 .without-mods h2 { margin-bottom: 4px; font-size: .8125rem; }
 
-@media (min-width: 1100px) {
+/* Two columns only where the band's figures still fit beside the controls. */
+@media (min-width: 1230px) {
   .layout { grid-template-columns: 300px minmax(0, 1fr); gap: 24px; }
   .stage { order: 0; top: 8px; padding: 0; max-height: calc(100vh - 16px); }
 }
@@ -116,6 +117,11 @@ button.plain { min-height: 0; padding: 0; font: inherit; color: inherit; backgro
   .upper:has(.pane:not([hidden])) { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .pane { border-top: 0; border-left: 1px solid var(--term-edge); }
   .transcript { min-height: 180px; }
+}
+
+/* The band needs 940 px at 13 px: this keeps its figures on screen from about 904 px up. */
+@media (max-width: 1299px) {
+  .terminal { font-size: 12px; }
 }
 
 /* On a phone the band comes first after the text, so a slider's change is in sight, and the Road scrolls below. */
