@@ -1,7 +1,7 @@
 # quest-hud — notes for Claude
 
 A Claude Code marketplace with one mod, `quest-hud` (`plugins/quest-hud/`): a hooks module
-(`hooks/register.tsx`, with the Road pane's layout in `hooks/pane.tsx`, the Quest Board's in
+(`hooks/register.tsx`, with the band's layout in `hooks/band.tsx`, the Road pane's in `hooks/pane.tsx`, the Quest Board's in
 `hooks/board.tsx`, the level's readers in `hooks/survey.ts` and GitHub's in `hooks/github.ts`) over pure modules
 (`src/`), a state contract (`types/index.d.ts`), and a status-line script
 (`scripts/hud-line.sh`), and one user-only skill file per command (`skills/`). Tests are `plugins/quest-hud/tests/*.test.ts(x)`; `tests/kit.tsx`
@@ -9,6 +9,7 @@ stands for the engine in the newer ones. TypeScript run by the Claude Code engin
 package.json, no build and no node_modules. The Road's art is drawn in code: `src/paint/`
 paints (shapes, pixel sprites, a rasteriser, a PNG encoder, an Svg writer) and `src/world/`
 holds what is painted (the landscapes, the cast and props as pixel maps, the palette).
+`site/` is the live preview on GitHub Pages: not part of the mod, and the one place with a build.
 
 ## Commands
 
@@ -16,9 +17,10 @@ holds what is painted (the landscapes, the cast and props as pixel maps, the pal
 |---|---|
 | Validate | `claude plugin validate . && claude plugin validate plugins/quest-hud` (the `version` warning is intended) |
 | Test | `claude plugin test plugins/quest-hud`, then `bash plugins/quest-hud/tests/hud-line.sh` and `bash plugins/quest-hud/tests/skills.sh` |
-| Lint | `shellcheck --severity=warning plugins/quest-hud/scripts/*.sh plugins/quest-hud/tests/*.sh` |
+| Lint | `shellcheck --severity=warning plugins/quest-hud/scripts/*.sh plugins/quest-hud/tests/*.sh site/*.sh site/tests/*.sh` |
 | Type-check | `npx -y -p typescript tsc -p plugins/quest-hud`, once `plugins/quest-hud/.claude-plugin/types/` holds the engine's API types: an interactive `claude --plugin-dir` session lays them; a headless `claude -p` does not |
 | Run | `claude --plugin-dir /Users/hc/Projects/quest-hud/plugins/quest-hud` in a throwaway git repository |
+| Preview | `bash site/build.sh && bash site/test.sh && bash site/tests/smoke.sh`; type-check with `npx -y -p typescript tsc -p site`, once the engine's API types are laid as above; view with `python3 -m http.server -d _site 8000` |
 
 CI (`.github/workflows/checks.yml`) runs the same on every push and pull request, gated on
 Claude Code 2.1.316 and, as a warning only, on the latest release. Its bidi scan reads text
@@ -114,5 +116,6 @@ files only (`git grep -I`): perl dies on binary input.
   GitHub's Octocat, GitLab's fox and Claude's mascot are our own drawings, never logo files.
 - **`resolve()` lists every element on every surface**; one a surface lacks draws as an empty
   fragment. Choose by `e.surface`, not by `'X' in elements`.
+- **The live preview runs the mod's own code.** `site/` bundles `src/` and the layouts in `hooks/band.tsx`, `pane.tsx` and `board.tsx` with esbuild, against a stand-in `h` and `$` in `site/src/engine.ts`. It never imports `register.tsx`, which needs the engine's atoms: `site/src/session.ts` calls the same pure functions over plain values, so a new event or rule in a hook needs its line there too. A layout therefore reaches the engine only through `$.ui.resolve` and what it is passed. Words `register.tsx` writes inline are copied into `site/src/commands.ts`, the frame time into `main.ts`, and `scripts/hud-line.sh` into `site/src/hudline.ts`; `site/tests/` fails when a copy leaves its source. The page sends nothing, reads nothing from a visitor's machine, and shows only invented data. Text goes in through `textContent`, never `innerHTML`, under a CSP that allows only its own files. Deployed by `.github/workflows/pages.yml` from `main`.
 - **No `version`** in `plugin.json` or `marketplace.json`, so every commit is an update.
 - Changes land through pull requests on `main`; identifiers and commit messages in English.
