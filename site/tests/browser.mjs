@@ -51,8 +51,9 @@ const untilValue = async (read, what, ms = WAIT_MS) => {
 }
 
 const port = await untilValue(() => readFileSync(join(profile, 'DevToolsActivePort'), 'utf8').split('\n')[0], "Chrome's port")
-const pages = await untilValue(async () => (await fetch(`http://127.0.0.1:${port}/json`)).json(), "Chrome's pages")
-const socket = new WebSocket(pages.find(target => target.type === 'page').webSocketDebuggerUrl)
+// Chrome can answer before its first page exists, so an empty list is no answer yet.
+const target = await untilValue(async () => (await (await fetch(`http://127.0.0.1:${port}/json`)).json()).find(page => page.type === 'page'), "Chrome's page")
+const socket = new WebSocket(target.webSocketDebuggerUrl)
 await new Promise((resolve, reject) => {
   socket.onopen = resolve
   socket.onerror = reject
