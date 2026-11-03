@@ -413,7 +413,8 @@ await section('the view stays on screen', async () => {
         const control = element.closest('label') ?? element
         control.scrollIntoView({ block: 'nearest' })
         const stage = document.querySelector('.stage')
-        if (getComputedStyle(stage).position === 'sticky' && innerWidth < 1230) {
+        // Stacked, the pinned view can sit over a control: read the layout, not a width that copies the CSS.
+        if (getComputedStyle(document.querySelector('.layout')).gridTemplateColumns.split(' ').length === 1) {
           const covers = stage.getBoundingClientRect().bottom - control.getBoundingClientRect().top
           if (covers > 0) scrollBy(0, -covers - 8)
         }
