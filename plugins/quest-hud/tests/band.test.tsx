@@ -4,6 +4,7 @@ import type { Engine } from 'claude-code/testing'
 
 import { artCells } from '../hooks/pane'
 import { QUADRANT, quadrantWords } from '../src/avatar'
+import { FLAVOR } from '../src/flavor'
 import { OPTIONS } from '../src/help'
 import { TONE_COLOR } from '../src/meters'
 import { downsample } from '../src/paint/pixels'
@@ -264,6 +265,38 @@ describe('the band', () => {
     expect((await ui.find({ type: 'Text', text: /⚔/ }))?.text).toBe('⚔ gku:implement')
     expect((await ui.find({ type: 'Text', text: /task \d/ }))?.text).toBe('  task 0/2')
     expect((await ui.find({ type: 'Text', text: /Write the tests/ }))?.text).toBe(' · Write the tests')
+    await ui.unmount()
+  })
+
+  const hasFlavorLine = async (ui: { findAll: (query: { type: string }) => Promise<Array<{ text: string }>> }) =>
+    (await ui.findAll({ type: 'Text' })).some(found => (FLAVOR.forge as readonly string[]).includes(found.text))
+
+  test('from 33 cells the portrait and the flavour line stay, with the row in what is left', async ($, on) => {
+    engine(on)
+    await implementWithTasks($)
+    const ui = await $.ui.mount(band('terminal', 6, 33))
+    expect(await ui.find({ type: 'Raster' })).toBeTruthy()
+    expect(await hasFlavorLine(ui)).toBe(true)
+    expect((await ui.find({ type: 'Text', text: /^█/ }))?.text).toHaveLength(4)
+    await ui.unmount()
+  })
+
+  test('below 33 cells they go, and the row has their room', async ($, on) => {
+    engine(on)
+    await implementWithTasks($)
+    const ui = await $.ui.mount(band('terminal', 6, 32))
+    expect(await ui.find({ type: 'Raster' })).toBeFalsy()
+    expect(await hasFlavorLine(ui)).toBe(false)
+    expect((await ui.find({ type: 'Text', text: /^█/ }))?.text).toHaveLength(8)
+    await ui.unmount()
+  })
+
+  test('the desktop keeps its portrait and its line whatever it reports', async ($, on) => {
+    engine(on)
+    await implementWithTasks($)
+    const ui = await $.ui.mount(band('desktop', 6, 20))
+    expect(await ui.find({ type: 'Svg' })).toBeTruthy()
+    expect(await hasFlavorLine(ui)).toBe(true)
     await ui.unmount()
   })
 
