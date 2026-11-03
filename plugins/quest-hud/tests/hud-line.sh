@@ -32,6 +32,22 @@ for json in "$here"/statusline/all/*.json; do
   fi
 done
 
+# --all counts wherever it stands, and nothing else turns it on.
+want="$(cat "$here/statusline/all/subscriber.expected")"
+got="$(bash "$script" --other --all < "$here/statusline/all/subscriber.json" | tr '\033' '@')"
+if [ "$got" = "$want" ]; then
+  echo "ok   --all second"
+else
+  echo "FAIL --all second: got '$got', want '$want'"
+  failed=1
+fi
+
+got="$(bash "$script" --other --allow < "$here/statusline/all/subscriber.json" | tr '\033' '@')"
+case "$got" in
+  *⚡*|*◉*) echo "FAIL no --all: got '$got'"; failed=1 ;;
+  *) echo "ok   no --all" ;;
+esac
+
 # No jq on PATH: one line saying so, and a zero exit, so the status line never errors.
 got="$(PATH=/nonexistent /bin/bash "$script" < "$here/statusline/subscriber.json")"; code=$?
 if [ "$got" = "quest-hud: needs jq" ] && [ "$code" -eq 0 ]; then
