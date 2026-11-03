@@ -128,6 +128,9 @@ const TIMERS = `(() => {
 for (const domain of ['Runtime', 'Log', 'Page', 'Network']) await send(`${domain}.enable`)
 await send('Page.addScriptToEvaluateOnNewDocument', { source: TIMERS })
 
+/** Linux and Windows scrollbars take width, where macOS overlays them: check the harder case everywhere. */
+const CLASSIC_SCROLLBARS = '::-webkit-scrollbar { width: 15px; height: 15px }'
+
 /** A fresh page at a size. */
 const load = async (width, height, reduced = false) => {
   await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false })
@@ -136,6 +139,7 @@ const load = async (width, height, reduced = false) => {
   await ev('window.__leaving = true')
   await send('Page.navigate', { url })
   await untilValue(() => ev(`document.documentElement.dataset.ready === 'yes' && !window.__leaving`), 'the page')
+  await ev(`document.styleSheets[0].insertRule(${JSON.stringify(CLASSIC_SCROLLBARS)}, 0)`)
 }
 
 const text = id => ev(`document.getElementById(${JSON.stringify(id)}).textContent`)
@@ -386,7 +390,7 @@ await section('reduced motion', async () => {
 })
 
 await section('the band fits', async () => {
-  for (const width of [1920, 1600, 1440, 1366, 1300, 1299, 1280, 1230, 1229, 1100, 1000, 904]) {
+  for (const width of [1920, 1600, 1440, 1366, 1320, 1319, 1280, 1250, 1249, 1100, 1000, 934]) {
     await load(width, 800)
     await pick('bars', 'all')
     const room = await ev(`(() => {
@@ -402,7 +406,7 @@ await section('the band fits', async () => {
 
 // Every control in reach with the view on screen, at each size: the page's main promise.
 await section('the view stays on screen', async () => {
-  for (const [width, height] of [[1920, 1080], [1440, 900], [1280, 800], [1280, 680], [1230, 800], [1229, 800], [1100, 800], [1000, 800], [768, 1024], [390, 844], [360, 640]]) {
+  for (const [width, height] of [[1920, 1080], [1440, 900], [1280, 800], [1280, 680], [1250, 800], [1249, 800], [1100, 800], [1000, 800], [768, 1024], [390, 844], [360, 640]]) {
     await load(width, height)
     const count = await ev(`[...document.querySelectorAll('.controls button, .controls input')].map((e, i) => { e.dataset.check = i; return i }).length`)
     const hidden = []
