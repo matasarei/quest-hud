@@ -151,6 +151,7 @@ const syncControls = (): void => {
     slotOf(`${range.id}-value`).textContent = range.shown()
   }
   slotOf('extra-bars').hidden = sim.settings.bars !== 'all'
+  slotOf('graphics-note').hidden = sim.settings.graphics !== 'auto' || !S.isRoadShown(sim)
   const working = slotOf('working')
   working.setAttribute('aria-pressed', String(sim.isWorking))
   working.textContent = sim.isWorking ? 'Claude is working' : 'Claude is idle'
@@ -257,12 +258,27 @@ new ResizeObserver(() => {
   const columns = roadColumns(slots)
   if (columns !== lastColumns && !slots.road.hidden) {
     lastColumns = columns
-    redraw()
+    // Next frame: a redraw inside this callback would resize what it observes.
+    requestAnimationFrame(redraw)
   }
 }).observe(slots.road)
 
+const bindInstall = (): void => {
+  const button = slotOf('copy-install')
+  const command = slotOf('install-command') as HTMLInputElement
+
+  button.addEventListener('click', () => {
+    // Selected first, so a browser that refuses the clipboard still leaves it ready to copy by hand.
+    command.select()
+    const say = (word: string) => (): void => { button.textContent = word }
+    if (navigator.clipboard) navigator.clipboard.writeText(command.value).then(say('Copied'), say('Selected'))
+    else say('Selected')()
+  })
+}
+
 buildSettings()
 buildCommands()
+bindInstall()
 describe('detail')
 bindRanges()
 bindActions()

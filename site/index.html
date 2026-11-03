@@ -3,20 +3,36 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
   <title>Quest HUD Live Preview</title>
+  <meta name="description" content="Try Quest HUD in your browser: a Claude Code mod that draws your session as a small game, with HP and MP bars and the skill and tasks you are on.">
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <main>
     <header class="intro">
-      <h1>Quest HUD</h1>
+      <div>
+        <h1>Quest HUD</h1>
+        <p class="lead">A Claude Code mod that draws your session as a small game: HP and MP bars for the weekly limit and the context window, and the skill and tasks you are on.</p>
+        <p class="note">This page runs the mod's real drawing code on an invented session. Nothing is sent anywhere, no model is called, and nothing here reads your machine or GitHub.</p>
+      </div>
+      <div class="install">
+        <label for="install-command">Install, at a Claude Code prompt</label>
+        <div class="install-row">
+          <input id="install-command" class="mono" type="text" readonly value="/plugin install quest-hud --marketplace matasarei/quest-hud">
+          <button id="copy-install" type="button">Copy</button>
+        </div>
+        <a href="https://github.com/matasarei/quest-hud">Source and README on GitHub</a>
+      </div>
     </header>
+    <noscript><p>The preview needs JavaScript. The <a href="https://github.com/matasarei/quest-hud">README</a> shows what it looks like.</p></noscript>
 
     <section aria-labelledby="settings-title">
       <h2 id="settings-title">Settings</h2>
       <div id="settings" class="settings"></div>
       <p id="setting-note" class="note" aria-live="polite"></p>
+      <p id="graphics-note" class="note" hidden>In a browser, <span class="mono">auto</span> finds that images work and draws them. A terminal without images falls back to text cells.</p>
     </section>
 
     <section class="terminal" aria-label="A simulated terminal showing the mod">
@@ -99,6 +115,9 @@
       <div id="commands" class="actions"></div>
       <p class="note">Answers appear in the terminal. The level and the Quest Board show invented examples: this page reads nothing from your machine or GitHub.</p>
     </section>
+    <footer class="note">
+      <p>Quest HUD is an unofficial community mod under the MIT licence, not made or endorsed by Anthropic, GitHub or GitLab. The Octocat, fox and Claude's mascot in it are the project's own drawings, not their logo files. The desktop app draws the Road differently; this page shows the terminal.</p>
+    </footer>
   </main>
   <script src="preview.js"></script>
 </body>
