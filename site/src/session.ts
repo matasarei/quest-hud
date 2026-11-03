@@ -6,6 +6,7 @@ import { commandKinds, endFights, fightKinds, fightOutcome, fightText, forgeEven
 import { appendEntry, castText, scoutCounts, scoutText } from '../../plugins/quest-hud/src/log'
 import { shortTokens, ZONE_LABEL, type Bars } from '../../plugins/quest-hud/src/meters'
 import { cleanTitle, fromSkill } from '../../plugins/quest-hud/src/quest'
+import { sceneZone } from '../../plugins/quest-hud/src/road'
 import { applyTaskCall } from '../../plugins/quest-hud/src/tasks'
 import type { Avatar } from '../../plugins/quest-hud/src/world/sprites'
 import { atRest, nextMotion, REST, TRANSITION_STEPS, type Motion, type Transition } from '../../plugins/quest-hud/src/scene'
@@ -50,6 +51,8 @@ export type Sim = Readonly<{
   /** How far the walk has got, and the frame count it steps by. */
   motion: Motion
   tick: number
+  /** The zone last drawn. */
+  zone: Zone
   /** A zone change under way, counted in frames. */
   slide?: { from: Zone; step: number }
 }>
@@ -59,6 +62,7 @@ export const startSim = (settings: Settings, isStill = false): Sim => ({
   isStill,
   motion: REST,
   tick: 0,
+  zone: 'wilds',
   hp: 62,
   mp: 59,
   five: 34,
@@ -94,6 +98,15 @@ export const metersOf = (sim: Sim, now: number): Meters => {
   }
 }
 
+/** `noteZone`: a change of zone slides, where the Road is there to show it. */
+const noteZone = (sim: Sim): Sim => {
+  const zone = sceneZone(sim.quest, sim.activity)
+  if (zone === sim.zone) return sim
+
+  const { slide: _replaced, ...rest } = sim
+  return sim.isStill || !isRoadShown(sim) ? { ...rest, zone } : { ...sim, zone, slide: { from: sim.zone, step: 0 } }
+}
+
 const addLog = (sim: Sim, entry: Omit<LogEntry, 'at'>, now: number): Sim => ({ ...sim, log: appendEntry(sim.log, { ...entry, at: now } as LogEntry) })
 
 /** A line of the session's text. */
@@ -108,8 +121,11 @@ export const isRoadShown = (sim: Sim): boolean => !sim.isHidden && sim.isRoadOpe
 /** A setting as a reloaded session takes it: `pane` opens the Road at the start, and the others start without it. */
 export const withSetting = <K extends keyof Settings>(sim: Sim, name: K, value: Settings[K]): Sim => {
   const settings = { ...sim.settings, [name]: value }
+  if (name === 'detail') return { ...sim, settings, isRoadOpen: value === 'pane' }
+  if (name !== 'zones' || sim.quest === null) return { ...sim, settings }
 
-  return name === 'detail' ? { ...sim, settings, isRoadOpen: value === 'pane' } : { ...sim, settings }
+  // The option is read as the skill starts: the running skill is placed as it would be now.
+  return noteZone({ ...sim, settings, quest: { ...sim.quest, zone: zoneFor(sim.quest.skill, '', parseZones(String(value))) } })
 }
 
 const percent = (value: number): number => Math.min(100, Math.max(0, Math.round(value)))
@@ -122,13 +138,13 @@ export const withCost = (sim: Sim, value: number): Sim => ({ ...sim, cost: Math.
 /** `skill.prompt`: the skill's quest, in the zone the rules and the `zones` option give it. */
 export const startSkill = (sim: Sim, name: string, now: number, description = ''): Sim => {
   const started = fromSkill(name, zoneFor(name, description, parseZones(sim.settings.zones)), now)
-  const next = addLog({ ...sim, quest: started }, { kind: 'skill', text: `${started.title} · ${ZONE_LABEL[started.zone]}` }, now)
+  const next = addLog(noteZone({ ...sim, quest: started }), { kind: 'skill', text: `${started.title} · ${ZONE_LABEL[started.zone]}` }, now)
 
   return say(next, `> /${started.title}`)
 }
 
 /** The next prompt after a finished skill: the quest ends, and the road goes back to the Wilds or the last work. */
-export const endSkill = (sim: Sim): Sim => ({ ...sim, quest: null })
+export const endSkill = (sim: Sim): Sim => noteZone({ ...sim, quest: null })
 
 /** `turn.start` and `turn.complete`: when a turn ends, the figures come to rest where the walk got to. */
 export const setWorking = (sim: Sim, isWorking: boolean): Sim => ({ ...sim, isWorking, motion: isWorking ? sim.motion : atRest(sim.motion) })
@@ -209,10 +225,10 @@ export const bashEnd = (sim: Sim, command: string, stdout: string, isError: bool
 /** A read or an edit: the log, and what work the Wilds show when no skill runs. */
 export const toolCall = (sim: Sim, tool: string, input: unknown, result: unknown, now: number): Sim => {
   const counts = scoutCounts(tool)
-  if (counts) return addLog({ ...sim, activity: 'map' }, { kind: 'scout', text: scoutText(counts), counts }, now)
+  if (counts) return noteZone(addLog({ ...sim, activity: 'map' }, { kind: 'scout', text: scoutText(counts), counts }, now))
 
   const cast = castText(tool, input, result)
-  return cast === undefined ? sim : addLog({ ...sim, activity: 'forge' }, { kind: 'cast', text: cast }, now)
+  return cast === undefined ? sim : noteZone(addLog({ ...sim, activity: 'forge' }, { kind: 'cast', text: cast }, now))
 }
 
 /** A subagent joins, and appears as a ghost behind the wizard. */
@@ -242,6 +258,7 @@ export const exampleSession = (settings: Settings, now: number, isStill = false)
   sim = addTask(sim, 'Wire it in')
   sim = nextTask(sim, now)
   sim = nextTask(sim, now)
+  const { slide: _noSlideOnLoad, ...settled } = say(sim, 'Reading the exporter, then writing its tests first.')
 
-  return say(sim, 'Reading the exporter, then writing its tests first.')
+  return settled
 }

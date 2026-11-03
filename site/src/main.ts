@@ -85,7 +85,7 @@ const buildSettings = (): void => {
       const input = document.createElement('input')
       input.type = 'text'
       input.id = 'zones'
-      input.placeholder = 'deploy=harbour'
+      input.placeholder = 'deploy=arena'
       input.spellcheck = false
       input.autocomplete = 'off'
       input.setAttribute('aria-label', 'Zone overrides')

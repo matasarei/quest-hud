@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 
 import { bandModel, hintText, TONE_COLOR } from '../../plugins/quest-hud/src/meters'
+import { TRANSITION_STEPS } from '../../plugins/quest-hud/src/scene'
 import * as S from '../src/session'
 
 const NOW = Date.parse('2026-11-03T10:00:00Z')
@@ -138,4 +139,56 @@ test("the page's frame time is the mod's", () => {
   const source = readFileSync('plugins/quest-hud/hooks/register.tsx', 'utf8')
   assert.match(source, /export const ANIM_MS = 250\b/)
   assert.match(readFileSync('site/src/main.ts', 'utf8'), /const ANIM_MS = 250\b/)
+})
+
+const pane = () => sim({ detail: 'pane' })
+
+test('a zones override places a skill, and the running one moves with a slide', () => {
+  assert.equal(S.startSkill(sim({ zones: 'deploy=harbour' }), 'deploy', NOW).quest?.zone, 'harbour')
+  assert.equal(S.startSkill(sim({ zones: 'deploy=arena' }), 'plugin:deploy', NOW).quest?.zone, 'arena')
+
+  const running = S.tickSim(S.startSkill(pane(), 'zzz', NOW))
+  const started = { ...running, slide: undefined, zone: 'wilds' as const }
+  const moved = S.withSetting(started, 'zones', 'zzz=harbour')
+  assert.equal(moved.quest?.zone, 'harbour')
+  assert.deepEqual(moved.slide, { from: 'wilds', step: 0 })
+  assert.equal(S.needsTimer(moved), true)
+})
+
+test('an invalid zones rule is skipped, as parseZones skips it', () => {
+  assert.equal(S.startSkill(sim({ zones: 'zzz=nowhere, broken, =forge' }), 'zzz', NOW).quest?.zone, 'wilds')
+})
+
+test('a slide ends after TRANSITION_STEPS frames, on the new zone, and the timer stops', () => {
+  let s = S.startSkill(pane(), 'gku:implement', NOW)
+  assert.equal(s.slide?.from, 'wilds')
+  assert.equal(s.zone, 'forge')
+  let frames = 0
+  while (s.slide !== undefined && frames < 20) {
+    assert.equal(S.needsTimer(s), true)
+    s = S.tickSim(s)
+    frames += 1
+  }
+  assert.equal(frames, TRANSITION_STEPS)
+  assert.equal(S.needsTimer(s), false)
+})
+
+test('no slide where the Road is closed, or the visitor asked for less motion', () => {
+  const closed = S.startSkill(sim({ detail: 'band' }), 'gku:implement', NOW)
+  assert.equal(closed.slide, undefined)
+  assert.equal(closed.zone, 'forge')
+  assert.equal(S.startSkill(S.startSim({ ...BASE, detail: 'pane' }, true), 'gku:implement', NOW).slide, undefined)
+})
+
+test('ending a skill goes back to the last work, or the Wilds', () => {
+  const skill = S.startSkill(S.toolCall(pane(), 'Read', { file_path: '/a' }, {}, NOW), 'gku:implement', NOW)
+  assert.equal(S.endSkill(skill).zone, 'map')
+  assert.equal(S.endSkill(S.startSkill(pane(), 'gku:implement', NOW)).zone, 'wilds')
+})
+
+test('the page opens at rest, with no slide waiting and no timer', () => {
+  const s = S.exampleSession({ ...BASE, detail: 'pane' }, NOW)
+  assert.equal(s.slide, undefined)
+  assert.equal(S.needsTimer(s), false)
+  assert.equal(s.zone, 'forge')
 })
