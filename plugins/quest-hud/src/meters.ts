@@ -68,6 +68,9 @@ export const mpLeft = (meters: Meters | null): number =>
 export const hpLeft = (meters: Meters | null): number | undefined =>
   meters?.weekUsed === undefined ? undefined : Math.round(clamp(100 - meters.weekUsed))
 
+/** The tone HP is drawn in, from the percent left as shown: yellow below 40, red below 20. */
+export const hpTone = (left: number): Tone => (left < 20 ? 'hpCritical' : left < 40 ? 'hpLow' : 'hp')
+
 /** A bar of `width` cells, `left` percent of them full. */
 export const bar = (left: number, width: number, full = '█', empty = '░'): string => {
   const cells = Math.round((clamp(left) / 100) * width)
@@ -99,7 +102,7 @@ export const shortTokens = (tokens: number): string => {
   return String(tokens)
 }
 
-export type Tone = 'accent' | 'plain' | 'dim' | 'hp' | 'mp' | 'five' | 'gold'
+export type Tone = 'accent' | 'plain' | 'dim' | 'hp' | 'hpLow' | 'hpCritical' | 'mp' | 'five' | 'gold'
 
 /** The colour each tone is drawn in; undefined is the surface's own text colour. */
 export const TONE_COLOR: Readonly<Record<Tone, string | undefined>> = {
@@ -107,6 +110,8 @@ export const TONE_COLOR: Readonly<Record<Tone, string | undefined>> = {
   plain: undefined,
   dim: undefined,
   hp: '#4fd37a',
+  hpLow: '#f2d15b',
+  hpCritical: '#ef5350',
   mp: '#5b9bff',
   five: '#f0b43a',
   gold: '#f2d15b',
@@ -139,10 +144,11 @@ export const bandModel = (quest: Quest | null, tasks: readonly Task[], meters: M
 
   if (hp !== undefined) {
     const heals = healsIn(meters?.weekResetsAt, now)
+    const tone = hpTone(hp)
     row.push(
-      { text: '♥ HP ', tone: 'hp' },
-      { text: bar(hp, BAND_WIDTH), tone: 'hp' },
-      { text: ` ${hp}%`, tone: 'hp' },
+      { text: '♥ HP ', tone },
+      { text: bar(hp, BAND_WIDTH), tone },
+      { text: ` ${hp}%`, tone },
       { text: heals ? ` week · heals in ${heals}   ` : ' week   ', tone: 'dim' },
     )
   }

@@ -3,6 +3,7 @@ import type { Engine } from 'claude-code/testing'
 
 import { artCells } from '../hooks/pane'
 import { imageScale, QUADRANT } from '../src/avatar'
+import { TONE_COLOR } from '../src/meters'
 import { bandPortrait, sceneArt } from '../src/scene'
 import { AVATARS } from '../src/world/sprites'
 import { engine, RUN, start, world } from './kit'
@@ -62,6 +63,29 @@ const rowsOf = (element: unknown): string[] => {
   const below = (Array.isArray(children) ? children : [children]).flatMap(rowsOf)
   return props?.justifyContent === 'space-between' ? [JSON.stringify(children), ...below] : below
 }
+
+describe('the HP bar', () => {
+  const colors = [
+    [20, TONE_COLOR.hp],
+    [61, TONE_COLOR.hpLow],
+    [81, TONE_COLOR.hpCritical],
+  ] as const
+
+  for (const [percentUsed, color] of colors) {
+    test(`at ${percentUsed}% used it is drawn in ${color}`, async ($, on) => {
+      engine(on)
+      await implementing($)
+      await $.session.measure({
+        context: { tokens: 86_000, window: 200_000, percent: 43 },
+        rateLimits: [{ kind: 'seven_day', percentUsed }],
+        changed: ['context'],
+      })
+      const ui = await $.ui.mount(pane('terminal'))
+      expect((await ui.find({ type: 'Text', text: /^♥/ }))?.props.color).toBe(color)
+      await ui.unmount()
+    })
+  }
+})
 
 describe('the level', () => {
   for (const surface of ['terminal', 'desktop'] as const) {

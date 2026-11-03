@@ -18,7 +18,7 @@ play. Quest HUD is a Claude Code mod that draws your session that way, above the
           ♥ HP █████████░░░░░ 62% week · heals in 2d 4h   ✦ MP ████████░░░░░░ 59% ctx · 82k/200k
 ```
 
-- **♥ HP**: what is left of your weekly usage window.
+- **♥ HP**: what is left of your weekly usage window. It turns yellow below 40% and red below 20%.
 - **✦ MP**: what is left of the context window.
 - **⚔ the quest**: the running skill, from any plugin, and its zone, with Claude Code's task list.
 
@@ -241,6 +241,9 @@ Where the mod runs, `/quest-hud:statusline` prints both steps. Otherwise, copy
 
 It needs `jq`. HP appears only on a Pro, Max or Ultra subscription; MP is full until the first
 response reports the fill.
+
+HP is green, yellow below 40% and red below 20%, and MP is blue, in your terminal's 256 colours.
+The `status` hint line takes no colours: Claude Code draws it dim.
 
 ## Art
 

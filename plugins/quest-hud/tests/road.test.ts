@@ -53,6 +53,20 @@ describe('road', () => {
     expect(road(args()).meters.map(s => s.text).join('')).toBe('♥ ████████░░ 80%   ✦ ██████░░░░ 57%')
   })
 
+  const hpCases = [
+    [60, 'hp'],
+    [61, 'hpLow'],
+    [80, 'hpLow'],
+    [81, 'hpCritical'],
+  ] as const
+
+  for (const [weekUsed, tone] of hpCases) {
+    test(`at ${weekUsed}% used the HP bar is ${tone}, and MP stays mp`, () => {
+      const { meters } = road(args({ meters: { window: 200_000, contextPercent: 43, weekUsed } }))
+      expect(meters.map(s => s.tone)).toEqual([tone, 'mp'])
+    })
+  }
+
   test('the log\'s newest lines, with the time and the kind', () => {
     expect(road(args()).log).toEqual(['09:00 cast  f0.ts +1 -0', '09:01 cast  f1.ts +1 -0', '09:02 cast  f2.ts +1 -0'])
   })

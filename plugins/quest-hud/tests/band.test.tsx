@@ -5,6 +5,7 @@ import type { Engine } from 'claude-code/testing'
 import { artCells } from '../hooks/pane'
 import { QUADRANT, quadrantWords } from '../src/avatar'
 import { OPTIONS } from '../src/help'
+import { TONE_COLOR } from '../src/meters'
 import { downsample } from '../src/paint/pixels'
 import { bandPortrait } from '../src/scene'
 
@@ -177,6 +178,24 @@ describe('the band', () => {
     expect((await ui.find({ type: 'Text', text: /^ 100%$/ }))?.text).toBe(' 100%')
     await ui.unmount()
   })
+
+  const hpColors = [
+    [38, TONE_COLOR.hp],
+    [61, TONE_COLOR.hpLow],
+    [81, TONE_COLOR.hpCritical],
+  ] as const
+
+  for (const [percentUsed, color] of hpColors) {
+    test(`at ${percentUsed}% used, the drawn HP label, bar and figure are ${color}`, async ($, on) => {
+      engine(on)
+      session.rateLimits = [{ kind: 'seven_day', percentUsed }]
+      const ui = await $.ui.mount(band('terminal'))
+      for (const text of [/^♥ HP/, /^█/, new RegExp(`^ ${100 - percentUsed}%$`)]) {
+        expect((await ui.find({ type: 'Text', text }))?.props.color).toBe(color)
+      }
+      await ui.unmount()
+    })
+  }
 
   // A /clear wipes the host's state, and neither session.start nor session.measure follows:
   // the plugin's values are their initial ones while the engine still has the figures.

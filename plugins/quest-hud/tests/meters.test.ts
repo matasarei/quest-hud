@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { bandModel, bar, fromMeasure, healsIn, hintText, hpLeft, mpLeft, shortTokens, statusText, ZONE_MEANING, zoneLine } from '../src/meters'
+import { bandModel, bar, fromMeasure, healsIn, hintText, hpLeft, hpTone, mpLeft, shortTokens, statusText, TONE_COLOR, ZONE_MEANING, zoneLine } from '../src/meters'
 import type { Meters, Quest, Task } from '../types'
 
 const NOW = Date.parse('2026-11-01T10:00:00Z')
@@ -54,6 +54,37 @@ describe('left', () => {
   test('a context window not measured yet is full: nothing is spent before the first response', () => {
     expect(mpLeft({ window: 200_000 })).toBe(100)
     expect(mpLeft(null)).toBe(100)
+  })
+})
+
+describe('hpTone', () => {
+  const cases = [
+    [100, 'hp'],
+    [40, 'hp'],
+    [39, 'hpLow'],
+    [20, 'hpLow'],
+    [19, 'hpCritical'],
+    [0, 'hpCritical'],
+  ] as const
+
+  for (const [left, tone] of cases) {
+    test(`${left}% left is ${tone}`, () => {
+      expect(hpTone(left)).toBe(tone)
+    })
+  }
+
+  test('it reads the rounded figure on screen, so the colour agrees with the number', () => {
+    const toneAt = (weekUsed: number) => hpTone(hpLeft({ window: 1, weekUsed }) as number)
+    expect(toneAt(60.4)).toBe('hp')
+    expect(toneAt(60.6)).toBe('hpLow')
+    expect(toneAt(80.4)).toBe('hpLow')
+    expect(toneAt(80.6)).toBe('hpCritical')
+  })
+
+  test('each warning has a colour of its own', () => {
+    const colors = [TONE_COLOR.hp, TONE_COLOR.hpLow, TONE_COLOR.hpCritical]
+    expect(colors.every(color => color !== undefined)).toBe(true)
+    expect(new Set(colors).size).toBe(3)
   })
 })
 
@@ -141,6 +172,21 @@ describe('bandModel', () => {
     expect(band.meters.find(s => s.text.startsWith('♥'))?.tone).toBe('hp')
     expect(band.meters.find(s => s.text.startsWith('✦'))?.tone).toBe('mp')
   })
+
+  const hpCases = [
+    [38, 'hp'],
+    [61, 'hpLow'],
+    [81, 'hpCritical'],
+  ] as const
+
+  for (const [weekUsed, tone] of hpCases) {
+    test(`at ${weekUsed}% used the HP label, bar and figure are ${tone}, its words dim, and MP stays mp`, () => {
+      const { meters } = bandModel(quest, [], { window: 200_000, weekUsed }, 'hpmp', NOW)
+      expect(meters.slice(0, 3).map(s => s.tone)).toEqual([tone, tone, tone])
+      expect(meters[3]?.tone).toBe('dim')
+      expect(meters.slice(4, 7).map(s => s.tone)).toEqual(['mp', 'mp', 'mp'])
+    })
+  }
 })
 
 describe('hintText', () => {
