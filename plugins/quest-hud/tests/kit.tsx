@@ -15,6 +15,8 @@ export const world: {
   /** When true, the engine answers an Image blit as where it drew the alt. */
   refuseImages: boolean
   opened: string[]
+  /** Each open's id, and the rows it asked for. */
+  openedRows: Array<[string, number | undefined]>
   /** How the engine answers a Bash call: its output, or the error text a failed command gives. */
   bash: { stdout?: string; stderr?: string; error?: string; interrupted?: boolean; backgroundTaskId?: string }
   /** The monsters as the plugin had stored them when each Bash call ran. */
@@ -74,6 +76,7 @@ export const world: {
   imageBlits: 0,
   refuseImages: false,
   opened: [],
+  openedRows: [],
   bash: {},
   foesDuringBash: [],
   panes: [],
@@ -107,6 +110,7 @@ export const engine = (on: On, store: Readonly<Record<string, unknown>> = {}) =>
   world.imageBlits = 0
   world.refuseImages = false
   world.opened = []
+  world.openedRows = []
   world.bash = {}
   world.foesDuringBash = []
   world.panes = []
@@ -222,6 +226,7 @@ export const engine = (on: On, store: Readonly<Record<string, unknown>> = {}) =>
   on('ui.open', (_, e) => {
     if (world.failOpen) throw new Error('no pane today')
     world.opened.push(e.id)
+    world.openedRows.push([e.id, e.rows])
     return { value: { isPlaced: true } }
   })
   on('ui.place', (_, e) => {

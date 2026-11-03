@@ -19,6 +19,23 @@ export const SCENE_MIN_COLUMNS = 32
 export const MAX_TASK_ROWS = 8
 const BAR_WIDTH = 10
 
+/** The log's rows when the pane has room for all of the Road. */
+const LOG_ROWS_WANTED = 5
+/**
+ * The rows the Road can use, asked of the engine as it opens: the header, the scene,
+ * the companions, the tasks, the bars, the log's heading and its rows. An inline frame
+ * still fits what is drawn, so asking for more than is drawn takes nothing.
+ */
+export const ROAD_ROWS_WANTED = 1 + SCENE_ROWS + 1 + MAX_TASK_ROWS + 1 + 1 + LOG_ROWS_WANTED
+
+/**
+ * Whether the pane has room for the scene: wide enough, and tall enough for it with the
+ * header, the bars, the companions when there are any, and the task in progress when
+ * there are tasks. Below that the text keeps the room, and no frame of the scene is drawn.
+ */
+export const sceneFits = ({ columns, rows, tasks, companions }: { columns: number; rows: number; tasks: number; companions: number }): boolean =>
+  columns >= SCENE_MIN_COLUMNS && rows >= 1 + SCENE_ROWS + (companions > 0 ? 1 : 0) + (tasks > 0 ? 1 : 0) + 1
+
 export type RoadArgs = {
   quest: Quest | null
   tasks: readonly Task[]
@@ -133,7 +150,7 @@ export const road = (args: RoadArgs): Road => {
   const extra = companions.length - shown.length
   const companionsLine = companions.length > 0 ? `with ${shown.join(', ')}${extra > 0 ? ` (+${extra})` : ''}` : undefined
 
-  const hasScene = columns >= SCENE_MIN_COLUMNS
+  const hasScene = sceneFits({ columns, rows, tasks: tasks.length, companions: companions.length })
   let room = rows - 1 - (hasScene ? SCENE_ROWS : 0) - (companionsLine ? 1 : 0) - 1
   const taskRows = taskWindow(tasks, Math.min(MAX_TASK_ROWS, Math.max(0, room)))
   room -= taskRows.length
