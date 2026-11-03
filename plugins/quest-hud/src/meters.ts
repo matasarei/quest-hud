@@ -122,56 +122,104 @@ export type Band = { head: Segment[]; meters: Segment[] }
 
 export const BAND_WIDTH = 14
 
-/** The band's two rows as text segments, each with the tone it is drawn in. */
-export const bandModel = (quest: Quest | null, tasks: readonly Task[], meters: Meters | null, bars: Bars, now: number): Band => {
-  // A skill's quest names the skill and its zone; with none running, the Wilds.
-  const head: Segment[] = quest
-    ? [{ text: `⚔ ${quest.title}`, tone: 'accent' }, { text: `  ${ZONE_LABEL[quest.zone]}`, tone: 'dim' }]
-    : [{ text: ZONE_LABEL.wilds, tone: 'dim' }]
+/** The cells a row takes: ⚡ is the one wide character the band's own words draw. */
+export const cellWidth = (segments: readonly Segment[]): number =>
+  segments.reduce((sum, { text }) => sum + [...text].length + (text.match(/⚡/g)?.length ?? 0), 0)
 
-  const { done, total, current } = progress(tasks)
+/** A form of the bars row. `notes` is what the words beside the bars say: all of it, in short, the heal time alone, or nothing. */
+type MeterForm = { barWidth: number; labels: boolean; notes: 'long' | 'short' | 'heals' | 'none'; gap: string }
 
-  if (total > 0) {
-    head.push({ text: `  task ${done}/${total}`, tone: 'dim' })
-  }
+const FIGURES: MeterForm = { barWidth: 0, labels: false, notes: 'none', gap: '  ' }
 
-  if (current) {
-    head.push({ text: ` · ${cleanTitle(current.subject)}`, tone: 'plain' })
-  }
+/**
+ * Widest first, and the first that fits is drawn: the words go, then the bars
+ * shorten, and the percentages stay to the end. The token count goes before the
+ * heal time, as the MP bar says what is left and nothing else says when HP returns.
+ */
+const METER_FORMS: readonly MeterForm[] = [
+  { barWidth: BAND_WIDTH, labels: true, notes: 'long', gap: '   ' },
+  { barWidth: BAND_WIDTH, labels: true, notes: 'short', gap: '   ' },
+  { barWidth: 10, labels: true, notes: 'short', gap: '   ' },
+  { barWidth: 10, labels: true, notes: 'heals', gap: '   ' },
+  { barWidth: 10, labels: true, notes: 'none', gap: '   ' },
+  { barWidth: 8, labels: false, notes: 'none', gap: '  ' },
+  { barWidth: 4, labels: false, notes: 'none', gap: '  ' },
+  FIGURES,
+]
 
+/** The bars row in one form. */
+const meterRow = (form: MeterForm, meters: Meters | null, bars: Bars, now: number): Segment[] => {
+  const { barWidth, labels, notes, gap } = form
+  const gauge = (glyph: string, name: string, left: number, tone: Tone): Segment[] => [
+    { text: `${glyph}${labels ? ` ${name}` : ''}${barWidth > 0 ? ' ' : ''}`, tone },
+    { text: bar(left, barWidth), tone },
+    { text: ` ${left}%`, tone },
+  ]
   const row: Segment[] = []
   const hp = hpLeft(meters)
 
   if (hp !== undefined) {
     const heals = healsIn(meters?.weekResetsAt, now)
-    const tone = hpTone(hp)
-    row.push(
-      { text: '♥ HP ', tone },
-      { text: bar(hp, BAND_WIDTH), tone },
-      { text: ` ${hp}%`, tone },
-      { text: heals ? ` week · heals in ${heals}   ` : ' week   ', tone: 'dim' },
-    )
+    const healNote = notes === 'long'
+      ? (heals ? ` week · heals in ${heals}` : ' week')
+      : notes !== 'none' && heals ? ` heals ${heals}` : ''
+
+    row.push(...gauge('♥', 'HP', hp, hpTone(hp)), { text: `${healNote}${gap}`, tone: 'dim' })
   }
 
-  const mp = mpLeft(meters)
   const tokens = meters?.contextTokens
+  const count = tokens !== undefined && meters ? `${shortTokens(tokens)}/${shortTokens(meters.window)}` : undefined
+  const tokenNote = notes === 'long' ? (count ? ` ctx · ${count}` : ' ctx') : notes === 'short' && count ? ` ${count}` : ''
 
-  row.push(
-    { text: '✦ MP ', tone: 'mp' },
-    { text: bar(mp, BAND_WIDTH), tone: 'mp' },
-    { text: ` ${mp}%`, tone: 'mp' },
-    { text: tokens !== undefined && meters ? ` ctx · ${shortTokens(tokens)}/${shortTokens(meters.window)}` : ' ctx', tone: 'dim' },
-  )
+  row.push(...gauge('✦', 'MP', mpLeft(meters), 'mp'), { text: tokenNote, tone: 'dim' })
 
   if (bars === 'all' && meters?.fiveHourUsed !== undefined) {
-    row.push({ text: `   ⚡5h ${Math.round(meters.fiveHourUsed)}%`, tone: 'five' })
+    const used = Math.round(meters.fiveHourUsed)
+    row.push({ text: notes === 'long' ? `   ⚡5h ${used}%` : `  ⚡${used}%`, tone: 'five' })
   }
 
   if (bars === 'all' && meters?.costUsd !== undefined) {
-    row.push({ text: `   ◉ $${meters.costUsd.toFixed(2)}`, tone: 'gold' })
+    const cost = meters.costUsd.toFixed(2)
+    row.push({ text: notes === 'long' ? `   ◉ $${cost}` : `  ◉$${cost}`, tone: 'gold' })
   }
 
-  return { head, meters: row }
+  return row.filter(segment => segment.text !== '')
+}
+
+/** The cells worth keeping for the current task: ` · ` and ten of its own. */
+const MIN_TASK_CELLS = 13
+
+/**
+ * The quest row, for `room` cells: everything, then no zone, then no current
+ * task, then the quest alone. The current task comes last, so it is what the
+ * engine cuts, and a wide character in it cannot upset this sum.
+ */
+const headRow = (quest: Quest | null, tasks: readonly Task[], room: number): Segment[] => {
+  // A skill's quest names the skill and its zone; with none running, the Wilds.
+  const name: Segment[] = [quest ? { text: `⚔ ${quest.title}`, tone: 'accent' } : { text: ZONE_LABEL.wilds, tone: 'dim' }]
+  const zone: Segment[] = quest ? [{ text: `  ${ZONE_LABEL[quest.zone]}`, tone: 'dim' }] : []
+  const { done, total, current } = progress(tasks)
+  const count: Segment[] = total > 0 ? [{ text: `  task ${done}/${total}`, tone: 'dim' }] : []
+  const task: Segment[] = current ? [{ text: ` · ${cleanTitle(current.subject)}`, tone: 'plain' }] : []
+  const forms: ReadonlyArray<readonly [Segment[], Segment[]]> = [
+    [[...name, ...zone, ...count], task],
+    [[...name, ...count], task],
+    [[...name, ...count], []],
+    [name, []],
+  ]
+  const [fixed, tail] = forms.find(([kept, last]) => cellWidth(kept) + Math.min(MIN_TASK_CELLS, cellWidth(last)) <= room) ?? [name, []]
+
+  return [...fixed, ...tail]
+}
+
+/**
+ * The band's two rows as text segments, each with the tone it is drawn in, for
+ * `room` cells. With no room given, every word.
+ */
+export const bandModel = (quest: Quest | null, tasks: readonly Task[], meters: Meters | null, bars: Bars, now: number, room = Number.POSITIVE_INFINITY): Band => {
+  const form = METER_FORMS.find(candidate => cellWidth(meterRow(candidate, meters, bars, now)) <= room) ?? FIGURES
+
+  return { head: headRow(quest, tasks, room), meters: meterRow(form, meters, bars, now) }
 }
 
 /** The pieces of the one-line forms, for each form to put in its own order. */

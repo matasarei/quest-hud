@@ -7,7 +7,7 @@ import { artCells, drawRoad, SCENE_IMAGE_KEY, SCENE_KEY, sceneImage, type SceneM
 import { boardView } from '../../plugins/quest-hud/src/github'
 import { bandModel, hintText } from '../../plugins/quest-hud/src/meters'
 import { road, roadArt, SCENE_MIN_COLUMNS } from '../../plugins/quest-hud/src/road'
-import { bandPortrait } from '../../plugins/quest-hud/src/scene'
+import { BAND, bandFits, bandPortrait, bandRoom } from '../../plugins/quest-hud/src/scene'
 import { $, blit, show } from './engine'
 import { lineParts, XTERM } from './hudline'
 import { flavorOf, hasBand, hasHint, isBoardShown, isRoadShown, metersOf, transitionOf, type Sim } from './session'
@@ -39,14 +39,28 @@ const drawTranscript = (sim: Sim, slot: HTMLElement): void => {
   slot.scrollTop = slot.scrollHeight
 }
 
-const drawBandSlot = (sim: Sim, slot: HTMLElement, now: number): void => {
+const cellOf = (slots: Slots): number => slots.ruler.getBoundingClientRect().width / RULER_CHARACTERS
+
+/** How many terminal columns the band has on the page, inside its padding. */
+export const bandColumns = (slots: Slots): number => {
+  const cell = cellOf(slots)
+  const { paddingLeft, paddingRight } = getComputedStyle(slots.band)
+  const width = slots.band.clientWidth - Number.parseFloat(paddingLeft) - Number.parseFloat(paddingRight)
+
+  return cell > 0 ? Math.floor(width / cell) : 0
+}
+
+const drawBandSlot = (sim: Sim, slots: Slots, now: number): void => {
   if (!hasBand(sim)) {
-    slot.replaceChildren()
+    slots.band.replaceChildren()
     return
   }
 
-  const band = bandModel(sim.quest, sim.tasks, metersOf(sim, now), sim.settings.bars, now)
-  show(slot, drawBand($, {} as RenderInput<'AbovePrompt'>, band, 'raster', sim.motion.pose, sim.settings.avatar, flavorOf(sim)))
+  // As the band's hook decides, with all the rows it wants: the page lets it grow.
+  const columns = bandColumns(slots)
+  const hasRoom = bandFits(BAND.rows, columns)
+  const band = bandModel(sim.quest, sim.tasks, metersOf(sim, now), sim.settings.bars, now, bandRoom(columns, hasRoom))
+  show(slots.band, drawBand($, {} as RenderInput<'AbovePrompt'>, band, hasRoom ? 'raster' : 'none', sim.motion.pose, sim.settings.avatar, hasRoom ? flavorOf(sim) : undefined))
 }
 
 const drawHint = (sim: Sim, slot: HTMLElement, now: number): void => {
@@ -58,7 +72,7 @@ const drawHint = (sim: Sim, slot: HTMLElement, now: number): void => {
 const modeOf = (sim: Sim): Exclude<SceneMode, 'svg'> => (sim.settings.graphics === 'cells' ? 'raster' : 'image')
 
 const columnsOf = (slot: HTMLElement, slots: Slots): number => {
-  const cell = slots.ruler.getBoundingClientRect().width / RULER_CHARACTERS
+  const cell = cellOf(slots)
   return cell > 0 ? Math.floor(slot.clientWidth / cell) : 0
 }
 
@@ -129,7 +143,7 @@ export const drawAll = (sim: Sim, slots: Slots, now: number, onFold: () => void)
   drawTabs(sim, slots)
   drawRoadSlot(sim, slots, now)
   drawBoardSlot(sim, slots, now, onFold)
-  drawBandSlot(sim, slots.band, now)
+  drawBandSlot(sim, slots, now)
   drawHint(sim, slots.hint, now)
 }
 

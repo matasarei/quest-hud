@@ -4,6 +4,7 @@ import type { Engine } from 'claude-code/testing'
 
 import { artCells } from '../hooks/pane'
 import { QUADRANT, quadrantWords } from '../src/avatar'
+import { FLAVOR } from '../src/flavor'
 import { OPTIONS } from '../src/help'
 import { TONE_COLOR } from '../src/meters'
 import { downsample } from '../src/paint/pixels'
@@ -63,11 +64,11 @@ const implementWithTasks = async ($: Engine) => {
   await $.session.measure(SUBSCRIBER)
 }
 
-const band = (surface: 'terminal' | 'desktop', maxRows = 6) => ({
+const band = (surface: 'terminal' | 'desktop', maxRows = 6, bodyColumns = 140) => ({
   plugin: 'quest-hud',
   component: 'AbovePrompt',
   surface,
-  props: { hasSurvey: false, isWorking: false, maxRows, bodyColumns: 140, scroll: { offset: 0, bodyRows: maxRows }, view: {} },
+  props: { hasSurvey: false, isWorking: false, maxRows, bodyColumns, scroll: { offset: 0, bodyRows: maxRows }, view: {} },
 }) as const
 
 describe('the band', () => {
@@ -215,6 +216,100 @@ describe('the band', () => {
     session.rateLimits = SUBSCRIBER.rateLimits
     const { text } = await $.command.run({ command: 'quest-hud:status', args: '', ...RUN })
     expect(text?.split('\n')[0]).toBe('♥▰▰▰▰▰▰▱▱▱▱ 62% ✦▰▰▰▰▰▰▰▰▰▰ 100%')
+  })
+
+  // bodyColumns is what the engine gives the band's tree: 75 at 80 columns, and at 144 beside a docked Road.
+  test('in 75 cells the bars row takes the form that fits beside the portrait', async ($, on) => {
+    engine(on)
+    await implementWithTasks($)
+    const ui = await $.ui.mount(band('terminal', 6, 75))
+    expect((await ui.find({ type: 'Text', text: /^█/ }))?.text).toHaveLength(10)
+    expect(await ui.find({ type: 'Text', text: /^ heals 2d 4h/ })).toBeTruthy()
+    expect(await ui.find({ type: 'Text', text: / 82k\/200k$/ })).toBeTruthy()
+    expect(await ui.find({ type: 'Text', text: /week/ })).toBeFalsy()
+    await ui.unmount()
+  })
+
+  test('with no portrait the row has its cells back', async ($, on) => {
+    engine(on)
+    await implementWithTasks($)
+    const ui = await $.ui.mount(band('terminal', 2, 75))
+    expect(await ui.find({ type: 'Raster' })).toBeFalsy()
+    expect((await ui.find({ type: 'Text', text: /^█/ }))?.text).toHaveLength(14)
+    await ui.unmount()
+  })
+
+  test('a wide column keeps the full row', async ($, on) => {
+    engine(on)
+    await implementWithTasks($)
+    const ui = await $.ui.mount(band('terminal', 6, 97))
+    expect(await ui.find({ type: 'Text', text: /^ week · heals in 2d 4h/ })).toBeTruthy()
+    expect(await ui.find({ type: 'Text', text: / ctx · 82k\/200k$/ })).toBeTruthy()
+    await ui.unmount()
+  })
+
+  test('the desktop keeps its full row whatever it reports', async ($, on) => {
+    engine(on)
+    await implementWithTasks($)
+    const ui = await $.ui.mount(band('desktop', 6, 40))
+    expect((await ui.find({ type: 'Text', text: /^█/ }))?.text).toHaveLength(14)
+    expect(await ui.find({ type: 'Text', text: /^ week · heals in 2d 4h/ })).toBeTruthy()
+    await ui.unmount()
+  })
+
+  test('in 55 cells the quest row gives up the zone and keeps the task', async ($, on) => {
+    engine(on)
+    await implementWithTasks($)
+    const ui = await $.ui.mount(band('terminal', 6, 55))
+    expect(await ui.find({ type: 'Text', text: /Forge/ })).toBeFalsy()
+    expect((await ui.find({ type: 'Text', text: /⚔/ }))?.text).toBe('⚔ gku:implement')
+    expect((await ui.find({ type: 'Text', text: /task \d/ }))?.text).toBe('  task 0/2')
+    expect((await ui.find({ type: 'Text', text: /Write the tests/ }))?.text).toBe(' · Write the tests')
+    await ui.unmount()
+  })
+
+  const hasFlavorLine = async (ui: { findAll: (query: { type: string }) => Promise<Array<{ text: string }>> }) =>
+    (await ui.findAll({ type: 'Text' })).some(found => (FLAVOR.forge as readonly string[]).includes(found.text))
+
+  test('from 33 cells the portrait and the flavour line stay, with the row in what is left', async ($, on) => {
+    engine(on)
+    await implementWithTasks($)
+    const ui = await $.ui.mount(band('terminal', 6, 33))
+    expect(await ui.find({ type: 'Raster' })).toBeTruthy()
+    expect(await hasFlavorLine(ui)).toBe(true)
+    expect((await ui.find({ type: 'Text', text: /^█/ }))?.text).toHaveLength(4)
+    await ui.unmount()
+  })
+
+  test('below 33 cells they go, and the row has their room', async ($, on) => {
+    engine(on)
+    await implementWithTasks($)
+    const ui = await $.ui.mount(band('terminal', 6, 32))
+    expect(await ui.find({ type: 'Raster' })).toBeFalsy()
+    expect(await hasFlavorLine(ui)).toBe(false)
+    expect((await ui.find({ type: 'Text', text: /^█/ }))?.text).toHaveLength(8)
+    await ui.unmount()
+  })
+
+  test('the desktop keeps its portrait and its line whatever it reports', async ($, on) => {
+    engine(on)
+    await implementWithTasks($)
+    const ui = await $.ui.mount(band('desktop', 6, 20))
+    expect(await ui.find({ type: 'Svg' })).toBeTruthy()
+    expect(await hasFlavorLine(ui)).toBe(true)
+    await ui.unmount()
+  })
+
+  test('only a row\'s last piece may be cut', async ($, on) => {
+    engine(on)
+    await implementWithTasks($)
+    const ui = await $.ui.mount(band('terminal', 6, 75))
+    for (const key of ['head', 'meters']) {
+      const pieces = (await ui.find({ key }))?.children as Array<{ props: { flexShrink?: number } }>
+      expect(pieces.length).toBeGreaterThan(1)
+      expect(pieces.map(piece => piece.props.flexShrink)).toEqual([...pieces.slice(1).map(() => 0), 1])
+    }
+    await ui.unmount()
   })
 
   test('a subagent\'s task list is not the session\'s', async ($, on) => {

@@ -551,6 +551,18 @@ export const scene = (args: SceneArgs): Grid => downsample(sceneArt(args), ART_S
 
 /** The band's portrait above the prompt, in cells: 10 columns by 3 rows. */
 export const BAND = { columns: 10, rows: 3 } as const
+/** The cells between the portrait and the band's rows. */
+export const BAND_GAP = 1
+
+/** Below this many cells the portrait and the flavour line give their room to the bars. */
+export const BAND_MIN_COLUMNS = 33
+
+/** Whether the band has room for its portrait and its flavour line. */
+export const bandFits = (rows: number, columns: number): boolean => rows >= BAND.rows && columns >= BAND_MIN_COLUMNS
+
+/** The cells the band's rows have, out of the cells its tree is laid out in. */
+export const bandRoom = (bodyColumns: number, hasPortrait: boolean): number =>
+  bodyColumns - (hasPortrait ? BAND.columns + BAND_GAP : 0)
 
 /**
  * The band's portrait: an avatar drawn for the size, as art — 20 × 12, two

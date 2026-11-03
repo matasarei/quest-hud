@@ -15,7 +15,7 @@ import { appendEntry, castText, scoutCounts, scoutText } from '../src/log'
 import { bandModel, fromMeasure, hintText, hpLeft, mpLeft, shortTokens, statusText, TONE_COLOR, ZONE_LABEL, zoneLine, type Bars } from '../src/meters'
 import { afterPrompt, cleanTitle, fromSkill } from '../src/quest'
 import { road, ROAD_ROWS_WANTED, roadArt, sceneFits, sceneZone } from '../src/road'
-import { atRest, BAND, bandPortrait, nextMotion, REST, TRANSITION_STEPS, type Motion, type Transition } from '../src/scene'
+import { atRest, bandFits, bandPortrait, bandRoom, nextMotion, REST, TRANSITION_STEPS, type Motion, type Transition } from '../src/scene'
 import { asSurvey, changedFiles, mergeSurvey, talliesOf, usageFrom, type History, type Surveyed, type Transcript } from '../src/survey'
 import { applyTaskCall } from '../src/tasks'
 import { AVATARS, type Avatar } from '../src/world/sprites'
@@ -844,10 +844,13 @@ export const register: Register = (on, options) => {
 
     const current = await read($, quest)
     const measured = await currentMeters($)
-    const band = bandModel(current, await read($, tasks), measured, bars, await $.clock.now())
+    // The desktop's cells cannot be tested here, so its rows stay whole.
+    const columns = e.surface === 'terminal' ? e.props.bodyColumns : Number.POSITIVE_INFINITY
+    const hasRoom = bandFits(e.props.maxRows, columns)
+    const room = bandRoom(columns, hasRoom)
+    const band = bandModel(current, await read($, tasks), measured, bars, await $.clock.now(), room)
     const elements = $.ui.resolve(e)
     const { Box } = elements
-    const hasRoom = e.props.maxRows >= BAND.rows
     // resolve() names every element on every surface, and one a surface lacks
     // draws as an empty fragment: the surface decides, not the table.
     const isRaster = hasRoom && e.surface === 'terminal' && 'Raster' in elements
