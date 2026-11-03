@@ -225,6 +225,9 @@ the background, or interrupted, changes nothing.
 in turn: the zone's landmarks from the left, keeping its last one, then the fox, the Octocat and
 the chest, then that last prop. Below 32 columns the pane draws no scene.
 
+**In a short pane** the scene goes, and the header, tasks, bars and log keep the room. It needs 16
+rows, one more for the task in progress, and one for the companions when there are any.
+
 **Animation.** While Claude works, the Road walks at four frames a second; in a fight the wizard
 stops and strikes, and a zone change slides the landscape. The band's avatar moves with it, with or
 without the Road open: the wizard casts, Claude's mascot hops, the Octocat moves its tentacles. When
