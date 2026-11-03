@@ -8,8 +8,62 @@
 </head>
 <body>
   <main>
-    <h1>Quest HUD</h1>
-    <div class="terminal"><div id="band"></div></div>
+    <header class="intro">
+      <h1>Quest HUD</h1>
+    </header>
+
+    <section aria-labelledby="settings-title">
+      <h2 id="settings-title">Settings</h2>
+      <div id="settings" class="settings"></div>
+      <p id="setting-note" class="note" aria-live="polite"></p>
+    </section>
+
+    <section class="terminal" aria-label="A simulated terminal showing the mod">
+      <div id="upper" class="upper">
+        <pre id="transcript" class="transcript" tabindex="0"></pre>
+      </div>
+      <div id="band" class="band"></div>
+      <div class="prompt"><span aria-hidden="true">&gt;</span> <span class="caret" aria-hidden="true"></span></div>
+      <div id="hint" class="hint"></div>
+    </section>
+
+    <section aria-labelledby="session-title">
+      <h2 id="session-title">The session</h2>
+      <div class="meters">
+        <label for="hp">♥ HP, weekly limit left <output id="hp-value"></output></label>
+        <input id="hp" type="range" min="0" max="100" step="1">
+        <label for="mp">✦ MP, context left <output id="mp-value"></output></label>
+        <input id="mp" type="range" min="0" max="100" step="1">
+        <div id="extra-bars" class="extra" hidden>
+          <label for="five">⚡ 5-hour window used <output id="five-value"></output></label>
+          <input id="five" type="range" min="0" max="100" step="1">
+          <label for="cost">◉ Session cost <output id="cost-value"></output></label>
+          <input id="cost" type="range" min="0" max="50" step="0.01">
+        </div>
+      </div>
+      <form id="skill-form" class="skill">
+        <label for="skill">Run a skill</label>
+        <input id="skill" type="text" value="deploy" spellcheck="false" autocomplete="off">
+        <button type="submit">Start</button>
+        <button id="end-skill" type="button">End</button>
+      </form>
+      <div class="actions">
+        <button id="working" type="button" aria-pressed="false"></button>
+        <button id="next-task" type="button">Next task</button>
+        <button id="test-fail" type="button">Tests fail</button>
+        <button id="test-pass" type="button">Tests pass</button>
+        <button id="lint-fail" type="button">Lint fails</button>
+        <button id="lint-pass" type="button">Lint passes</button>
+        <button id="commit" type="button">Commit</button>
+        <button id="gh" type="button">Run gh</button>
+        <button id="glab" type="button">Run glab</button>
+        <button id="read" type="button">Read a file</button>
+        <button id="edit" type="button">Edit a file</button>
+        <button id="add-agent" type="button">Add a subagent</button>
+        <button id="drop-agent" type="button">Subagent done</button>
+        <button id="compact" type="button">Compact</button>
+      </div>
+    </section>
   </main>
   <script src="preview.js"></script>
 </body>
