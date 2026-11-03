@@ -29,6 +29,7 @@ jq -r --arg esc $'\033' --argjson all "$all" '
 
   def paint($code): "\($esc)[38;5;\($code)m\(.)\($esc)[0m";
   def hpcode: if . < 20 then 203 elif . < 40 then 221 else 78 end;
+  def figure: select(type == "number" and . >= 0);
   def money: (. * 100 | round) as $cents
     | "\($cents / 100 | floor).\($cents % 100 | if . < 10 then "0\(.)" else "\(.)" end)";
 
@@ -36,9 +37,7 @@ jq -r --arg esc $'\033' --argjson all "$all" '
       | if . == null then empty else left | hpcode as $code | "♥\(bar) \(.)%" | paint($code) end),
     (.context_window.used_percentage // 0
       | left | "✦\(bar) \(.)%" | paint(69)),
-    (if $all then (.rate_limits.five_hour.used_percentage // null
-      | if . == null then empty else "⚡\(round)%" | paint(215) end) else empty end),
-    (if $all then (.cost.total_cost_usd // null
-      | if . == null or . < 0 then empty else "◉$\(money)" | paint(221) end) else empty end)
+    (if $all then (.rate_limits.five_hour.used_percentage | figure | "⚡\(round)%" | paint(215)) else empty end),
+    (if $all then (.cost.total_cost_usd | figure | "◉$\(money)" | paint(221)) else empty end)
   ] | join(" ")
 ' 2>/dev/null || true

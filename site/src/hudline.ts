@@ -28,6 +28,9 @@ const money = (usd: number): string => {
   return `${Math.floor(cents / 100)}.${String(cents % 100).padStart(2, '0')}`
 }
 
+/** A figure --all can show: anything but a number from zero up is left out, as the script's `figure` does. */
+const isFigure = (value: unknown): value is number => typeof value === 'number' && value >= 0
+
 /** The line's parts, each with the 256-colour code it prints in; `all` is the script's --all. */
 export const lineParts = (input: StatusInput, all = false): LinePart[] => {
   const week = input.rate_limits?.seven_day?.used_percentage
@@ -39,8 +42,8 @@ export const lineParts = (input: StatusInput, all = false): LinePart[] => {
   return [
     ...(hp === undefined ? [] : [{ text: `♥${bar(hp)} ${hp}%`, code: hpCode(hp) }]),
     { text: `✦${bar(mp)} ${mp}%`, code: 69 },
-    ...(all && five !== undefined && five !== null ? [{ text: `⚡${Math.round(five)}%`, code: 215 }] : []),
-    ...(all && cost !== undefined && cost !== null && cost >= 0 ? [{ text: `◉$${money(cost)}`, code: 221 }] : []),
+    ...(all && isFigure(five) ? [{ text: `⚡${Math.round(five)}%`, code: 215 }] : []),
+    ...(all && isFigure(cost) ? [{ text: `◉$${money(cost)}`, code: 221 }] : []),
   ]
 }
 
