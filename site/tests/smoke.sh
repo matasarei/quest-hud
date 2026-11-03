@@ -44,6 +44,5 @@ if ! grep -q '♥ HP' <<<"$dom"; then
   echo "smoke: the band's HP bar is not on the page" >&2
   exit 1
 fi
-echo "smoke: ok"
-
 node site/tests/browser.mjs "http://127.0.0.1:$port/" "$chrome"
+echo "smoke: ok"
