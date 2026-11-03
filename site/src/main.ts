@@ -2,6 +2,7 @@
 import './engine'
 import plugin from '../../plugins/quest-hud/.claude-plugin/plugin.json'
 import { OPTIONS } from '../../plugins/quest-hud/src/help'
+import { SESSION } from './script'
 import * as S from './session'
 import { drawAll, drawFrame, roadColumns, type Slots } from './view'
 
@@ -175,8 +176,43 @@ const ACTIONS: Readonly<Record<string, () => void>> = {
   'end-skill': () => act(S.endSkill),
 }
 
+// Play a session: one beat at a time, until it ends or the visitor stops it.
+let playing: ReturnType<typeof setTimeout> | undefined
+
+const showPlaying = (): void => {
+  const play = slotOf('play')
+  play.textContent = playing === undefined ? 'Play a session' : 'Stop'
+  play.setAttribute('aria-pressed', String(playing !== undefined))
+}
+
+const beatFrom = (index: number): void => {
+  const beat = SESSION[index]
+
+  if (beat === undefined) {
+    playing = undefined
+    showPlaying()
+    return
+  }
+
+  act(beat.apply)
+  playing = setTimeout(() => beatFrom(index + 1), beat.wait)
+}
+
+const togglePlay = (): void => {
+  if (playing !== undefined) {
+    clearTimeout(playing)
+    playing = undefined
+    act(current => S.setWorking(current, false))
+  } else {
+    sim = S.startSim(sim.settings, sim.isStill)
+    beatFrom(0)
+  }
+  showPlaying()
+}
+
 const bindActions = (): void => {
   for (const [id, action] of Object.entries(ACTIONS)) slotOf(id).addEventListener('click', action)
+  slotOf('play').addEventListener('click', togglePlay)
 
   const skill = slotOf('skill-form') as HTMLFormElement
   skill.addEventListener('submit', event => {
@@ -202,4 +238,5 @@ bindRanges()
 bindActions()
 redraw()
 syncControls()
+showPlaying()
 root.dataset.ready = 'yes'

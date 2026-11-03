@@ -94,6 +94,9 @@ input[type="text"] { width: 100%; padding: 6px 8px; font: 14px/1.4 ui-monospace,
 .cells, .picture { display: block; image-rendering: pixelated; flex-shrink: 0; align-self: flex-start; }
 
 /* The session */
+.session-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.session-head h2 { margin: 0; }
+.primary { background: var(--accent); color: var(--page); border-color: var(--accent); font-weight: 600; }
 .meters { display: grid; gap: 8px 24px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
 .meter { min-width: 0; }
 .meters label { display: flex; justify-content: space-between; font-size: .875rem; color: var(--muted); }

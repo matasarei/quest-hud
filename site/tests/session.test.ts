@@ -4,6 +4,7 @@ import { test } from 'node:test'
 
 import { bandModel, hintText, TONE_COLOR } from '../../plugins/quest-hud/src/meters'
 import { TRANSITION_STEPS } from '../../plugins/quest-hud/src/scene'
+import { SESSION } from '../src/script'
 import * as S from '../src/session'
 
 const NOW = Date.parse('2026-11-03T10:00:00Z')
@@ -191,4 +192,34 @@ test('the page opens at rest, with no slide waiting and no timer', () => {
   assert.equal(s.slide, undefined)
   assert.equal(S.needsTimer(s), false)
   assert.equal(s.zone, 'forge')
+})
+
+test('Play a session reaches every part of the story, and ends at rest', () => {
+  const seen = { tones: new Set<string | undefined>(), monster: false, loot: 0, skills: new Set<string>(), slid: false, working: false, ally: false, compacted: false, ghost: false }
+  let s = S.startSim({ ...BASE, detail: 'pane' })
+
+  for (const beat of SESSION) {
+    s = beat.apply(s, NOW)
+    seen.tones.add(bandModel(s.quest, s.tasks, S.metersOf(s, NOW), 'hpmp', NOW).meters[0]?.tone)
+    seen.monster ||= s.foes.test === 'standing'
+    seen.loot = Math.max(seen.loot, s.loot)
+    if (s.quest) seen.skills.add(s.quest.skill)
+    seen.slid ||= s.slide !== undefined
+    seen.working ||= s.isWorking
+    seen.ally ||= s.allies.octopus
+    seen.ghost ||= s.companions.length > 0
+    seen.compacted ||= s.log.some(entry => entry.kind === 'camp')
+    assert.ok(beat.wait >= 0)
+    if (S.needsTimer(s)) s = S.tickSim(s)
+  }
+
+  assert.deepEqual([...seen.tones].sort(), ['hp', 'hpCritical', 'hpLow'])
+  assert.equal(seen.monster, true)
+  assert.equal(seen.loot, 1)
+  assert.deepEqual([...seen.skills], ['gku:implement', 'gku:pr'])
+  assert.deepEqual([seen.slid, seen.working, seen.ally, seen.ghost, seen.compacted], [true, true, true, true, true])
+  assert.equal(s.isWorking, false)
+  assert.equal(s.foes.test, 'none')
+  assert.equal(s.motion.pose, 'stand')
+  assert.ok(s.tasks.every(task => task.status === 'completed'))
 })
