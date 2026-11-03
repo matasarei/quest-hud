@@ -10,7 +10,7 @@ import { boardOf, boardView, failedBoard, failureOf, isFullPage, NOTIFICATIONS_A
 import { asCard, cardOf, type Inventory } from '../src/harness'
 import { unknownText, usageText } from '../src/help'
 import { levelLogText, levelText, levelUpText, NO_LEVEL_YET, rereadingText, scoutRidesText, STILL_READING } from '../src/levelup'
-import { bandLine } from '../src/flavor'
+import { bandLine, flavorStart } from '../src/flavor'
 import { appendEntry, castText, scoutCounts, scoutText } from '../src/log'
 import { bandModel, fromMeasure, hintText, hpLeft, mpLeft, shortTokens, statusText, TONE_COLOR, ZONE_LABEL, zoneLine, type Bars } from '../src/meters'
 import { afterPrompt, cleanTitle, fromSkill } from '../src/quest'
@@ -597,7 +597,7 @@ export const register: Register = (on, options) => {
       await update($, board, () => null)
       await update($, isTrivialOpen, () => false)
       await update($, posted, () => ({}))
-      await update($, flavorStep, () => 0)
+      await update($, flavorStep, () => flavorStart(id))
       anim.tick = 0
       anim.motion = REST
       anim.zone = undefined

@@ -102,6 +102,10 @@ export const tipFor = ({ foes, hp, mp }: FlavorFacts): string | undefined => {
   return undefined
 }
 
+/** Where a session's lines start, from its id: sessions open on different lines, and a reload stays put. */
+export const flavorStart = (sessionId: string): number =>
+  [...sessionId].reduce((hash, char) => (hash * 31 + (char.codePointAt(0) ?? 0)) >>> 0, 0)
+
 /**
  * The line for this step. A tip takes every other step: HP can stay low for days,
  * and a line that never changes stops being read.

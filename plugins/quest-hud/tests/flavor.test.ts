@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'claude-code/testing'
 
 import { NO_FOES } from '../src/bash'
-import { bandLine, FLAVOR, tipFor, type FlavorFacts } from '../src/flavor'
+import { bandLine, FLAVOR, flavorStart, tipFor, type FlavorFacts } from '../src/flavor'
 import { ZONES } from '../src/zones'
 
 const calm: FlavorFacts = { zone: 'forge', foes: NO_FOES, hp: 62, mp: 59 }
@@ -79,6 +79,26 @@ describe('bandLine, while a tip stands', () => {
     const shown = new Set<string>()
     for (let step = 3615; step < 3615 + FLAVOR.forge.length * 2; step += 2) shown.add(bandLine(low, step))
     expect(shown.size).toBe(FLAVOR.forge.length)
+  })
+})
+
+describe('flavorStart', () => {
+  const IDS = ['8f14e45f-ceea-4e7d-a1b2-0c9d8e7f6a51', '3c59dc04-8c4b-4a8e-9f10-2d1e0f3a7b62', 'c20ad4d7-6fe9-47c1-b3d4-5e6f7a8b9c13', '6512bd43-d9ca-4b1f-8e2a-7c6d5e4f3b24', 'c51ce410-c124-4a10-9b0c-1a2b3c4d5e35', 'aab32389-7ae1-4c3e-a5d6-9e8f7a6b5c46', '9bf31c7f-f062-4936-8b7a-6c5d4e3f2a57', 'c74d97b0-1eae-457e-9f8e-3b2a1c0d9e68', '70efdf2e-c9b0-4d07-a9c8-4e3d2c1b0a79', '6f4922f4-5568-4161-8cb8-5f4e3d2c1b8a', '1f0e3dad-9990-4345-9a2b-6a5b4c3d2e9b', '98f13708-2101-44a5-b3c4-7b6a5c4d3eac']
+
+  test('is the same for a session, so a reload keeps its place', () => {
+    expect(flavorStart('s1')).toBe(flavorStart('s1'))
+  })
+
+  test('is a whole number from zero up, for any id', () => {
+    for (const id of [...IDS, '', 's1']) {
+      expect(Number.isInteger(flavorStart(id))).toBe(true)
+      expect(flavorStart(id)).toBeGreaterThanOrEqual(0)
+    }
+  })
+
+  test('sessions open on different lines', () => {
+    const opening = new Set(IDS.map(id => bandLine(calm, flavorStart(id))))
+    expect(opening.size).toBeGreaterThanOrEqual(4)
   })
 })
 
