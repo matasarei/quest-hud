@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { road, roadScene, SCENE_MIN_COLUMNS, SCENE_ROWS, sceneZone, taskWindow, type RoadArgs } from '../src/road'
+import { MAX_TASK_ROWS, road, ROAD_ROWS_WANTED, roadScene, sceneFits, SCENE_MIN_COLUMNS, SCENE_ROWS, sceneZone, taskWindow, type RoadArgs } from '../src/road'
 import { SCENE_HEIGHT, skyColor } from '../src/scene'
 import type { LevelCard, LogEntry, Quest, Task } from '../types'
 
@@ -166,5 +166,60 @@ describe('the level on the meters row', () => {
   test('the wider bars of `all` leave it less room', () => {
     const wide = road(args({ columns: width + 2 + 'Lv 8 Sage'.length, level: CARD, bars: 'all', meters: { window: 200_000, contextPercent: 43, weekUsed: 20, fiveHourUsed: 10, costUsd: 1.5 } }))
     expect(wide.level).not.toBe('Lv 8 Sage')
+  })
+})
+
+describe('sceneFits', () => {
+  const NEEDS = 1 + SCENE_ROWS + 1
+  const fits = (rows: number, tasks = 0, companions = 0, columns = 60) => sceneFits({ columns, rows, tasks, companions })
+
+  test('needs room for the header, the scene and the bars', () => {
+    expect(fits(NEEDS)).toBe(true)
+    expect(fits(NEEDS - 1)).toBe(false)
+  })
+
+  test('leaves a row for the task in progress when there are tasks', () => {
+    expect(fits(NEEDS, 3)).toBe(false)
+    expect(fits(NEEDS + 1, 3)).toBe(true)
+  })
+
+  test('leaves a row for the companions when there are any', () => {
+    expect(fits(NEEDS, 0, 2)).toBe(false)
+    expect(fits(NEEDS + 1, 0, 2)).toBe(true)
+    expect(fits(NEEDS + 1, 3, 2)).toBe(false)
+    expect(fits(NEEDS + 2, 3, 2)).toBe(true)
+  })
+
+  test('still needs its columns, however many rows', () => {
+    expect(fits(100, 0, 0, SCENE_MIN_COLUMNS - 1)).toBe(false)
+    expect(fits(100, 0, 0, SCENE_MIN_COLUMNS)).toBe(true)
+  })
+})
+
+describe('the Road in a short pane', () => {
+  test('too short for the scene: no art, and the text keeps the room', () => {
+    const view = road(args({ rows: 11 }))
+    expect(view.art).toEqual([])
+    expect(view.scene).toEqual([])
+    expect(view.tasks).toHaveLength(5)
+    expect(view.log).toHaveLength(3)
+    expect(view.meters.length).toBeGreaterThan(0)
+  })
+
+  test('with just room for the scene and one task: the task in progress, and no log', () => {
+    const view = road(args({ rows: 1 + SCENE_ROWS + 1 + 1 }))
+    expect(view.art.length).toBeGreaterThan(0)
+    expect(view.tasks).toEqual(['▸ task 3'])
+    expect(view.log).toEqual([])
+  })
+
+  test('with room for the whole Road: all of it, in exactly what it asks for', () => {
+    const tasks = Array.from({ length: 20 }, (_, i) => task(String(i), 'pending'))
+    const view = road(args({ rows: ROAD_ROWS_WANTED, tasks, log: entries(20), companions: [{ id: 'a', type: 'Explore' }] }))
+    expect(view.art.length).toBeGreaterThan(0)
+    expect(view.tasks).toHaveLength(MAX_TASK_ROWS)
+    expect(view.log).toHaveLength(5)
+    // The header, the scene, the companions, the tasks, the bars, the log's heading and its rows.
+    expect(1 + SCENE_ROWS + 1 + view.tasks.length + 1 + 1 + view.log.length).toBe(ROAD_ROWS_WANTED)
   })
 })
