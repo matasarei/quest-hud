@@ -40,7 +40,7 @@ export const lineParts = (input: StatusInput, all = false): LinePart[] => {
     ...(hp === undefined ? [] : [{ text: `♥${bar(hp)} ${hp}%`, code: hpCode(hp) }]),
     { text: `✦${bar(mp)} ${mp}%`, code: 69 },
     ...(all && five !== undefined && five !== null ? [{ text: `⚡${Math.round(five)}%`, code: 215 }] : []),
-    ...(all && cost !== undefined && cost !== null ? [{ text: `◉$${money(cost)}`, code: 221 }] : []),
+    ...(all && cost !== undefined && cost !== null && cost >= 0 ? [{ text: `◉$${money(cost)}`, code: 221 }] : []),
   ]
 }
 

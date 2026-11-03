@@ -39,6 +39,6 @@ jq -r --arg esc $'\033' --argjson all "$all" '
     (if $all then (.rate_limits.five_hour.used_percentage // null
       | if . == null then empty else "⚡\(round)%" | paint(215) end) else empty end),
     (if $all then (.cost.total_cost_usd // null
-      | if . == null then empty else "◉$\(money)" | paint(221) end) else empty end)
+      | if . == null or . < 0 then empty else "◉$\(money)" | paint(221) end) else empty end)
   ] | join(" ")
 ' 2>/dev/null || true

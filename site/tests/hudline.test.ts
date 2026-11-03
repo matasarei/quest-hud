@@ -55,7 +55,7 @@ test('the line matches the script itself across the range, half-percents include
 
 test('the --all line matches the script itself, across percents and awkward cents', { skip: !hasJq }, () => {
   for (const five of [0, 0.4, 0.5, 23.5, 99.5, 100, 104.2]) {
-    for (const usd of [0, 0.004, 0.005, 0.07, 0.1, 0.999, 1.005, 2.675, 4.29, 12.5, 100.1]) {
+    for (const usd of [-0.5, -0.004, 0, 0.004, 0.005, 0.07, 0.1, 0.999, 1.005, 2.675, 4.29, 12.5, 100.1]) {
       const input = { context_window: { used_percentage: 41 }, rate_limits: { seven_day: { used_percentage: 38 }, five_hour: { used_percentage: five } }, cost: { total_cost_usd: usd } }
       assert.equal(lineText(input, true), script(input, '--all'), `at ${five}% and $${usd}`)
     }
