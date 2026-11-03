@@ -4,7 +4,6 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, Timer } from 'claude-code'
 
-import { gridToSvg } from '../src/avatar'
 import { commandKinds, endFights, fightKinds, fightOutcome, fightText, forgeEvent, holdsTheRoad, lootText, NO_FOES, startFights, stdoutOf } from '../src/bash'
 import { activeCompanions, sameCompanions } from '../src/companions'
 import { boardOf, boardView, failedBoard, failureOf, isFullPage, NOTIFICATIONS_ARGV, parseNotifications, parseSweep, postedText, ridingBoard, SCAN_REPOS, SWEEP_ARGV, tallyScan } from '../src/github'
@@ -13,15 +12,15 @@ import { unknownText, usageText } from '../src/help'
 import { levelLogText, levelText, levelUpText, NO_LEVEL_YET, rereadingText, scoutRidesText, STILL_READING } from '../src/levelup'
 import { appendEntry, castText, scoutCounts, scoutText } from '../src/log'
 import { bandModel, fromMeasure, hintText, shortTokens, statusText, TONE_COLOR, ZONE_LABEL, zoneLine, type Bars } from '../src/meters'
-import { downsample } from '../src/paint/pixels'
 import { afterPrompt, cleanTitle, fromSkill } from '../src/quest'
 import { road, roadArt, SCENE_MIN_COLUMNS, sceneZone } from '../src/road'
 import { atRest, BAND, bandPortrait, nextMotion, REST, TRANSITION_STEPS, type Motion, type Transition } from '../src/scene'
 import { asSurvey, changedFiles, mergeSurvey, talliesOf, usageFrom, type History, type Surveyed, type Transcript } from '../src/survey'
 import { applyTaskCall } from '../src/tasks'
-import { ART_SCALE, AVATARS, BAND_AVATARS, type Avatar } from '../src/world/sprites'
+import { AVATARS, type Avatar } from '../src/world/sprites'
 import { parseZones, zoneFor } from '../src/zones'
 import type { Allies, Board, FightKind, Foes, LevelCard, LogEntry, Meters, Usage, Zone } from '../types'
+import { BAND_KEY, drawBand } from './band'
 import { BOARD_ID, BOARD_TITLE, drawBoard } from './board'
 import { readHereRepo, runGh, scanRepos, SWEEP_MS } from './github'
 import { artCells, drawRoad, PANE_ID, PANE_TITLE, SCENE_IMAGE_KEY, SCENE_KEY, sceneImage, type PngSource, type SceneMode } from './pane'
@@ -63,9 +62,6 @@ const pick = <T extends string>(value: unknown, allowed: readonly T[], fallback:
 const PERSON_ORIGINS: ReadonlySet<string> = new Set(['composer', 'bridge', 'sdk'])
 
 const TASK_TOOLS: ReadonlySet<string> = new Set(['TaskCreate', 'TaskUpdate', 'TodoWrite'])
-
-/** The band portrait's key, which $.ui.blit names to step it with the animation. */
-const BAND_KEY = 'avatar'
 
 /** A plugin's skill reads `plugin:name`, whichever way the engine passes it. */
 const skillName = (skill: string, pluginName: string | undefined): string =>
@@ -841,40 +837,18 @@ export const register: Register = (on, options) => {
 
     const band = bandModel(await read($, quest), await read($, tasks), await currentMeters($), bars, await $.clock.now())
     const elements = $.ui.resolve(e)
-    const { Box, Text } = elements
+    const { Box } = elements
     const hasRoom = e.props.maxRows >= BAND.rows
-    const row = (key: string, segments: typeof band.head) => (
-      <Box key={key} flexDirection="row">
-        {segments.map(segment => (
-          <Text color={TONE_COLOR[segment.tone]} dimColor={segment.tone === 'dim'} wrap="truncate-end">
-            {segment.text}
-          </Text>
-        ))}
-      </Box>
-    )
     // resolve() names every element on every surface, and one a surface lacks
     // draws as an empty fragment: the surface decides, not the table.
     const isRaster = hasRoom && e.surface === 'terminal' && 'Raster' in elements
     anim.band = isRaster ? e.requestId : undefined
     // A turn that began before the band's first draw: the draw starts it, as the pane's draw does.
     if (anim.band !== undefined && (await read($, isWorking))) startAnim($).catch(() => stopTimer())
-    const avatar = !hasRoom
-      ? null
-      : isRaster && 'Raster' in elements
-        ? <elements.Raster key={BAND_KEY} columns={BAND.columns} rows={BAND.rows} cells={artCells(bandPortrait(anim.motion.pose, anim.avatar))} />
-        : 'Svg' in elements
-          ? <elements.Svg source={gridToSvg(downsample(bandPortrait('stand', anim.avatar), ART_SCALE))} alt={BAND_AVATARS[anim.avatar].alt} width={BAND.columns * 4} height={BAND.rows * 8} />
-          : null
 
     return (
       <Box flexDirection="column">
-        <Box key="band" flexDirection="row" gap={1} alignItems="center">
-          {avatar}
-          <Box flexDirection="column">
-            {row('head', band.head)}
-            {row('meters', band.meters)}
-          </Box>
-        </Box>
+        {drawBand($, e, band, hasRoom ? (isRaster ? 'raster' : 'svg') : 'none', anim.motion.pose, anim.avatar)}
         {below}
       </Box>
     )

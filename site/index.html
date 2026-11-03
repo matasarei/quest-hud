@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
+  <title>Quest HUD Live Preview</title>
+  <meta name="description" content="Try Quest HUD in your browser: a Claude Code mod that draws your session as a small game, with HP and MP bars and the skill and tasks you are on.">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main>
+    <header class="intro">
+      <div>
+        <h1>Quest HUD</h1>
+        <p class="lead">A Claude Code mod that draws your session as a small game: HP and MP bars for the weekly limit and the context window, and the skill and tasks you are on.</p>
+        <p class="note">This page runs the mod's real drawing code on an invented session. Nothing is sent anywhere, no model is called, and nothing here reads your machine or GitHub.</p>
+      </div>
+      <div class="install">
+        <label for="install-command">Install, at a Claude Code prompt</label>
+        <div class="install-row">
+          <input id="install-command" class="mono" type="text" readonly value="/plugin install quest-hud --marketplace matasarei/quest-hud">
+          <button id="copy-install" type="button">Copy</button>
+        </div>
+        <a href="https://github.com/matasarei/quest-hud">Source and README on GitHub</a>
+      </div>
+    </header>
+    <noscript><p>The preview needs JavaScript. The <a href="https://github.com/matasarei/quest-hud">README</a> shows what it looks like.</p></noscript>
+
+    <section aria-labelledby="settings-title">
+      <h2 id="settings-title">Settings</h2>
+      <div id="settings" class="settings"></div>
+      <p id="setting-note" class="note" aria-live="polite"></p>
+      <p id="graphics-note" class="note" hidden>In a browser, <span class="mono">auto</span> finds that images work and draws them. A terminal without images falls back to text cells.</p>
+    </section>
+
+    <section class="terminal" aria-label="A simulated terminal showing the mod">
+      <span id="ruler" class="ruler" aria-hidden="true">0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000</span>
+      <div id="upper" class="upper">
+        <pre id="transcript" class="transcript" tabindex="0"></pre>
+        <aside id="pane" class="pane" aria-label="The Road pane">
+          <div class="pane-title">
+            <button id="road-tab" class="tab" type="button">The Road</button>
+            <button id="board-tab" class="tab" type="button">The Quest Board</button>
+            <span id="pane-example" class="example">example data</span>
+            <button id="pane-close" class="tab close" type="button" aria-label="Close this pane">×</button>
+          </div>
+          <div id="road" class="pane-body"></div>
+          <div id="board" class="pane-body"></div>
+        </aside>
+      </div>
+      <div id="band" class="band"></div>
+      <div class="prompt"><span aria-hidden="true">&gt;</span> <span class="caret" aria-hidden="true"></span></div>
+      <div id="hint" class="hint"></div>
+    </section>
+
+    <section aria-labelledby="session-title">
+      <div class="session-head">
+        <h2 id="session-title">The session</h2>
+        <button id="play" class="primary" type="button" aria-pressed="false"></button>
+      </div>
+      <div class="meters">
+        <div class="meter">
+          <label for="hp">♥ HP, weekly limit left <output id="hp-value"></output></label>
+          <input id="hp" type="range" min="0" max="100" step="1">
+        </div>
+        <div class="meter">
+          <label for="mp">✦ MP, context left <output id="mp-value"></output></label>
+          <input id="mp" type="range" min="0" max="100" step="1">
+        </div>
+        <div id="extra-bars" class="extra" hidden>
+          <div class="meter">
+            <label for="five">⚡ 5-hour window used <output id="five-value"></output></label>
+            <input id="five" type="range" min="0" max="100" step="1">
+          </div>
+          <div class="meter">
+            <label for="cost">◉ Session cost <output id="cost-value"></output></label>
+            <input id="cost" type="range" min="0" max="50" step="0.01">
+          </div>
+        </div>
+      </div>
+      <form id="skill-form" class="skill">
+        <label for="skill">Run a skill</label>
+        <input id="skill" type="text" value="deploy" spellcheck="false" autocomplete="off">
+        <button type="submit">Start</button>
+        <button id="end-skill" type="button">End</button>
+      </form>
+      <div class="actions">
+        <button id="working" type="button" aria-pressed="false"></button>
+        <button id="next-task" type="button">Next task</button>
+        <button id="test-fail" type="button">Tests fail</button>
+        <button id="test-pass" type="button">Tests pass</button>
+        <button id="lint-fail" type="button">Lint fails</button>
+        <button id="lint-pass" type="button">Lint passes</button>
+        <button id="commit" type="button">Commit</button>
+        <button id="gh" type="button">Run gh</button>
+        <button id="glab" type="button">Run glab</button>
+        <button id="read" type="button">Read a file</button>
+        <button id="edit" type="button">Edit a file</button>
+        <button id="add-agent" type="button">Add a subagent</button>
+        <button id="drop-agent" type="button">Subagent done</button>
+        <button id="compact" type="button">Compact</button>
+      </div>
+    </section>
+
+    <section aria-labelledby="line-title">
+      <h2 id="line-title">Without mods</h2>
+      <div class="terminal one-line"><div id="status-line"></div></div>
+      <p class="note">The classic status line, for sessions where mods do not run. It follows the HP and MP sliders, and no setting changes it. <span class="mono">/quest-hud:statusline</span> sets it up.</p>
+    </section>
+
+    <section aria-labelledby="commands-title">
+      <h2 id="commands-title">Commands</h2>
+      <div id="commands" class="actions"></div>
+      <p class="note">Answers appear in the terminal. The level and the Quest Board show invented examples: this page reads nothing from your machine or GitHub.</p>
+    </section>
+    <footer class="note">
+      <p>Quest HUD is an unofficial community mod under the MIT licence, not made or endorsed by Anthropic, GitHub or GitLab. The Octocat, fox and Claude's mascot in it are the project's own drawings, not their logo files. The desktop app draws the Road differently; this page shows the terminal.</p>
+    </footer>
+  </main>
+  <script src="preview.js"></script>
+</body>
+</html>

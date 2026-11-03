@@ -27,6 +27,8 @@ project. It reads your past sessions only if you ask it to, with
 [`/quest-hud:level`](#your-level), and then keeps counts, not what they said. It uses the network
 only if you ask it to, with [`/quest-hud:quests`](#the-quest-board), through your own `gh`.
 
+**[Try it live in your browser](https://matasarei.github.io/quest-hud/)**: every setting, on the mod's real drawing code and an invented session.
+
 [Install](#install) · [Update](#update) · [Settings](#settings) · [Commands](#commands) · [Your level](#your-level) · [The Quest Board](#the-quest-board) · [The Road](#the-road) · [Without mods](#without-mods) · [Art](#art) · [Development](#development) · [License](#license)
 
 ## Install
@@ -261,10 +263,17 @@ claude plugin validate . && claude plugin validate plugins/quest-hud
 claude plugin test plugins/quest-hud
 bash plugins/quest-hud/tests/hud-line.sh
 bash plugins/quest-hud/tests/skills.sh
-shellcheck --severity=warning plugins/quest-hud/scripts/*.sh plugins/quest-hud/tests/*.sh
+shellcheck --severity=warning plugins/quest-hud/scripts/*.sh plugins/quest-hud/tests/*.sh site/*.sh site/tests/*.sh
 ```
 
 Run it from disk: `claude --plugin-dir plugins/quest-hud`; saving a file reloads the mod.
+
+The [live preview](https://matasarei.github.io/quest-hud/) lives in `site/`, outside the mod, and deploys from `main`. It needs Node and Chrome:
+
+```bash
+bash site/build.sh && bash site/test.sh && bash site/tests/smoke.sh
+python3 -m http.server -d _site 8000
+```
 
 ## License
 
