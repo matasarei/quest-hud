@@ -4,3 +4,5 @@
 .tasks/
 # the engine lays its API types here when it loads the mod
 plugins/quest-hud/.claude-plugin/types/
+# the live preview's build, made by site/build.sh and deployed by CI
+_site/

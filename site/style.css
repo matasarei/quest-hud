@@ -1,0 +1,8 @@
+:root { --line: 1.3em; }
+.terminal { background: #15141a; color: #e6e3ea; font: 13px/var(--line) ui-monospace, Menlo, Consolas, monospace; padding: 12px; }
+.box { display: flex; min-width: 0; }
+.text { white-space: pre-wrap; min-width: 0; }
+.truncate { white-space: pre; overflow: hidden; text-overflow: ellipsis; }
+.dim { opacity: .6; }
+.bold { font-weight: 700; }
+.cells, .picture { display: block; image-rendering: pixelated; flex-shrink: 0; }
