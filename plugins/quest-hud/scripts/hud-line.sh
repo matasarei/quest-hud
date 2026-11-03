@@ -18,9 +18,11 @@ if ! command -v jq >/dev/null 2>&1; then
 fi
 
 all=false
-if [ "${1:-}" = "--all" ]; then
-  all=true
-fi
+for arg in "$@"; do
+  if [ "$arg" = "--all" ]; then
+    all=true
+  fi
+done
 
 jq -r --arg esc $'\033' --argjson all "$all" '
   def clamp: if . < 0 then 0 elif . > 100 then 100 else . end;
