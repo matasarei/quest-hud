@@ -407,6 +407,42 @@ await section('the band fits', async () => {
   }
 })
 
+// The band takes the form a terminal that wide would: nothing scrolls sideways, and only a long task is cut.
+const bandRows = () => ev(`(() => {
+  const band = document.getElementById('band')
+  const rows = [...band.querySelectorAll('.column > .row')]
+  const pieces = glyph => [...(rows.find(row => row.textContent.includes(glyph))?.querySelectorAll('.text') ?? [])]
+  const isCut = piece => piece.scrollWidth > piece.clientWidth
+  return {
+    over: band.scrollWidth - band.clientWidth,
+    bars: pieces('♥').map(piece => piece.textContent).join(''),
+    barsCut: pieces('♥').filter(isCut).length,
+    questCut: pieces('⚔').slice(0, -1).filter(isCut).length,
+  }
+})()`)
+
+await section('the band in the room it has', async () => {
+  for (const width of [360, 600, 768]) {
+    for (const bars of ['hpmp', 'all']) {
+      await load(width, 900)
+      await pick('bars', bars)
+      const seen = await bandRows()
+      ok(`${width} px, ${bars}: the band does not scroll sideways`, seen.over <= 0, `${seen.over} px over`)
+      ok(`${width} px, ${bars}: both percentages show`, /♥.*\d+%.*✦.*\d+%/.test(seen.bars), seen.bars)
+      ok(`${width} px, ${bars}: nothing in the bars is cut`, seen.barsCut === 0, seen.bars)
+      ok(`${width} px, ${bars}: only the task may be cut in the quest row`, seen.questCut === 0)
+      if (bars === 'all') ok(`${width} px: the 5-hour window and the cost stay`, /⚡.*◉/.test(seen.bars), seen.bars)
+    }
+  }
+
+  await load(1280, 800)
+  ok('at 1280 px the row has its heal time', (await bandRows()).bars.includes('heals'), (await bandRows()).bars)
+  await send('Emulation.setDeviceMetricsOverride', { width: 360, height: 900, deviceScaleFactor: 1, mobile: false })
+  ok('narrowing the window redraws it', await until(`!document.getElementById('band').textContent.includes('heals')`))
+  await send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 800, deviceScaleFactor: 1, mobile: false })
+  ok('widening the window brings it back', await until(`document.getElementById('band').textContent.includes('heals')`))
+})
+
 // Every control in reach with the view on screen, at each size: the page's main promise.
 await section('the view stays on screen', async () => {
   for (const [width, height] of [[1920, 1080], [1440, 900], [1280, 800], [1280, 680], [1250, 800], [1249, 800], [1100, 800], [1000, 800], [768, 1024], [390, 844], [360, 640]]) {

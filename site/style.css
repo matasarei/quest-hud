@@ -108,8 +108,6 @@ button.plain { min-height: 0; padding: 0; font: inherit; color: inherit; backgro
 .pane-body { min-width: 0; overflow: hidden; }
 #board { max-height: 420px; overflow: auto; }
 .band { padding: 8px 12px 0; overflow-x: auto; }
-.band > .box { width: max-content; }
-.band .truncate { overflow: visible; }
 .prompt { margin: 8px 12px 0; padding: 4px 8px; border: 1px solid var(--term-edge); border-radius: 4px; }
 .caret { display: inline-block; width: 1ch; height: 1.1em; vertical-align: text-bottom; background: var(--term-ink); opacity: .7; }
 .hint { padding: 4px 12px 10px; opacity: .6; white-space: pre; overflow-x: auto; }

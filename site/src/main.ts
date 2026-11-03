@@ -5,7 +5,7 @@ import { OPTIONS } from '../../plugins/quest-hud/src/help'
 import { COMMANDS, postBoard, runCommand } from './commands'
 import { SESSION } from './script'
 import * as S from './session'
-import { drawAll, drawFrame, roadColumns, type Slots } from './view'
+import { bandColumns, drawAll, drawFrame, roadColumns, type Slots } from './view'
 
 const root = document.documentElement
 
@@ -220,16 +220,21 @@ const togglePlay = (): void => {
   showPlaying()
 }
 
-// The Road re-lays out to the columns it has; only a change of whole columns redraws it.
-let lastColumns = 0
-new ResizeObserver(() => {
-  const columns = roadColumns(slots)
-  if (columns !== lastColumns && !slots.road.hidden) {
-    lastColumns = columns
-    // Next frame: a redraw inside this callback would resize what it observes.
-    requestAnimationFrame(redraw)
-  }
-}).observe(slots.road)
+// The Road and the band re-lay out to the columns they have; only a change of whole columns redraws one.
+const redrawOnColumns = (slot: HTMLElement, columnsOf: (slots: Slots) => number): void => {
+  let lastColumns = 0
+  new ResizeObserver(() => {
+    const columns = columnsOf(slots)
+    if (columns !== lastColumns && !slot.hidden) {
+      lastColumns = columns
+      // Next frame: a redraw inside this callback would resize what it observes.
+      requestAnimationFrame(redraw)
+    }
+  }).observe(slot)
+}
+
+redrawOnColumns(slots.road, roadColumns)
+redrawOnColumns(slots.band, bandColumns)
 
 const bindInstall = (): void => {
   const button = slotOf('copy-install')
