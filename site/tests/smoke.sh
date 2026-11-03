@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Loads the built page in headless Chrome and checks that the mod's band drew,
 # with no script error, failed promise or CSP violation, which main.ts records
-# as data-error. Build first: site/build.sh. CHROME names the browser.
+# as data-error. Then browser.mjs checks what a visitor would see, which takes a
+# minute or two. Build first: site/build.sh. CHROME names the browser.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
@@ -44,3 +45,5 @@ if ! grep -q '♥ HP' <<<"$dom"; then
   exit 1
 fi
 echo "smoke: ok"
+
+node site/tests/browser.mjs "http://127.0.0.1:$port/" "$chrome"
