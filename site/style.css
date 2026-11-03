@@ -57,10 +57,12 @@ h2 { margin: 0 0 10px; font-size: 1.05rem; }
 .controls { display: grid; gap: 20px; min-width: 0; }
 .stage { order: -1; position: sticky; top: 0; z-index: 1; padding: 8px 0; background: var(--page); max-height: 62vh; overflow: auto; min-width: 0; }
 .notes .note:first-child { margin-top: 0; }
+.flag-note { margin: 6px 0 0; font-size: .8125rem; }
 .without-mods { margin-top: 12px; }
 .without-mods h2 { margin-bottom: 4px; font-size: .8125rem; }
 
-@media (min-width: 1100px) {
+/* Two columns only where the band's figures still fit beside the controls, with a 15 px page scrollbar. */
+@media (min-width: 1250px) {
   .layout { grid-template-columns: 300px minmax(0, 1fr); gap: 24px; }
   .stage { order: 0; top: 8px; padding: 0; max-height: calc(100vh - 16px); }
 }
@@ -118,6 +120,16 @@ button.plain { min-height: 0; padding: 0; font: inherit; color: inherit; backgro
   .transcript { min-height: 180px; }
 }
 
+/* The band needs 940 px at 13 px: this keeps its figures on screen from about 934 px up, with classic scrollbars. */
+@media (max-width: 1319px) {
+  .terminal { font-size: 12px; }
+}
+
+/* A short screen keeps the band in sight from the top: the footer says the same. */
+@media (max-height: 760px) {
+  .intro .note { display: none; }
+}
+
 /* On a phone the band comes first after the text, so a slider's change is in sight, and the Road scrolls below. */
 @media (max-width: 959px) {
   .terminal:not(.one-line) { display: flex; flex-direction: column; }
@@ -137,7 +149,7 @@ button.plain { min-height: 0; padding: 0; font: inherit; color: inherit; backgro
 .howto summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .howto ol { margin: 8px 0; padding-left: 20px; }
 .howto li { margin-bottom: 6px; }
-.howto p { margin: 0; }
+.howto p { margin: 0 0 6px; }
 .howto code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .95em; color: var(--ink); }
 .howto pre { margin: 4px 0 0; padding: 6px 8px; background: var(--panel); border: 1px solid var(--edge); border-radius: 4px; white-space: pre-wrap; overflow-wrap: anywhere; }
 

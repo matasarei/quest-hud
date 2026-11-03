@@ -141,6 +141,7 @@ const syncControls = (): void => {
     slotOf(`${range.id}-value`).textContent = range.shown()
   }
   slotOf('graphics-note').hidden = sim.settings.graphics !== 'auto' || !S.isRoadShown(sim)
+  slotOf('flag-note').hidden = !S.isRoadShown(sim)
 }
 
 // The herald's return, which a new session has no use for: Play cancels it.

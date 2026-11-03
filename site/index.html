@@ -82,6 +82,7 @@
           <div class="prompt"><span aria-hidden="true">&gt;</span> <span class="caret" aria-hidden="true"></span></div>
           <div id="hint" class="hint"></div>
         </section>
+        <p id="flag-note" class="note flag-note">One flag per task. They appear only when Claude uses its task list.</p>
         <section class="without-mods" aria-labelledby="line-title">
           <h2 id="line-title" class="muted">Without mods, the classic status line</h2>
           <div id="status-line" class="terminal one-line"></div>
@@ -100,6 +101,7 @@
               </li>
               <li>To show only this line, hide the mod's own: run <code>/plugin configure quest-hud@quest-hud</code>, set Detail to <code>off</code>, then run <code>/reload-plugins</code>.</li>
             </ol>
+            <p>An update can't reach your copy, and an older copy silently ignores <code>--all</code>. To update it, copy the script again.</p>
             <p>It needs <code>jq</code>. HP appears only on a Pro, Max or Ultra subscription. Where the mod can't run, copy the script from the repository, as the <a href="https://github.com/matasarei/quest-hud#without-mods">README</a> says.</p>
           </details>
         </section>
@@ -107,7 +109,7 @@
     </div>
 
     <footer class="note">
-      <p>Quest HUD is an unofficial community mod under the MIT licence, not made or endorsed by Anthropic, GitHub or GitLab. The Octocat, fox and Claude's mascot in it are the project's own drawings, not their logo files. The desktop app draws the Road differently; this page shows the terminal.</p>
+      <p>Nothing here is sent anywhere, no model is called, and this page reads nothing from your machine or GitHub. Quest HUD is an unofficial community mod under the MIT licence, not made or endorsed by Anthropic, GitHub or GitLab. The Octocat, fox and Claude's mascot in it are the project's own drawings, not their logo files. The desktop app draws the Road differently; this page shows the terminal.</p>
     </footer>
   </main>
   <script src="preview.js"></script>

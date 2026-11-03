@@ -56,6 +56,10 @@ claude plugin update quest-hud@quest-hud
 
 Then restart Claude Code.
 
+An update can't reach a status line you copied to `~/.claude/hud-line.sh`, and an older copy
+silently ignores `--all`. To update it, copy the script again: `/quest-hud:statusline` prints the
+command.
+
 ## Settings
 
 Run `/plugin configure quest-hud@quest-hud`, then `/reload-plugins`.
@@ -183,6 +187,8 @@ with Explore
 19:10 loot  2af33ea Write the CSV writer tests
 19:11 ally  PR #3 opened
 ```
+
+One flag per task. They appear only when Claude uses its task list.
 
 Your prompts are never shown. A skill's quest ends when you
 ask for something new (three words or more) with no task open, and `/clear` starts the Road over.
