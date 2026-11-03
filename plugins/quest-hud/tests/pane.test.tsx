@@ -5,6 +5,7 @@ import { artCells } from '../hooks/pane'
 import { imageScale, QUADRANT } from '../src/avatar'
 import { bandLine, FLAVOR, flavorStart } from '../src/flavor'
 import { TONE_COLOR } from '../src/meters'
+import { ROAD_ROWS_WANTED } from '../src/road'
 import { bandPortrait, sceneArt } from '../src/scene'
 import { AVATARS } from '../src/world/sprites'
 import { engine, RUN, start, world } from './kit'
@@ -1069,5 +1070,102 @@ describe('the band\'s flavour line', () => {
     const fresh = await $.ui.mount(band())
     expect(await lineOf(fresh)).toBe(calmLine('wilds', 0, flavorStart('s2')))
     await fresh.unmount()
+  })
+})
+
+describe('the Road in the rows it has', () => {
+  // The terminal is 50 rows; the pane has only some of them.
+  const inPane = (bodyRows: number, placement: 'dock' | 'inline' = 'inline') => {
+    const base = pane('terminal')
+    return { ...base, viewport: { columns: 62, rows: 50 }, props: { ...base.props, placement, scroll: { offset: 0, bodyRows } } } as const
+  }
+  const go = { text: 'go', turnId: 'turn-1' }
+  const band = { plugin: 'quest-hud', component: 'AbovePrompt', surface: 'terminal', props: { hasSurvey: false, isWorking: false, maxRows: 6, bodyColumns: 60, scroll: { offset: 0, bodyRows: 6 }, view: {} } } as const
+
+  test('too short for the scene: the header, the tasks, the bars and the log, and no picture', CELLS, async ($, on) => {
+    engine(on)
+    await implementing($)
+    const ui = await $.ui.mount(inPane(11))
+    expect(await ui.find({ type: 'Raster' })).toBeFalsy()
+    expect(await ui.find({ type: 'Image' })).toBeFalsy()
+    expect(await ui.find({ type: 'Text', text: /♥/ })).toBeTruthy()
+    expect(await ui.find({ type: 'Text', text: /▸ Write the tests/ })).toBeTruthy()
+    expect(await ui.find({ type: 'Text', text: /skill/ })).toBeTruthy()
+    await ui.unmount()
+  })
+
+  test('room for the scene and one task: both, and the bars, and no log', CELLS, async ($, on) => {
+    engine(on)
+    await implementing($)
+    const ui = await $.ui.mount(inPane(17))
+    expect(await ui.find({ type: 'Raster' })).toBeTruthy()
+    expect(await ui.find({ type: 'Text', text: /▸ Write the tests/ })).toBeTruthy()
+    expect(await ui.find({ type: 'Text', text: /✓ Read the exporter/ })).toBeFalsy()
+    expect(await ui.find({ type: 'Text', text: /♥/ })).toBeTruthy()
+    expect(await ui.find({ type: 'Text', text: /— log —/ })).toBeFalsy()
+    await ui.unmount()
+  })
+
+  test('docked too: the log fits the body\'s rows, not the terminal\'s', CELLS, async ($, on) => {
+    engine(on)
+    await implementing($)
+    const ui = await $.ui.mount(inPane(20, 'dock'))
+    // 20 rows: the header, 14 of scene, 2 tasks, the bars, the log's heading and one row.
+    expect(await ui.findAll({ type: 'Text', text: /^\d\d:\d\d / })).toHaveLength(1)
+    await ui.unmount()
+  })
+
+  test('with no scene drawn, no frame is drawn for it, and the band still walks', CELLS, async ($, on) => {
+    const clock = engine(on)
+    await implementing($)
+    world.panes = [{ id: 'quest-hud', isShown: true }]
+    const road = await $.ui.mount(inPane(11))
+    const portrait = await $.ui.mount(band)
+    await $.turn.start(go)
+    await clock.advance(1000)
+    expect(world.blits).toHaveLength(0)
+    expect(world.bandBlits.length).toBeGreaterThan(0)
+    await road.unmount()
+    await portrait.unmount()
+  })
+
+  test('with the scene drawn, its frames are: the check above can see them', CELLS, async ($, on) => {
+    const clock = engine(on)
+    await implementing($)
+    world.panes = [{ id: 'quest-hud', isShown: true }]
+    const road = await $.ui.mount(inPane(17))
+    await $.turn.start(go)
+    await clock.advance(1000)
+    expect(world.blits.length).toBeGreaterThan(0)
+    await road.unmount()
+  })
+
+  test('/quest-hud:pane asks for the rows the Road can use', async ($, on) => {
+    engine(on)
+    await start($)
+    await $.command.run({ command: 'quest-hud:pane', args: '', ...RUN })
+    expect(world.openedRows).toEqual([['quest-hud', ROAD_ROWS_WANTED]])
+  })
+
+  test('detail = pane asks the same as the session starts', { options: { detail: 'pane' } }, async ($, on) => {
+    engine(on)
+    await start($)
+    expect(world.openedRows).toEqual([['quest-hud', ROAD_ROWS_WANTED]])
+  })
+
+  test('/quest-hud:on asks the same when it brings the Road back', { options: { detail: 'pane' } }, async ($, on) => {
+    engine(on)
+    await start($)
+    await $.command.run({ command: 'quest-hud:off', args: '', ...RUN })
+    world.openedRows.length = 0
+    await $.command.run({ command: 'quest-hud:on', args: '', ...RUN })
+    expect(world.openedRows).toEqual([['quest-hud', ROAD_ROWS_WANTED]])
+  })
+
+  test('the Quest Board asks for nothing: it is not the Road', async ($, on) => {
+    engine(on)
+    await start($)
+    await $.command.run({ command: 'quest-hud:quests', args: '', ...RUN })
+    expect(world.openedRows).toEqual([['quest-board', undefined]])
   })
 })

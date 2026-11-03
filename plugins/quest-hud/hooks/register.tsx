@@ -14,7 +14,7 @@ import { bandLine, flavorStart } from '../src/flavor'
 import { appendEntry, castText, scoutCounts, scoutText } from '../src/log'
 import { bandModel, fromMeasure, hintText, hpLeft, mpLeft, shortTokens, statusText, TONE_COLOR, ZONE_LABEL, zoneLine, type Bars } from '../src/meters'
 import { afterPrompt, cleanTitle, fromSkill } from '../src/quest'
-import { road, roadArt, SCENE_MIN_COLUMNS, sceneZone } from '../src/road'
+import { road, ROAD_ROWS_WANTED, roadArt, sceneFits, sceneZone } from '../src/road'
 import { atRest, BAND, bandPortrait, nextMotion, REST, TRANSITION_STEPS, type Motion, type Transition } from '../src/scene'
 import { asSurvey, changedFiles, mergeSurvey, talliesOf, usageFrom, type History, type Surveyed, type Transcript } from '../src/survey'
 import { applyTaskCall } from '../src/tasks'
@@ -87,7 +87,7 @@ const help = (root: string): string =>
 async function openRoad($: EngineInterface): Promise<string> {
   if (await read($, hidden)) return 'Quest HUD is off. /quest-hud:on brings it back.'
 
-  const opened = await $.ui.open({ id: PANE_ID, title: PANE_TITLE })
+  const opened = await $.ui.open({ id: PANE_ID, title: PANE_TITLE, rows: ROAD_ROWS_WANTED })
 
   return opened.isPlaced ? 'The Road is open.' : `The Road waits: ${opened.reason}`
 }
@@ -347,7 +347,7 @@ async function turnOn($: EngineInterface, detail: Detail): Promise<string> {
   await $.store.set('hidden', false)
   await $.store.delete('roadWasOpen')
   await update($, hidden, () => false)
-  if (wasOpen || detail === 'pane') await $.ui.open({ id: PANE_ID, title: PANE_TITLE })
+  if (wasOpen || detail === 'pane') await $.ui.open({ id: PANE_ID, title: PANE_TITLE, rows: ROAD_ROWS_WANTED })
 
   return detail === 'off' ? 'Quest HUD is on, but the detail option is off: /plugin configure quest-hud@quest-hud changes it.' : 'Quest HUD is back.'
 }
@@ -613,7 +613,7 @@ export const register: Register = (on, options) => {
 
     // Unasked, the engine places it only from 144 columns; below that it waits.
     if (detail === 'pane' && !isHidden) {
-      await $.ui.open({ id: PANE_ID, title: PANE_TITLE })
+      await $.ui.open({ id: PANE_ID, title: PANE_TITLE, rows: ROAD_ROWS_WANTED })
     }
 
     return next(e)
@@ -901,14 +901,19 @@ export const register: Register = (on, options) => {
       ? 'svg'
       : graphics === 'images' || (graphics === 'auto' && images !== false) ? 'image' : 'raster'
 
-    // A pane too narrow for a scene draws none, so nothing bobs there.
-    const hasScene = e.props.bodyColumns >= SCENE_MIN_COLUMNS
+    // A pane with no room for a scene draws none, so nothing bobs there.
+    const hasScene = sceneFits({
+      columns: e.props.bodyColumns,
+      rows: e.props.scroll.bodyRows,
+      tasks: (await read($, tasks)).length,
+      companions: (await read($, companions)).length,
+    })
     anim.columns = e.props.bodyColumns
     anim.mode = hasScene ? mode : undefined
     // The first draw learns the zone; a later change of it slides (noteZone).
     anim.zone ??= sceneZone(await read($, quest), await read($, activity))
 
-    // The desktop's Svg does not animate, nor a pane too narrow for a scene: one left running stops here, unless the band is stepping.
+    // The desktop's Svg does not animate, nor a pane with no room for a scene: one left running stops here, unless the band is stepping.
     if ((mode === 'svg' || !hasScene) && anim.timer !== undefined && anim.band === undefined) stopTimer()
 
     // A turn that began before the pane's first draw had no surface to animate on:
@@ -929,7 +934,8 @@ export const register: Register = (on, options) => {
       level: await currentLevel($),
       bars,
       columns: e.props.bodyColumns,
-      rows: e.viewport?.rows ?? 30,
+      // The pane's own rows, which an inline pane has far fewer of than the terminal.
+      rows: e.props.scroll.bodyRows,
       motion: anim.motion,
       ...transition(),
       cells: mode === 'raster',
