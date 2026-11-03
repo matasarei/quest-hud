@@ -3,12 +3,12 @@
 
 /** The status-line JSON, as far as the script reads it. */
 export type StatusInput = {
-  context_window?: { used_percentage?: number | null }
+  context_window?: { used_percentage?: unknown }
   rate_limits?: {
-    seven_day?: { used_percentage?: number | null }
-    five_hour?: { used_percentage?: number | null }
+    seven_day?: { used_percentage?: unknown }
+    five_hour?: { used_percentage?: unknown }
   }
-  cost?: { total_cost_usd?: number | null }
+  cost?: { total_cost_usd?: unknown }
 }
 
 export type LinePart = { text: string; code: number }
@@ -28,20 +28,25 @@ const money = (usd: number): string => {
   return `${Math.floor(cents / 100)}.${String(cents % 100).padStart(2, '0')}`
 }
 
+const isNumber = (value: unknown): value is number => typeof value === 'number'
+
 /** A figure --all can show: anything but a number from zero up is left out, as the script's `figure` does. */
-const isFigure = (value: unknown): value is number => typeof value === 'number' && value >= 0
+const isFigure = (value: unknown): value is number => isNumber(value) && value >= 0
 
 /** The line's parts, each with the 256-colour code it prints in; `all` is the script's --all. */
 export const lineParts = (input: StatusInput, all = false): LinePart[] => {
   const week = input.rate_limits?.seven_day?.used_percentage
-  const hp = week === undefined || week === null ? undefined : left(week)
-  const mp = left(input.context_window?.used_percentage ?? 0)
+  const hp = isNumber(week) ? left(week) : undefined
+  // The script's `// 0`: nothing there yet is nothing spent, and false counts as nothing.
+  const used = input.context_window?.used_percentage
+  const spent = used === undefined || used === null || used === false ? 0 : used
+  const mp = isNumber(spent) ? left(spent) : undefined
   const five = input.rate_limits?.five_hour?.used_percentage
   const cost = input.cost?.total_cost_usd
 
   return [
     ...(hp === undefined ? [] : [{ text: `♥${bar(hp)} ${hp}%`, code: hpCode(hp) }]),
-    { text: `✦${bar(mp)} ${mp}%`, code: 69 },
+    ...(mp === undefined ? [] : [{ text: `✦${bar(mp)} ${mp}%`, code: 69 }]),
     ...(all && isFigure(five) ? [{ text: `⚡${Math.round(five)}%`, code: 215 }] : []),
     ...(all && isFigure(cost) ? [{ text: `◉$${money(cost)}`, code: 221 }] : []),
   ]
