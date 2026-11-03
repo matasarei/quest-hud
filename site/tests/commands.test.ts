@@ -121,3 +121,11 @@ test('the README says what flags need, as the page does', () => {
   assert.ok(readFileSync('README.md', 'utf8').includes(words))
   assert.ok(readFileSync('site/index.html', 'utf8').includes(words))
 })
+
+test('the README and the page say to copy the status-line script again', () => {
+  const readme = readFileSync('README.md', 'utf8')
+  const update = readme.slice(readme.indexOf('## Update'), readme.indexOf('## Settings'))
+  assert.match(update, /copy the script again/)
+  assert.match(update, /`--all`/)
+  assert.match(readFileSync('site/index.html', 'utf8'), /copy the script again/)
+})

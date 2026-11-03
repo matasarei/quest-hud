@@ -56,6 +56,10 @@ claude plugin update quest-hud@quest-hud
 
 Then restart Claude Code.
 
+An update can't reach a status line you copied to `~/.claude/hud-line.sh`, and an older copy
+silently ignores `--all`. To update it, copy the script again: `/quest-hud:statusline` prints the
+command.
+
 ## Settings
 
 Run `/plugin configure quest-hud@quest-hud`, then `/reload-plugins`.
