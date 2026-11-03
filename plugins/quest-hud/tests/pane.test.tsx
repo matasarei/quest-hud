@@ -1032,6 +1032,17 @@ describe('the band\'s flavour line', () => {
     await ui.unmount()
   })
 
+  test('flavor = off: the band is as it was, with no tip either', { options: { flavor: 'off' } }, async ($, on) => {
+    engine(on)
+    await implementing($)
+    await $.session.measure(lowMp)
+    const ui = await $.ui.mount(band())
+    const texts = await ui.findAll({ type: 'Text' })
+    expect(texts[0]?.text).toBe('⚔ gku:implement')
+    expect(texts.some(text => text.text?.includes('MP runs low'))).toBe(false)
+    await ui.unmount()
+  })
+
   test('a new session starts the lines over; a reload keeps its place', async ($, on) => {
     engine(on)
     await implementing($)

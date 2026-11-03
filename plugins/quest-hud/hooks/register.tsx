@@ -563,6 +563,7 @@ export const register: Register = (on, options) => {
   const overrides = parseZones(typeof options.zones === 'string' ? options.zones : '')
   const graphics = pick<Graphics>(options.graphics, ['auto', 'cells', 'images'], 'auto')
   anim.avatar = pick<Avatar>(options.avatar, AVATARS, 'wizard')
+  const hasFlavor = pick(options.flavor, ['on', 'off'], 'on') === 'on'
   // A new load has no band drawn yet.
   anim.band = undefined
   // Skills a subagent's Skill call is running right now, counted (two
@@ -783,7 +784,7 @@ export const register: Register = (on, options) => {
     return next(e)
   }).catch(($, e, next) => next(e))
 
-  const settings = { detail, bars, avatar: anim.avatar, graphics, zones: typeof options.zones === 'string' ? options.zones.trim() : '' }
+  const settings = { detail, bars, avatar: anim.avatar, flavor: hasFlavor ? 'on' : 'off', graphics, zones: typeof options.zones === 'string' ? options.zones.trim() : '' }
 
   // A skill file gives each command its /quest-hud: name; the mod answers it, so
   // no model turn runs. If a hook fails, the skill's text says the mod is not running.
@@ -855,7 +856,7 @@ export const register: Register = (on, options) => {
     if (anim.band !== undefined && (await read($, isWorking))) startAnim($).catch(() => stopTimer())
     // The zone the band's own label names, and no line where the portrait has no room: the band stays two rows there.
     const facts = { zone: current?.zone ?? 'wilds', foes: await read($, foes), hp: hpLeft(measured), mp: mpLeft(measured) } as const
-    const line = hasRoom ? bandLine(facts, await read($, flavorStep)) : undefined
+    const line = hasFlavor && hasRoom ? bandLine(facts, await read($, flavorStep)) : undefined
 
     return (
       <Box flexDirection="column">

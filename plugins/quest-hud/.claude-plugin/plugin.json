@@ -28,6 +28,13 @@
       "options": ["wizard", "claude", "octocat"],
       "default": "wizard"
     },
+    "flavor": {
+      "type": "string",
+      "title": "Flavour line",
+      "description": "One dim line above the quest on the band: a tip when this session calls for one, otherwise a word from the zone. Changes at each turn.",
+      "options": ["on", "off"],
+      "default": "on"
+    },
     "graphics": {
       "type": "string",
       "title": "Graphics",
