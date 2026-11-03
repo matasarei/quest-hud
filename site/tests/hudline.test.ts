@@ -21,8 +21,28 @@ for (const name of SCENARIOS) {
   })
 }
 
-const script = (input: object): string =>
-  spawnSync('bash', ['plugins/quest-hud/scripts/hud-line.sh'], { input: JSON.stringify(input), encoding: 'utf8' }).stdout.replace(/\n$/, '')
+const ALL = readdirSync(`${DIR}/all`).filter(name => name.endsWith('.json')).map(name => name.replace(/\.json$/, ''))
+
+test('there are --all fixtures to hold the copy to', () => {
+  assert.ok(ALL.length >= 6)
+})
+
+for (const name of ALL) {
+  test(`the --all line matches the script's fixture: ${name}`, () => {
+    const input = JSON.parse(readFileSync(`${DIR}/all/${name}.json`, 'utf8'))
+    const expected = readFileSync(`${DIR}/all/${name}.expected`, 'utf8').replace(/\n$/, '')
+    assert.equal(lineText(input, true).replaceAll(ESC, '@'), expected)
+  })
+}
+
+test('the --all parts stay off the line without the flag', () => {
+  const input = { rate_limits: { five_hour: { used_percentage: 43 } }, cost: { total_cost_usd: 4.29 } }
+  assert.doesNotMatch(lineText(input), /⚡|◉/)
+  assert.match(lineText(input, true), /⚡43%.*◉\$4\.29/)
+})
+
+const script = (input: object, ...args: string[]): string =>
+  spawnSync('bash', ['plugins/quest-hud/scripts/hud-line.sh', ...args], { input: JSON.stringify(input), encoding: 'utf8' }).stdout.replace(/\n$/, '')
 
 const hasJq = spawnSync('jq', ['--version']).status === 0
 
@@ -33,8 +53,18 @@ test('the line matches the script itself across the range, half-percents include
   }
 })
 
+test('the --all line matches the script itself, across percents and awkward cents', { skip: !hasJq }, () => {
+  for (const five of [0, 0.4, 0.5, 23.5, 99.5, 100, 104.2]) {
+    for (const usd of [0, 0.004, 0.005, 0.07, 0.1, 0.999, 1.005, 2.675, 4.29, 12.5, 100.1]) {
+      const input = { context_window: { used_percentage: 41 }, rate_limits: { seven_day: { used_percentage: 38 }, five_hour: { used_percentage: five } }, cost: { total_cost_usd: usd } }
+      assert.equal(lineText(input, true), script(input, '--all'), `at ${five}% and $${usd}`)
+    }
+  }
+})
+
 test('each code has a colour to show', () => {
   for (const used of [0, 61, 81, 100]) {
-    for (const part of lineParts({ rate_limits: { seven_day: { used_percentage: used } } })) assert.ok(XTERM[part.code])
+    const input = { rate_limits: { seven_day: { used_percentage: used }, five_hour: { used_percentage: 1 } }, cost: { total_cost_usd: 1 } }
+    for (const part of lineParts(input, true)) assert.ok(XTERM[part.code])
   }
 })

@@ -107,11 +107,15 @@ const drawTabs = (sim: Sim, slots: Slots): void => {
   slots.boardTab.setAttribute('aria-pressed', String(isBoardShown(sim)))
 }
 
-/** The classic status line, which runs where mods do not, so no setting of the mod's reaches it. */
+/** The classic status line, which no setting of the mod's reaches: here Bars `all` stands for the script's --all. */
 const drawStatusLine = (sim: Sim, slot: HTMLElement): void => {
-  const input = { context_window: { used_percentage: 100 - sim.mp }, rate_limits: { seven_day: { used_percentage: 100 - sim.hp } } }
+  const input = {
+    context_window: { used_percentage: 100 - sim.mp },
+    rate_limits: { seven_day: { used_percentage: 100 - sim.hp }, five_hour: { used_percentage: sim.five } },
+    cost: { total_cost_usd: sim.cost },
+  }
 
-  slot.replaceChildren(...lineParts(input).flatMap((part, i) => {
+  slot.replaceChildren(...lineParts(input, sim.settings.bars === 'all').flatMap((part, i) => {
     const span = document.createElement('span')
     span.textContent = part.text
     span.style.color = XTERM[part.code] ?? ''

@@ -111,5 +111,6 @@ test("the page's steps for the classic status line are the mod's", () => {
   assert.ok(source.includes('/scripts/hud-line.sh" ~/.claude/hud-line.sh'))
   assert.ok(page.includes('/scripts/hud-line.sh" ~/.claude/hud-line.sh'))
   assert.ok(page.includes('/quest-hud:statusline'))
+  assert.ok(page.includes('"command": "~/.claude/hud-line.sh --all"'))
   assert.ok(readFileSync('README.md', 'utf8').includes('## Without mods'))
 })
