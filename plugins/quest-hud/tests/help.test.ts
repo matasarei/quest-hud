@@ -2,7 +2,7 @@ import { describe, expect, test } from 'claude-code/testing'
 
 import { unknownText, usageText } from '../src/help'
 
-const IN_FORCE = { detail: 'band', bars: 'all', avatar: 'claude', graphics: 'cells', zones: '' }
+const IN_FORCE = { detail: 'band', bars: 'all', avatar: 'claude', flavor: 'off', graphics: 'cells', zones: '' }
 
 describe('/quest-hud:help', () => {
   test('lists the commands, and each option with its values, the value in force and its default', () => {
@@ -13,6 +13,7 @@ describe('/quest-hud:help', () => {
     expect(text).toContain('now cells (default auto)')
     expect(text).toContain('now all (default hpmp)')
     expect(text).toContain('now claude (default wizard)')
+    expect(text).toContain('now off (default on)')
     expect(text).toContain('now none')
     expect(text).toContain('zones: watchtower, harbour, dungeon, arena, forge, map, camp, wilds')
   })

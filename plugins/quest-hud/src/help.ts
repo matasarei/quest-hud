@@ -11,6 +11,7 @@ export const OPTIONS: readonly OptionInfo[] = [
   { name: 'detail', values: ['off', 'status', 'band', 'pane'], fallback: 'band' },
   { name: 'bars', values: ['hpmp', 'all'], fallback: 'hpmp' },
   { name: 'avatar', values: ['wizard', 'claude', 'octocat'], fallback: 'wizard' },
+  { name: 'flavor', values: ['on', 'off'], fallback: 'on' },
   { name: 'graphics', values: ['auto', 'cells', 'images'], fallback: 'auto' },
   { name: 'zones', values: [], fallback: '' },
 ]

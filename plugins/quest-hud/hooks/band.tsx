@@ -16,8 +16,8 @@ export const BAND_KEY = 'avatar'
 /** How the portrait is drawn: as text cells, as an Svg, or not at all where there is no room. */
 export type PortraitMode = 'raster' | 'svg' | 'none'
 
-/** The band's tree, the portrait drawn the way `mode` says. */
-export function drawBand($: EngineInterface, e: RenderInput<'AbovePrompt'>, band: Band, mode: PortraitMode, pose: Pose, avatar: Avatar) {
+/** The band's tree, the portrait drawn the way `mode` says, and `line` above the quest when there is one. */
+export function drawBand($: EngineInterface, e: RenderInput<'AbovePrompt'>, band: Band, mode: PortraitMode, pose: Pose, avatar: Avatar, line?: string) {
   const elements = $.ui.resolve(e)
   const { Box, Text } = elements
   const row = (key: string, segments: Band['head']) => (
@@ -39,6 +39,7 @@ export function drawBand($: EngineInterface, e: RenderInput<'AbovePrompt'>, band
     <Box key="band" flexDirection="row" gap={1} alignItems="center">
       {portrait}
       <Box flexDirection="column">
+        {line === undefined ? null : <Text dimColor wrap="truncate-end">{line}</Text>}
         {row('head', band.head)}
         {row('meters', band.meters)}
       </Box>

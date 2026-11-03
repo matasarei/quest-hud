@@ -3,6 +3,7 @@ import type { Engine } from 'claude-code/testing'
 
 import { artCells } from '../hooks/pane'
 import { imageScale, QUADRANT } from '../src/avatar'
+import { bandLine, FLAVOR, flavorStart } from '../src/flavor'
 import { TONE_COLOR } from '../src/meters'
 import { bandPortrait, sceneArt } from '../src/scene'
 import { AVATARS } from '../src/world/sprites'
@@ -934,5 +935,139 @@ describe('the Road\'s text cells', () => {
     // Not all half blocks: the art's finer columns show.
     expect(points.some(cp => cp !== 0x2580 && cp !== 0x2584 && cp !== 0x20 && cp !== 0x2588)).toBe(true)
     await ui.unmount()
+  })
+})
+
+describe('the band\'s flavour line', () => {
+  const band = (surface: 'terminal' | 'desktop' = 'terminal', maxRows = 6) => ({ plugin: 'quest-hud', component: 'AbovePrompt', surface, props: { hasSurvey: false, isWorking: false, maxRows, bodyColumns: 140, scroll: { offset: 0, bodyRows: maxRows }, view: {} } }) as const
+  const go = { text: 'go', turnId: 'turn-1' }
+  const lowMp = { context: { tokens: 180_000, window: 200_000, percent: 90 }, rateLimits: [], changed: ['context' as const] }
+  // Where session s1's lines start, and what it reads n turns on in a calm zone.
+  const START = flavorStart('s1')
+  const calmLine = (zone: 'forge' | 'wilds', turns = 0, start = START) => bandLine({ zone, foes: { test: 'none', lint: 'none' }, hp: 80, mp: 57 }, start + turns)
+  // The band's first text: a Text keeps no key to find it by.
+  const lineOf = async (ui: { findAll: (query: { type: string }) => Promise<Array<{ text?: string }>> }) => (await ui.findAll({ type: 'Text' }))[0]?.text
+
+  for (const surface of ['terminal', 'desktop'] as const) {
+    test(`on ${surface}, the zone's first line, above the quest and the bars`, async ($, on) => {
+      engine(on)
+      await implementing($)
+      const ui = await $.ui.mount(band(surface))
+      const texts = await ui.findAll({ type: 'Text' })
+      expect(texts[0]?.text).toBe(calmLine('forge'))
+      expect(texts[1]?.text).toBe('⚔ gku:implement')
+      await ui.unmount()
+    })
+  }
+
+  test('drawn dim and cut short rather than wrapped', async ($, on) => {
+    engine(on)
+    await implementing($)
+    const ui = await $.ui.mount(band())
+    const line = (await ui.findAll({ type: 'Text' }))[0]
+    expect(line?.text).toBe(calmLine('forge'))
+    expect(line?.props.dimColor).toBe(true)
+    expect(line?.props.wrap).toBe('truncate-end')
+    await ui.unmount()
+  })
+
+  test('with no skill running, the Wilds speak, as the band\'s own label says', async ($, on) => {
+    engine(on)
+    await start($)
+    const ui = await $.ui.mount(band())
+    expect(await lineOf(ui)).toBe(calmLine('wilds'))
+    await ui.unmount()
+  })
+
+  test('a main turn moves it on; a subagent\'s turn does not', async ($, on) => {
+    engine(on)
+    await implementing($)
+    const ui = await $.ui.mount(band())
+    await $.turn.start({ text: 'explore', turnId: 'sub-1', agentId: 'a1' })
+    expect(await lineOf(ui)).toBe(calmLine('forge'))
+    await $.turn.start(go)
+    expect(await lineOf(ui)).toBe(calmLine('forge', 1))
+    await ui.unmount()
+  })
+
+  test('a tip takes its turn, and flavour the next', async ($, on) => {
+    engine(on)
+    await implementing($)
+    await $.session.measure(lowMp)
+    const ui = await $.ui.mount(band())
+    // s1 starts on an even step, a tip's own.
+    expect(START % 2).toBe(0)
+    expect(await lineOf(ui)).toContain('MP runs low')
+    await $.turn.start(go)
+    expect(FLAVOR.forge).toContain(await lineOf(ui) ?? '')
+    await $.turn.start({ ...go, turnId: 'turn-2' })
+    expect(await lineOf(ui)).toContain('MP runs low')
+    await ui.unmount()
+  })
+
+  test('a lost test run says so at once, between turns', async ($, on) => {
+    engine(on)
+    await implementing($)
+    const ui = await $.ui.mount(band())
+    world.bash = { error: '231 pass\n1 fail' }
+    await $.tool.call({ tool: 'Bash', command: 'npm test', description: '' }).catch(() => undefined)
+    expect(await lineOf(ui)).toBe('The monster stands until the tests pass.')
+    await ui.unmount()
+  })
+
+  test('it needs no timer: an idle band keeps its line, and no frame is drawn for it', { options: { graphics: 'cells' } }, async ($, on) => {
+    const clock = engine(on)
+    await implementing($)
+    const ui = await $.ui.mount(band())
+    const before = await lineOf(ui)
+    await clock.advance(120_000)
+    expect(await lineOf(ui)).toBe(before)
+    expect(world.bandBlits).toHaveLength(0)
+    expect(world.blits).toHaveLength(0)
+    await ui.unmount()
+  })
+
+  test('with no room for the portrait, no line either: the band stays its two rows', async ($, on) => {
+    engine(on)
+    await implementing($)
+    const ui = await $.ui.mount(band('terminal', 2))
+    const texts = await ui.findAll({ type: 'Text' })
+    expect(texts[0]?.text).toBe('⚔ gku:implement')
+    expect(texts.some(text => (FLAVOR.forge as readonly (string | undefined)[]).includes(text.text))).toBe(false)
+    await ui.unmount()
+  })
+
+  test('flavor = off: the band is as it was, with no tip either', { options: { flavor: 'off' } }, async ($, on) => {
+    engine(on)
+    await implementing($)
+    await $.session.measure(lowMp)
+    const ui = await $.ui.mount(band())
+    const texts = await ui.findAll({ type: 'Text' })
+    expect(texts[0]?.text).toBe('⚔ gku:implement')
+    expect(texts.some(text => text.text?.includes('MP runs low'))).toBe(false)
+    await ui.unmount()
+  })
+
+  test('a band drawn before session.start already opens on the session\'s own line', async ($, on) => {
+    engine(on)
+    const ui = await $.ui.mount(band())
+    expect(await lineOf(ui)).toBe(calmLine('wilds'))
+    expect(await lineOf(ui)).not.toBe(FLAVOR.wilds[0] ?? '')
+    await ui.unmount()
+  })
+
+  test('a new session starts its lines from its own place; a reload keeps its place', async ($, on) => {
+    engine(on)
+    await implementing($)
+    await $.turn.start(go)
+    await start($)
+    const kept = await $.ui.mount(band())
+    expect(await lineOf(kept)).toBe(calmLine('forge', 1))
+    await kept.unmount()
+    world.id = 's2'
+    await start($)
+    const fresh = await $.ui.mount(band())
+    expect(await lineOf(fresh)).toBe(calmLine('wilds', 0, flavorStart('s2')))
+    await fresh.unmount()
   })
 })

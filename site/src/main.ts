@@ -44,7 +44,7 @@ const slots: Slots = {
 const ANIM_MS = 250
 const isStill = matchMedia('(prefers-reduced-motion: reduce)').matches
 
-let sim = S.exampleSession({ detail: 'pane', bars: 'hpmp', avatar: 'wizard', graphics: 'auto' }, Date.now(), isStill)
+let sim = S.exampleSession({ detail: 'pane', bars: 'hpmp', avatar: 'wizard', flavor: 'on', graphics: 'auto' }, Date.now(), isStill)
 
 const redraw = (): void => drawAll(sim, slots, Date.now(), () => act(S.toggleTrivial))
 

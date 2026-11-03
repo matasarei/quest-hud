@@ -2,13 +2,14 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 
+import { FLAVOR } from '../../plugins/quest-hud/src/flavor'
 import { bandModel, hintText, TONE_COLOR } from '../../plugins/quest-hud/src/meters'
 import { TRANSITION_STEPS } from '../../plugins/quest-hud/src/scene'
 import { SESSION } from '../src/script'
 import * as S from '../src/session'
 
 const NOW = Date.parse('2026-11-03T10:00:00Z')
-const BASE: S.Settings = { detail: 'band', bars: 'hpmp', avatar: 'wizard', graphics: 'auto' }
+const BASE: S.Settings = { detail: 'band', bars: 'hpmp', avatar: 'wizard', flavor: 'on', graphics: 'auto' }
 const sim = (settings: Partial<S.Settings> = {}) => S.startSim({ ...BASE, ...settings })
 const text = (segments: ReadonlyArray<{ text: string }>) => segments.map(segment => segment.text).join('')
 
@@ -250,4 +251,32 @@ test('no two plays start alike, and spending shows on the bars', () => {
   assert.notEqual(low.cost, high.cost)
   const all = text(bandModel(null, [], S.metersOf(S.spend(high, () => 1), NOW), 'all', NOW).meters)
   assert.match(all, /⚡5h 38%.*◉ \$1\.45/)
+})
+
+test('the flavour line follows the zone, and off draws none', () => {
+  const forge = S.startSkill(sim(), 'gku:implement', NOW)
+  assert.equal(S.flavorOf(forge), FLAVOR.forge[0])
+  assert.equal(S.flavorOf(sim()), FLAVOR.wilds[0])
+  assert.equal(S.flavorOf(S.withSetting(forge, 'flavor', 'off')), undefined)
+})
+
+test('a turn moves the line on, and a tip takes every other one', () => {
+  const low = S.withMp(sim(), 10)
+  assert.match(S.flavorOf(low) ?? '', /MP runs low/)
+  assert.equal(S.flavorOf(S.nextTurn(low)), FLAVOR.wilds[1])
+  assert.match(S.flavorOf(S.nextTurn(S.nextTurn(low))) ?? '', /MP runs low/)
+})
+
+test('Play a session shows tips and flavour, changing as it goes', () => {
+  const lines = new Set<string>()
+  let s = S.startSim({ ...BASE, detail: 'pane' })
+  for (const beat of SESSION) {
+    s = beat.apply(s, NOW)
+    lines.add(S.flavorOf(s) ?? '')
+  }
+  const all = [...lines]
+  assert.ok(all.includes('The monster stands until the tests pass.'), all.join(' | '))
+  assert.ok(all.some(line => line.startsWith('MP runs low')), all.join(' | '))
+  assert.ok(all.some(line => line.startsWith('HP runs low')), all.join(' | '))
+  assert.ok(all.filter(line => FLAVOR.forge.includes(line) || FLAVOR.harbour.includes(line) || FLAVOR.wilds.includes(line)).length >= 3, all.join(' | '))
 })
