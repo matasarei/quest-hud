@@ -76,6 +76,8 @@ const help = (root: string): string =>
     '',
     '  "statusLine": { "type": "command", "command": "~/.claude/hud-line.sh" }',
     '',
+    'For the 5-hour window and the cost as well, end the command with --all.',
+    '',
     'It needs jq.',
   ].join('\n')
 

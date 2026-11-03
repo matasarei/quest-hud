@@ -244,7 +244,15 @@ Where the mod runs, `/quest-hud:statusline` prints both steps. Otherwise, copy
 It needs `jq`. HP appears only on a Pro, Max or Ultra subscription; MP is full until the first
 response reports the fill.
 
-HP is green, yellow below 40% and red below 20%, and MP is blue, in your terminal's 256 colours.
+To add the 5-hour window used and the session's cost, end the command with `--all`. The `bars`
+setting cannot reach this script, as it is copied out on its own:
+
+```
+♥▰▰▰▰▰▰▱▱▱▱ 62% ✦▰▰▰▰▰▰▱▱▱▱ 59% ⚡24% ◉$1.84
+```
+
+HP is green, yellow below 40% and red below 20%, MP is blue, and `--all`'s two are orange and
+gold, in your terminal's 256 colours.
 The `status` hint line takes no colours: Claude Code draws it dim.
 
 ## Art
