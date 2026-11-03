@@ -3,7 +3,8 @@
 // site/tests/smoke.sh, which serves _site/ and finds Chrome:
 //   node site/tests/browser.mjs <url> <chrome>
 // It waits on conditions rather than fixed times, so a slow machine is slower and
-// not flaky. The only real waits are for things that take time on the page itself.
+// not flaky. A check that something did not happen waits for a later beat of Play,
+// so the page's own time has passed however slow the machine is.
 import { spawn } from 'node:child_process'
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -131,9 +132,10 @@ await send('Page.addScriptToEvaluateOnNewDocument', { source: TIMERS })
 const load = async (width, height, reduced = false) => {
   await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false })
   await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: reduced ? 'reduce' : 'no-preference' }] })
+  // The old page is marked first: a reload has the same address, and it already says it is ready.
+  await ev('window.__leaving = true')
   await send('Page.navigate', { url })
-  await sleep(50)
-  await untilValue(() => ev(`document.documentElement.dataset.ready === 'yes' && location.href === ${JSON.stringify(url)}`), 'the page')
+  await untilValue(() => ev(`document.documentElement.dataset.ready === 'yes' && !window.__leaving`), 'the page')
 }
 
 const text = id => ev(`document.getElementById(${JSON.stringify(id)}).textContent`)
@@ -149,6 +151,8 @@ const timers = () => ev('[...window.__timers.values()]')
 const isPlaying = () => ev(`document.getElementById('play').textContent === 'Stop'`)
 
 const OPENING = 'The anvil is hot. Strike while it lasts.'
+/** Play's third beat: about 2.6 seconds of the page's own time in. */
+const LATER_BEAT = `document.getElementById('transcript').textContent.includes('> /gku:implement')`
 
 const section = async (name, run) => {
   try {
@@ -281,7 +285,6 @@ await section('Play a session', async () => {
     const found = /⚡5h (\d+)%.*◉ \$([\d.]+)/.exec(await text('band'))
     return [Number(found[1]), Number(found[2])]
   }
-  await sleep(100)
   const before = await figures()
   ok('a turn walks, on one timer at the mod\'s pace', await until(`window.__timers.size === 1 && [...window.__timers.values()][0] === 250`))
   const colours = new Set()
@@ -328,20 +331,24 @@ await section('stopping Play', async () => {
   await until(`document.getElementById('transcript').textContent.includes('Edited src/csv.ts')`)
   const calm = await ev(colours)
   await until(`document.getElementById('transcript').textContent.includes('$ npm test')`)
-  await sleep(500)
-  const fighting = await ev(colours)
+  const newColours = counts => Object.keys(counts).filter(colour => !calm[colour] && counts[colour] > 8)
+  const pixels = (counts, colours) => colours.reduce((sum, colour) => sum + (counts[colour] ?? 0), 0)
+  // The monster draws with the next frame: wait for it, rather than for a time.
+  const fighting = await untilValue(async () => {
+    const counts = await ev(colours)
+    return pixels(counts, newColours(counts)) > 200 ? counts : undefined
+  }, 'the monster')
   await click('play')
-  await sleep(100)
+  const monster = newColours(fighting)
+  ok('the fight shows a monster', pixels(fighting, monster) > 200)
   const stopped = await ev(colours)
-  const monster = Object.keys(fighting).filter(colour => !calm[colour] && fighting[colour] > 8)
-  const pixels = counts => monster.reduce((sum, colour) => sum + (counts[colour] ?? 0), 0)
-  ok('the fight shows a monster', pixels(fighting) > 200, String(pixels(fighting)))
-  ok('Stop clears it', pixels(stopped) < pixels(fighting) * 0.1, `${pixels(stopped)} of ${pixels(fighting)}`)
+  ok('Stop clears it', pixels(stopped, monster) < pixels(fighting, monster) * 0.1, `${pixels(stopped, monster)} of ${pixels(fighting, monster)}`)
 
   await load(1280, 800)
   await command('quests')
   await click('play')
-  await sleep(1500)
+  // This beat of Play comes after the herald would have returned.
+  ok('Play reaches its skill', await until(LATER_BEAT))
   ok('the herald stays out of a new session', !(await text('transcript')).includes('The board is posted'))
   await click('play')
 })
@@ -365,7 +372,8 @@ await section('layout', async () => {
 await section('reduced motion', async () => {
   await load(1280, 800, true)
   await click('play')
-  await sleep(1500)
+  // Claude has been working for a while by this beat of Play: a walk would have started.
+  ok('Play reaches its skill', await until(LATER_BEAT))
   ok('Play runs with no timer', (await isPlaying()) && (await ev('window.__mostTimers')) === 0)
   await click('play')
 })
