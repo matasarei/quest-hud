@@ -21,6 +21,8 @@ play. Quest HUD is a Claude Code mod that draws your session that way, above the
 
 - **♥ HP**: what is left of your weekly usage window. It turns yellow below 40% and red below 20%.
 - **✦ MP**: what is left of the context window.
+- **⚡**: what is left of your 5-hour window, and the time it resets, as `⚡30% · 14:30`. It shows
+  once it runs low (under 40% left, or less than HP) and takes HP's colours; `bars = all` shows it always.
 - **⚔ the quest**: the running skill, from any plugin, and its zone, with Claude Code's task list.
 - **The line above it**: a tip when this session calls for one, otherwise a word from the zone. It changes at each turn, and `flavor = off` removes it.
 
@@ -67,7 +69,7 @@ Run `/plugin configure quest-hud@quest-hud`, then `/reload-plugins`.
 | Option | Values | Default | What it does |
 |---|---|---|---|
 | `detail` | `off`, `status`, `band`, `pane` | `band` | nothing; dim bars on the hint line under the prompt (terminal only, so use `band` in the desktop app); the band above the prompt; or the band, with the Road opened when the session starts (placed from 144 columns) |
-| `bars` | `hpmp`, `all` | `hpmp` | `all` adds the 5-hour window (⚡) and the session cost (◉) |
+| `bars` | `hpmp`, `all` | `hpmp` | `hpmp` adds the 5-hour window (⚡) once it runs low; `all` shows it always, with the session cost (◉) |
 | `avatar` | `wizard`, `claude`, `octocat` | `wizard` | who the band's portrait shows: the wizard, Claude's mascot or GitHub's Octocat. The Road keeps its own cast |
 | `flavor` | `on`, `off` | `on` | one dim line above the quest on the band: a tip when this session calls for one (a standing monster, MP or HP below 20%), otherwise a word from the zone. It changes at each turn |
 | `zones` | `name=zone, …` | empty | extra skill-to-zone rules, e.g. `quest=forge, triage=map` |
@@ -262,15 +264,16 @@ Where the mod runs, `/quest-hud:statusline` prints both steps. Otherwise, copy
 It needs `jq`. HP appears only on a Pro, Max or Ultra subscription; MP is full until the first
 response reports the fill.
 
-To add the 5-hour window used and the session's cost, end the command with `--all`. The `bars`
-setting cannot reach this script, as it is copied out on its own:
+The 5-hour window left follows once it runs low, with the time it resets. To show it always, and
+the session's cost as well, end the command with `--all`. The `bars` setting cannot reach this
+script, as it is copied out on its own:
 
 ```
-♥▰▰▰▰▰▰▱▱▱▱ 62% ✦▰▰▰▰▰▰▱▱▱▱ 59% ⚡24% ◉$1.84
+♥▰▰▰▰▰▰▱▱▱▱ 62% ✦▰▰▰▰▰▰▱▱▱▱ 59% ⚡76% · 14:30 ◉$1.84
 ```
 
-HP is green, yellow below 40% and red below 20%, MP is blue, and `--all`'s two are orange and
-gold, in your terminal's 256 colours.
+HP and the 5-hour window are green, yellow below 40% and red below 20%, MP is blue, and the cost
+is gold, in your terminal's 256 colours.
 The `status` hint line takes no colours: Claude Code draws it dim.
 
 ## Art

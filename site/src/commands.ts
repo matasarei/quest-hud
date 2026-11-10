@@ -22,7 +22,7 @@ const statuslineText = (root: string): string =>
     '',
     '  "statusLine": { "type": "command", "command": "~/.claude/hud-line.sh" }',
     '',
-    'For the 5-hour window and the cost as well, end the command with --all.',
+    'The 5-hour window shows once it runs low. To show it always, and the cost as well, end the command with --all.',
     '',
     'It needs jq.',
   ].join('\n')
