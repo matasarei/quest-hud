@@ -178,6 +178,13 @@ describe('the level on the meters row', () => {
     expect(road(args({ meters, columns: used + 2 + 'Lv 8'.length - 1, level: CARD })).level).toBeUndefined()
   })
 
+  test('a row too wide for the pane draws the 5-hour window without its reset time', () => {
+    const meters = { window: 200_000, contextPercent: 43, weekUsed: 20, fiveHourUsed: 70, fiveHourResetsAt: '2026-11-01T12:00:00Z' }
+    const timed = cellWidth(road(args({ meters })).meters)
+    expect(road(args({ meters, columns: timed })).meters.at(-1)?.text).toContain(' · ')
+    expect(road(args({ meters, columns: timed - 1 })).meters.at(-1)?.text).toBe('   ⚡30%')
+  })
+
   test('the wider bars of `all` leave it less room', () => {
     const wide = road(args({ columns: width + 2 + 'Lv 8 Sage'.length, level: CARD, bars: 'all', meters: { window: 200_000, contextPercent: 43, weekUsed: 20, fiveHourUsed: 10, costUsd: 1.5 } }))
     expect(wide.level).not.toBe('Lv 8 Sage')

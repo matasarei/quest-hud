@@ -115,14 +115,14 @@ export const taskWindow = (tasks: readonly Task[], room: number): string[] => {
   return tasks.slice(start, start + size).map(task => `${mark(task)} ${cleanTitle(task.subject)}`)
 }
 
-const meterSegments = (meters: Meters | null, bars: Bars, now: number): Segment[] => {
+const meterSegments = (meters: Meters | null, bars: Bars, now: number, hasTime: boolean): Segment[] => {
   const segments: Segment[] = []
   const hp = hpLeft(meters)
   const mp = mpLeft(meters)
 
   if (hp !== undefined) segments.push({ text: `♥ ${bar(hp, BAR_WIDTH)} ${hp}%   `, tone: hpTone(hp) })
   segments.push({ text: `✦ ${bar(mp, BAR_WIDTH)} ${mp}%`, tone: 'mp' })
-  const five = fiveSegment(meters, bars, now)
+  const five = fiveSegment(meters, bars, now, hasTime)
   if (five) segments.push({ ...five, text: `   ${five.text}` })
   if (bars === 'all' && meters?.costUsd !== undefined) segments.push({ text: `   ◉ $${meters.costUsd.toFixed(2)}`, tone: 'gold' })
 
@@ -163,7 +163,9 @@ export const road = (args: RoadArgs): Road => {
     : []
 
   const art = hasScene ? roadArt({ ...args, columns }) : []
-  const meterRow = meterSegments(meters, bars, now)
+  // The row has no shorter forms: the 5-hour window's reset time goes where it does not fit, as on the band.
+  const timed = meterSegments(meters, bars, now, true)
+  const meterRow = cellWidth(timed) <= columns ? timed : meterSegments(meters, bars, now, false)
   const levelText = levelTag(args.level, meterRow, columns)
 
   return {
