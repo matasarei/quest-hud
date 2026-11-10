@@ -7,7 +7,7 @@
 # HP is green, yellow below 40% and red below 20%; MP is blue. The thresholds are
 # hpTone()'s in src/meters.ts, kept here since this file is copied out on its own,
 # and the 256-colour codes are the nearest to the mod's own colours.
-# The 5-hour window left follows, with the time it resets, as ⚡30% · 14:30, once
+# The 5-hour window left follows, with the time it resets, as ⏾30% · 14:30, once
 # it binds: under 40% left, or less left than HP. It takes HP's colours. With --all
 # it is always drawn, and the session's cost follows, as ◉$4.29: this file is copied
 # out on its own, so the mod's bars option cannot reach it. Claude Code drops a
@@ -49,7 +49,7 @@ jq -r --arg esc $'\033' --argjson all "$all" '
       | $five.used_percentage | figure | left
       | select($all or . < 40 or ($hp != null and . < $hp))
       | (($five.resets_at | numbers | " · \(clock)") // "") as $time
-      | hpcode as $code | "⚡\(.)%\($time)" | paint($code)),
+      | hpcode as $code | "⏾\(.)%\($time)" | paint($code)),
     (if $all then ((.cost.total_cost_usd)? | figure | "◉$\(money)" | paint(221)) else empty end)
   ] | join(" ")
 ' 2>/dev/null || true

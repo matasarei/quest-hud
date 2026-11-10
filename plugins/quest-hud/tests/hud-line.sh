@@ -46,7 +46,7 @@ fi
 
 got="$(bash "$script" --other --allow < "$here/statusline/all/subscriber.json" | tr '\033' '@')"
 case "$got" in
-  *⚡*|*◉*) echo "FAIL no --all: got '$got'"; failed=1 ;;
+  *⏾*|*◉*) echo "FAIL no --all: got '$got'"; failed=1 ;;
   *) echo "ok   no --all" ;;
 esac
 

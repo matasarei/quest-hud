@@ -192,12 +192,12 @@ await section('settings', async () => {
   ok('detail pane: the Road', await shown('#road img.picture'))
 
   await pick('bars', 'all')
-  ok('bars all: 5-hour left, its reset and the cost on the band', /⚡66% · \d\d:\d\d.*◉ ?\$1\.84/.test(await text('band')), await text('band'))
-  ok('bars all: on the status line too', /⚡66% · \d\d:\d\d ◉\$1\.84/.test(await text('status-line')), await text('status-line'))
+  ok('bars all: 5-hour left, its reset and the cost on the band', /⏾66% · \d\d:\d\d.*◉ ?\$1\.84/.test(await text('band')), await text('band'))
+  ok('bars all: on the status line too', /⏾66% · \d\d:\d\d ◉\$1\.84/.test(await text('status-line')), await text('status-line'))
   await pick('bars', 'hpmp')
-  ok('bars hpmp: neither', !/⚡|◉/.test((await text('band')) + (await text('status-line'))))
+  ok('bars hpmp: neither', !/⏾|◉/.test((await text('band')) + (await text('status-line'))))
   await slide('hp', 80)
-  ok('bars hpmp: the 5-hour window once it binds, below HP', /⚡66% · \d\d:\d\d/.test(await text('band')) && /⚡66% · \d\d:\d\d/.test(await text('status-line')), await text('band'))
+  ok('bars hpmp: the 5-hour window once it binds, below HP', /⏾66% · \d\d:\d\d/.test(await text('band')) && /⏾66% · \d\d:\d\d/.test(await text('status-line')), await text('band'))
   ok('bars hpmp: still no cost', !/◉/.test((await text('band')) + (await text('status-line'))))
   await slide('hp', 62)
 
@@ -304,7 +304,7 @@ await section('Play a session', async () => {
   })()`)
   await click('play')
   const figures = async () => {
-    const found = /⚡(\d+)%.*◉ ?\$([\d.]+)/.exec(await text('band'))
+    const found = /⏾(\d+)%.*◉ ?\$([\d.]+)/.exec(await text('band'))
     return [Number(found[1]), Number(found[2])]
   }
   const before = await figures()
@@ -320,7 +320,7 @@ await section('Play a session', async () => {
   ok('an MP tip', [...lines].some(line => line.startsWith('MP runs low')))
   ok('an HP tip', [...lines].some(line => line.startsWith('HP runs low')))
   ok('several lines', lines.size >= 8, String(lines.size))
-  ok('the status line agrees with the band', (await text('status-line')).includes(`⚡${after[0]}%`) && (await text('status-line')).includes(`◉$${after[1].toFixed(2)}`), await text('status-line'))
+  ok('the status line agrees with the band', (await text('status-line')).includes(`⏾${after[0]}%`) && (await text('status-line')).includes(`◉$${after[1].toFixed(2)}`), await text('status-line'))
   ok('one timer at most', (await ev('window.__mostTimers')) === 1)
   ok('at rest, no timer', await until('window.__timers.size === 0'))
   ok('the log has the fight and the loot', /tests lost/.test(await text('road')) && /loot/.test(await text('road')))
@@ -435,7 +435,7 @@ await section('the band in the room it has', async () => {
       ok(`${width} px, ${bars}: both percentages show`, /♥.*\d+%.*✦.*\d+%/.test(seen.bars), seen.bars)
       ok(`${width} px, ${bars}: nothing in the bars is cut`, seen.barsCut === 0, seen.bars)
       ok(`${width} px, ${bars}: only the task may be cut in the quest row`, seen.questCut === 0)
-      if (bars === 'all') ok(`${width} px: the 5-hour window and the cost stay`, /⚡.*◉/.test(seen.bars), seen.bars)
+      if (bars === 'all') ok(`${width} px: the 5-hour window and the cost stay`, /⏾.*◉/.test(seen.bars), seen.bars)
     }
   }
 

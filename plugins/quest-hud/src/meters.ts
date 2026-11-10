@@ -100,7 +100,8 @@ export const showsFive = (meters: Meters | null, bars: Bars, now: number): boole
 }
 
 /**
- * The 5-hour window as drawn, in HP's tones: `⚡30% · 14:30`, the reset as a clock
+ * The 5-hour window as drawn, in HP's tones: `⏾30% · 14:30`, the power sleep symbol, as
+ * even a wizard needs to rest; the reset as a clock
  * time, which stays right between draws where a countdown would freeze. Without
  * `hasTime`, or with no reset to come, the figure alone. Undefined when not drawn.
  */
@@ -111,7 +112,7 @@ export const fiveSegment = (meters: Meters | null, bars: Bars, now: number, hasT
   const resets = fiveResets(meters)
   const time = hasTime && resets > now ? ` · ${clockTime(resets)}` : ''
 
-  return { text: `⚡${left}%${time}`, tone: hpTone(left) }
+  return { text: `⏾${left}%${time}`, tone: hpTone(left) }
 }
 
 /** A bar of `width` cells, `left` percent of them full. */
@@ -164,9 +165,9 @@ export type Band = { head: Segment[]; meters: Segment[] }
 
 export const BAND_WIDTH = 14
 
-/** The cells a row takes: ⚡ is the one wide character the band's own words draw. */
+/** The cells a row takes: every character the band's own words draw is one cell wide, so none is an emoji. */
 export const cellWidth = (segments: readonly Segment[]): number =>
-  segments.reduce((sum, { text }) => sum + [...text].length + (text.match(/⚡/g)?.length ?? 0), 0)
+  segments.reduce((sum, { text }) => sum + [...text].length, 0)
 
 /** A form of the bars row. `notes` is what the words beside the bars say: all of it, in short, the heal time alone, or nothing. */
 type MeterForm = { barWidth: number; labels: boolean; notes: 'long' | 'short' | 'heals' | 'none'; gap: string }

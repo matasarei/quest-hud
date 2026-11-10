@@ -33,13 +33,13 @@ test('the sliders stay in range', () => {
 
 test('bars = all adds the 5-hour window left, its reset and the cost; hpmp, while it does not bind, neither', () => {
   const all = (bars: 'hpmp' | 'all') => text(bandModel(null, [], S.metersOf(sim(), NOW), bars, NOW).meters)
-  assert.doesNotMatch(all('hpmp'), /⚡|◉/)
-  assert.match(all('all'), /⚡66% · \d\d:\d\d.*◉ \$1\.84/)
+  assert.doesNotMatch(all('hpmp'), /⏾|◉/)
+  assert.match(all('all'), /⏾66% · \d\d:\d\d.*◉ \$1\.84/)
 })
 
 test('hpmp adds the 5-hour window once it binds', () => {
   const tight = text(bandModel(null, [], S.metersOf({ ...sim(), five: 70 }, NOW), 'hpmp', NOW).meters)
-  assert.match(tight, /⚡30% · \d\d:\d\d$/)
+  assert.match(tight, /⏾30% · \d\d:\d\d$/)
 })
 
 test('detail decides what is drawn, as a reloaded session would', () => {
@@ -255,7 +255,7 @@ test('no two plays start alike, and spending shows on the bars', () => {
   assert.notEqual(low.five, high.five)
   assert.notEqual(low.cost, high.cost)
   const all = text(bandModel(null, [], S.metersOf(S.spend(high, () => 1), NOW), 'all', NOW).meters)
-  assert.match(all, /⚡62% · \d\d:\d\d.*◉ \$1\.45/)
+  assert.match(all, /⏾62% · \d\d:\d\d.*◉ \$1\.45/)
 })
 
 test('the flavour line follows the zone, and off draws none', () => {

@@ -52,7 +52,7 @@ const fivePart = (window: unknown, hp: number | undefined, all: boolean): LinePa
   // The script's `clock`: a time outside year 0 to 9999 is unreadable, and the figure is drawn alone.
   const time = isNumber(resets) && resets >= 0 && resets < 253402300800 ? ` · ${clockTime(Math.floor(resets) * 1000)}` : ''
 
-  return [{ text: `⚡${five}%${time}`, code: hpCode(five) }]
+  return [{ text: `⏾${five}%${time}`, code: hpCode(five) }]
 }
 
 /** The line's parts, each with the 256-colour code it prints in; `all` is the script's --all. */
