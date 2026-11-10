@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { bandModel, bar, cellWidth, fromMeasure, healsIn, hintText, hpLeft, hpTone, mpLeft, shortTokens, statusText, TONE_COLOR, ZONE_MEANING, zoneLine } from '../src/meters'
+import { clockTime } from '../src/log'
+import { bandModel, bar, cellWidth, fiveLeft, fiveSegment, fromMeasure, healsIn, hintText, hpLeft, hpTone, mpLeft, shortTokens, showsFive, statusText, TONE_COLOR, ZONE_MEANING, zoneLine } from '../src/meters'
 import type { Meters, Quest, Task } from '../types'
 
 const NOW = Date.parse('2026-11-01T10:00:00Z')
@@ -86,6 +87,91 @@ describe('hpTone', () => {
     expect(colors.every(color => color !== undefined)).toBe(true)
     expect(new Set(colors).size).toBe(3)
   })
+})
+
+describe('the 5-hour window', () => {
+  const LATER = NOW + 150 * 60_000
+  const RESETS = new Date(LATER).toISOString()
+  const five = (fiveHourUsed: number, weekUsed?: number, fiveHourResetsAt: string | null = RESETS): Meters => ({
+    window: 200_000,
+    fiveHourUsed,
+    ...(fiveHourResetsAt === null ? {} : { fiveHourResetsAt }),
+    ...(weekUsed === undefined ? {} : { weekUsed }),
+  })
+
+  test('what is left, rounded as HP is, and clamped', () => {
+    expect(fiveLeft(five(23.5), NOW)).toBe(77)
+    expect(fiveLeft(five(104), NOW)).toBe(0)
+  })
+
+  test('no window is undefined, not full', () => {
+    expect(fiveLeft(null, NOW)).toBeUndefined()
+    expect(fiveLeft({ window: 1, weekUsed: 10 }, NOW)).toBeUndefined()
+  })
+
+  test('a reset already passed is a full window, whatever the last measure said', () => {
+    expect(fiveLeft(five(92), LATER)).toBe(100)
+    expect(fiveLeft(five(92), LATER + 1)).toBe(100)
+    expect(fiveLeft(five(92), LATER - 1)).toBe(8)
+  })
+
+  test('a reset that cannot be read, or none, leaves the figure as measured', () => {
+    expect(fiveLeft(five(92, undefined, 'soon'), NOW)).toBe(8)
+    expect(fiveLeft(five(92, undefined, null), NOW)).toBe(8)
+  })
+
+  const shows = [
+    ['all, plenty left', five(10, 38), 'all', true],
+    ['hpmp, more left than HP', five(23.5, 38), 'hpmp', false],
+    ['hpmp, as much left as HP', five(38, 38), 'hpmp', false],
+    ['hpmp, less left than HP', five(39, 38), 'hpmp', true],
+    ['hpmp, HP full, 5-hour full', five(0, 0), 'hpmp', false],
+    ['hpmp, HP full, 99 left: tighter than HP', five(1, 0), 'hpmp', true],
+    ['hpmp, HP 20, 39 left: under 40', five(61, 80), 'hpmp', true],
+    ['hpmp, no HP, 40 left', five(60), 'hpmp', false],
+    ['hpmp, no HP, 39 left', five(61), 'hpmp', true],
+    ['all, no window', { window: 1, weekUsed: 38 }, 'all', false],
+  ] as const
+
+  for (const [name, meters, bars, expected] of shows) {
+    test(`${name}: ${expected ? 'drawn' : 'not drawn'}`, () => {
+      expect(showsFive(meters, bars, NOW)).toBe(expected)
+    })
+  }
+
+  test('hpmp lets it go once its reset has passed', () => {
+    expect(showsFive(five(92, 38), 'hpmp', NOW)).toBe(true)
+    expect(showsFive(five(92, 38), 'hpmp', LATER)).toBe(false)
+  })
+
+  test('the figure and the clock time it resets', () => {
+    expect(fiveSegment(five(70), 'hpmp', NOW)).toEqual({ text: `⚡30% · ${clockTime(LATER)}`, tone: 'hpLow' })
+  })
+
+  test('without the time where there is no room, or no reset to come', () => {
+    expect(fiveSegment(five(70), 'hpmp', NOW, false)?.text).toBe('⚡30%')
+    expect(fiveSegment(five(70, undefined, null), 'hpmp', NOW)?.text).toBe('⚡30%')
+    expect(fiveSegment(five(70, undefined, 'soon'), 'hpmp', NOW)?.text).toBe('⚡30%')
+    expect(fiveSegment(five(92), 'all', LATER)).toEqual({ text: '⚡100%', tone: 'hp' })
+  })
+
+  test('not drawn is undefined', () => {
+    expect(fiveSegment(five(10, 38), 'hpmp', NOW)).toBeUndefined()
+    expect(fiveSegment(null, 'all', NOW)).toBeUndefined()
+  })
+
+  const tones = [
+    [60, 'hp'],
+    [61, 'hpLow'],
+    [80, 'hpLow'],
+    [81, 'hpCritical'],
+  ] as const
+
+  for (const [used, tone] of tones) {
+    test(`${100 - used}% left is ${tone}, as HP would be`, () => {
+      expect(fiveSegment(five(used), 'all', NOW)?.tone).toBe(tone)
+    })
+  }
 })
 
 describe('bar', () => {
