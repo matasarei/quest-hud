@@ -147,14 +147,14 @@ describe('the 5-hour window', () => {
   })
 
   test('the figure and the clock time it resets', () => {
-    expect(fiveSegment(five(70), 'hpmp', NOW)).toEqual({ text: `⏾30% · ${clockTime(LATER)}`, tone: 'hpLow' })
+    expect(fiveSegment(five(70), 'hpmp', NOW)).toEqual({ text: `⏾ 30% · ${clockTime(LATER)}`, tone: 'hpLow' })
   })
 
   test('without the time where there is no room, or no reset to come', () => {
-    expect(fiveSegment(five(70), 'hpmp', NOW, false)?.text).toBe('⏾30%')
-    expect(fiveSegment(five(70, undefined, null), 'hpmp', NOW)?.text).toBe('⏾30%')
-    expect(fiveSegment(five(70, undefined, 'soon'), 'hpmp', NOW)?.text).toBe('⏾30%')
-    expect(fiveSegment(five(92), 'all', LATER)).toEqual({ text: '⏾100%', tone: 'hp' })
+    expect(fiveSegment(five(70), 'hpmp', NOW, false)?.text).toBe('⏾ 30%')
+    expect(fiveSegment(five(70, undefined, null), 'hpmp', NOW)?.text).toBe('⏾ 30%')
+    expect(fiveSegment(five(70, undefined, 'soon'), 'hpmp', NOW)?.text).toBe('⏾ 30%')
+    expect(fiveSegment(five(92), 'all', LATER)).toEqual({ text: '⏾ 100%', tone: 'hp' })
   })
 
   test('not drawn is undefined', () => {
@@ -251,7 +251,7 @@ describe('bandModel', () => {
 
   test('bars = all adds the 5-hour window left, the time it resets, and the cost', () => {
     const band = bandModel(quest, [], fromMeasure(SUBSCRIBER), 'all', NOW)
-    expect(text(band.meters).endsWith(`   ⏾77% · ${RESET}   ◉ $1.84`)).toBe(true)
+    expect(text(band.meters).endsWith(`   ⏾ 77% · ${RESET}   ◉ $1.84`)).toBe(true)
   })
 
   test('hpmp leaves the 5-hour window out while HP is the tighter one', () => {
@@ -261,7 +261,7 @@ describe('bandModel', () => {
   test('hpmp adds it once it binds, in HP\'s tones, and never the cost', () => {
     const tight = { ...fromMeasure(SUBSCRIBER), fiveHourUsed: 70 }
     const meters = bandModel(quest, [], tight, 'hpmp', NOW).meters
-    expect(text(meters).endsWith(`ctx · 82k/200k   ⏾30% · ${RESET}`)).toBe(true)
+    expect(text(meters).endsWith(`ctx · 82k/200k   ⏾ 30% · ${RESET}`)).toBe(true)
     expect(meters[meters.length - 1]?.tone).toBe('hpLow')
   })
 
@@ -306,13 +306,13 @@ describe('hintText', () => {
 
   test('all adds the 5-hour window left and the cost at the end; hpmp, while it does not bind, neither', () => {
     const meters = { window: 200_000, contextPercent: 0, fiveHourUsed: 12, costUsd: 1.5 }
-    expect(hintText(null, [], meters, 'all', NOW)).toBe('✦▰▰▰▰▰▰▰▰▰▰ 100% ⏾88% ◉$1.50')
+    expect(hintText(null, [], meters, 'all', NOW)).toBe('✦▰▰▰▰▰▰▰▰▰▰ 100% ⏾ 88% ◉$1.50')
     expect(hintText(null, [], meters, 'hpmp', NOW)).toBe('✦▰▰▰▰▰▰▰▰▰▰ 100%')
   })
 
   test('hpmp adds the 5-hour window once it binds, with the time it resets', () => {
     const meters = { window: 200_000, contextPercent: 0, fiveHourUsed: 70, fiveHourResetsAt: '2026-11-01T12:00:00Z', costUsd: 1.5 }
-    expect(hintText(null, [], meters, 'hpmp', NOW)).toBe(`✦▰▰▰▰▰▰▰▰▰▰ 100% ⏾30% · ${RESET}`)
+    expect(hintText(null, [], meters, 'hpmp', NOW)).toBe(`✦▰▰▰▰▰▰▰▰▰▰ 100% ⏾ 30% · ${RESET}`)
   })
 })
 
@@ -327,7 +327,7 @@ describe('statusText', () => {
 
   test('bars = all adds the 5-hour window and the cost', () => {
     const meters: Meters = { window: 1, contextPercent: 0, fiveHourUsed: 9.6, costUsd: 0.5 }
-    expect(statusText(null, [], meters, 'all', NOW)).toBe('✦▰▰▰▰▰▰▰▰▰▰ 100% ⏾90% ◉$0.50')
+    expect(statusText(null, [], meters, 'all', NOW)).toBe('✦▰▰▰▰▰▰▰▰▰▰ 100% ⏾ 90% ◉$0.50')
   })
 })
 
@@ -353,7 +353,7 @@ describe('the bars row in the room it has', () => {
     [41, '♥ HP ██████░░░░ 62%   ✦ MP ██████░░░░ 59%'],
     [30, '♥ █████░░░ 62%  ✦ █████░░░ 59%'],
     [22, '♥ ██░░ 62%  ✦ ██░░ 59%'],
-    [12, '♥ 62%  ✦ 59%'],
+    [11, '♥ 62% ✦ 59%'],
   ] as const
 
   forms.forEach(([room, expected], i) => {
@@ -376,30 +376,31 @@ describe('the bars row in the room it has', () => {
   })
 
   test('with less room than the figures need, still the figures', () => {
-    expect(text(row(5))).toBe('♥ 62%  ✦ 59%')
-    expect(text(row(0))).toBe('♥ 62%  ✦ 59%')
-    expect(text(row(-3))).toBe('♥ 62%  ✦ 59%')
+    expect(text(row(5))).toBe('♥ 62% ✦ 59%')
+    expect(text(row(0))).toBe('♥ 62% ✦ 59%')
+    expect(text(row(-3))).toBe('♥ 62% ✦ 59%')
   })
 
   test('bars = all: the full words only in the full form, then the short ones to the end', () => {
-    expect(text(row(111, 'all')).endsWith(`ctx · 82k/200k   ⏾77% · ${RESET}   ◉ $1.84`)).toBe(true)
-    expect(cellWidth(row(111, 'all'))).toBe(111)
-    expect(text(row(110, 'all'))).toBe(`♥ HP █████████░░░░░ 62% heals 2d 4h   ✦ MP ████████░░░░░░ 59% 82k/200k  ⏾77% · ${RESET}  ◉$1.84`)
-    expect(text(row(56, 'all'))).toBe('♥ HP ██████░░░░ 62%   ✦ MP ██████░░░░ 59%  ⏾77%  ◉$1.84')
-    expect(text(row(27, 'all'))).toBe('♥ 62%  ✦ 59%  ⏾77%  ◉$1.84')
+    expect(text(row(112, 'all')).endsWith(`ctx · 82k/200k   ⏾ 77% · ${RESET}   ◉ $1.84`)).toBe(true)
+    expect(cellWidth(row(112, 'all'))).toBe(112)
+    expect(text(row(111, 'all'))).toBe(`♥ HP █████████░░░░░ 62% heals 2d 4h   ✦ MP ████████░░░░░░ 59% 82k/200k  ⏾ 77% · ${RESET}  ◉$1.84`)
+    expect(text(row(56, 'all'))).toBe('♥ HP ██████░░░░ 62%   ✦ MP ██████░░░░ 59%  ⏾ 77%  ◉$1.84')
+    expect(text(row(24, 'all'))).toBe('♥ 62% ✦ 59% ⏾ 77% ◉$1.84')
+    expect(cellWidth(row(24, 'all'))).toBe(24)
   })
 
   test('the reset time stays while the row has words, and goes with them', () => {
     const tight = { ...measured, fiveHourUsed: 92 }
-    expect(text(row(67, 'hpmp', tight))).toBe(`♥ HP ██████░░░░ 62% heals 2d 4h   ✦ MP ██████░░░░ 59%  ⏾8% · ${RESET}`)
-    expect(text(row(48, 'hpmp', tight))).toBe('♥ HP ██████░░░░ 62%   ✦ MP ██████░░░░ 59%  ⏾8%')
-    expect(text(row(18, 'hpmp', tight))).toBe('♥ 62%  ✦ 59%  ⏾8%')
+    expect(text(row(67, 'hpmp', tight))).toBe(`♥ HP ██████░░░░ 62% heals 2d 4h   ✦ MP ██████░░░░ 59%  ⏾ 8% · ${RESET}`)
+    expect(text(row(48, 'hpmp', tight))).toBe('♥ HP ██████░░░░ 62%   ✦ MP ██████░░░░ 59%  ⏾ 8%')
+    expect(text(row(16, 'hpmp', tight))).toBe('♥ 62% ✦ 59% ⏾ 8%')
   })
 
   test('⏾ takes one cell: no character the row draws is an emoji', () => {
-    expect(cellWidth([{ text: '⏾5h', tone: 'hp' }])).toBe(3)
+    expect(cellWidth([{ text: '⏾ 5h', tone: 'hp' }])).toBe(4)
     expect(cellWidth([{ text: '♥ █░', tone: 'hp' }, { text: ' 62%', tone: 'hp' }])).toBe(8)
-    expect(cellWidth(row(84, 'all'))).toBe(84)
+    expect(cellWidth(row(85, 'all'))).toBe(85)
   })
 
   test('no HP: the MP row takes the room, and its token count stays longer', () => {

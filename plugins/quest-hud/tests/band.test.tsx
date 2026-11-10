@@ -209,7 +209,7 @@ describe('the band', () => {
     session.rateLimits = [week, { kind: 'five_hour', percentUsed: 92, resetsAt: '2026-11-01T12:00:00Z' }]
     const tight = await $.ui.mount(band('terminal'))
     const five = await tight.find({ type: 'Text', text: /⏾/ })
-    expect(five?.text).toMatch(/^ +⏾8% · \d\d:\d\d$/)
+    expect(five?.text).toMatch(/^ +⏾ 8% · \d\d:\d\d$/)
     expect(five?.props.color).toBe(TONE_COLOR.hpCritical)
     await tight.unmount()
   })

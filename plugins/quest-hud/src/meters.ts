@@ -100,7 +100,7 @@ export const showsFive = (meters: Meters | null, bars: Bars, now: number): boole
 }
 
 /**
- * The 5-hour window as drawn, in HP's tones: `⏾30% · 14:30`, the power sleep symbol, as
+ * The 5-hour window as drawn, in HP's tones: `⏾ 30% · 14:30`, the power sleep symbol, as
  * even a wizard needs to rest; the reset as a clock
  * time, which stays right between draws where a countdown would freeze. Without
  * `hasTime`, or with no reset to come, the figure alone. Undefined when not drawn.
@@ -112,7 +112,7 @@ export const fiveSegment = (meters: Meters | null, bars: Bars, now: number, hasT
   const resets = fiveResets(meters)
   const time = hasTime && resets > now ? ` · ${clockTime(resets)}` : ''
 
-  return { text: `⏾${left}%${time}`, tone: hpTone(left) }
+  return { text: `⏾ ${left}%${time}`, tone: hpTone(left) }
 }
 
 /** A bar of `width` cells, `left` percent of them full. */
@@ -170,9 +170,10 @@ export const cellWidth = (segments: readonly Segment[]): number =>
   segments.reduce((sum, { text }) => sum + [...text].length, 0)
 
 /** A form of the bars row. `notes` is what the words beside the bars say: all of it, in short, the heal time alone, or nothing. */
-type MeterForm = { barWidth: number; labels: boolean; notes: 'long' | 'short' | 'heals' | 'none'; gap: string }
+type MeterForm = { barWidth: number; labels: boolean; notes: 'long' | 'short' | 'heals' | 'none'; gap: string; extraGap: string }
 
-const FIGURES: MeterForm = { barWidth: 0, labels: false, notes: 'none', gap: '  ' }
+/** The figures alone, at their tightest: one space between pieces, and every glyph still keeps its own. */
+const FIGURES: MeterForm = { barWidth: 0, labels: false, notes: 'none', gap: ' ', extraGap: ' ' }
 
 /**
  * Widest first, and the first that fits is drawn: the words go, then the bars
@@ -180,19 +181,19 @@ const FIGURES: MeterForm = { barWidth: 0, labels: false, notes: 'none', gap: '  
  * heal time, as the MP bar says what is left and nothing else says when HP returns.
  */
 const METER_FORMS: readonly MeterForm[] = [
-  { barWidth: BAND_WIDTH, labels: true, notes: 'long', gap: '   ' },
-  { barWidth: BAND_WIDTH, labels: true, notes: 'short', gap: '   ' },
-  { barWidth: 10, labels: true, notes: 'short', gap: '   ' },
-  { barWidth: 10, labels: true, notes: 'heals', gap: '   ' },
-  { barWidth: 10, labels: true, notes: 'none', gap: '   ' },
-  { barWidth: 8, labels: false, notes: 'none', gap: '  ' },
-  { barWidth: 4, labels: false, notes: 'none', gap: '  ' },
+  { barWidth: BAND_WIDTH, labels: true, notes: 'long', gap: '   ', extraGap: '   ' },
+  { barWidth: BAND_WIDTH, labels: true, notes: 'short', gap: '   ', extraGap: '  ' },
+  { barWidth: 10, labels: true, notes: 'short', gap: '   ', extraGap: '  ' },
+  { barWidth: 10, labels: true, notes: 'heals', gap: '   ', extraGap: '  ' },
+  { barWidth: 10, labels: true, notes: 'none', gap: '   ', extraGap: '  ' },
+  { barWidth: 8, labels: false, notes: 'none', gap: '  ', extraGap: '  ' },
+  { barWidth: 4, labels: false, notes: 'none', gap: '  ', extraGap: '  ' },
   FIGURES,
 ]
 
 /** The bars row in one form. */
 const meterRow = (form: MeterForm, meters: Meters | null, bars: Bars, now: number): Segment[] => {
-  const { barWidth, labels, notes, gap } = form
+  const { barWidth, labels, notes, gap, extraGap } = form
   const gauge = (glyph: string, name: string, left: number, tone: Tone): Segment[] => [
     { text: `${glyph}${labels ? ` ${name}` : ''}${barWidth > 0 ? ' ' : ''}`, tone },
     { text: bar(left, barWidth), tone },
@@ -218,11 +219,11 @@ const meterRow = (form: MeterForm, meters: Meters | null, bars: Bars, now: numbe
 
   // The reset time goes with the words: a form that keeps none draws the figure alone.
   const five = fiveSegment(meters, bars, now, notes !== 'none')
-  if (five) row.push({ ...five, text: `${notes === 'long' ? '   ' : '  '}${five.text}` })
+  if (five) row.push({ ...five, text: `${extraGap}${five.text}` })
 
   if (bars === 'all' && meters?.costUsd !== undefined) {
     const cost = meters.costUsd.toFixed(2)
-    row.push({ text: notes === 'long' ? `   ◉ $${cost}` : `  ◉$${cost}`, tone: 'gold' })
+    row.push({ text: notes === 'long' ? `${extraGap}◉ $${cost}` : `${extraGap}◉$${cost}`, tone: 'gold' })
   }
 
   return row.filter(segment => segment.text !== '')
