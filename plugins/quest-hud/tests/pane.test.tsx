@@ -945,7 +945,7 @@ describe('the band\'s flavour line', () => {
   const lowMp = { context: { tokens: 180_000, window: 200_000, percent: 90 }, rateLimits: [], changed: ['context' as const] }
   // Where session s1's lines start, and what it reads n turns on in a calm zone.
   const START = flavorStart('s1')
-  const calmLine = (zone: 'forge' | 'wilds', turns = 0, start = START) => bandLine({ zone, foes: { test: 'none', lint: 'none' }, hp: 80, mp: 57 }, start + turns)
+  const calmLine = (zone: 'forge' | 'wilds', turns = 0, start = START) => bandLine({ zone, foes: { test: 'none', lint: 'none' }, hp: 80, mp: 57, five: undefined }, start + turns)
   // The band's first text: a Text keeps no key to find it by.
   const lineOf = async (ui: { findAll: (query: { type: string }) => Promise<Array<{ text?: string }>> }) => (await ui.findAll({ type: 'Text' }))[0]?.text
 

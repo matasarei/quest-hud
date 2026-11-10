@@ -212,7 +212,7 @@ export const nextTurn = (sim: Sim): Sim => ({ ...sim, flavorStep: sim.flavorStep
 /** The band's flavour line, from the zone its own label names; none when the setting is off. */
 export const flavorOf = (sim: Sim): string | undefined =>
   sim.settings.flavor === 'on'
-    ? bandLine({ zone: sim.quest?.zone ?? 'wilds', foes: sim.foes, hp: sim.hp, mp: sim.mp }, sim.flavorStep)
+    ? bandLine({ zone: sim.quest?.zone ?? 'wilds', foes: sim.foes, hp: sim.hp, mp: sim.mp, five: 100 - sim.five }, sim.flavorStep)
     : undefined
 
 /** `TaskCreate`. */
