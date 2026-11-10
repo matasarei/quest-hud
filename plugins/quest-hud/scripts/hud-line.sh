@@ -36,7 +36,8 @@ jq -r --arg esc $'\033' --argjson all "$all" '
   def paint($code): "\($esc)[38;5;\($code)m\(.)\($esc)[0m";
   def hpcode: if . < 20 then 203 elif . < 40 then 221 else 78 end;
   def figure: select(type == "number" and . >= 0);
-  def clock: floor | strflocaltime("%H:%M");
+  # jq aborts on a time past year 9999, which would blank the whole line: such a reset is unreadable.
+  def clock: select(. >= 0 and . < 253402300800) | floor | strflocaltime("%H:%M");
   def money: (. * 100 | round) as $cents
     | "\($cents / 100 | floor).\($cents % 100 | if . < 10 then "0\(.)" else "\(.)" end)";
 

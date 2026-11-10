@@ -49,7 +49,8 @@ const fivePart = (window: unknown, hp: number | undefined, all: boolean): LinePa
   if (!all && five >= 40 && (hp === undefined || five >= hp)) return []
 
   const resets = isObject(window) ? window.resets_at : undefined
-  const time = isNumber(resets) ? ` · ${clockTime(Math.floor(resets) * 1000)}` : ''
+  // The script's `clock`: a time outside year 0 to 9999 is unreadable, and the figure is drawn alone.
+  const time = isNumber(resets) && resets >= 0 && resets < 253402300800 ? ` · ${clockTime(Math.floor(resets) * 1000)}` : ''
 
   return [{ text: `⚡${five}%${time}`, code: hpCode(five) }]
 }
