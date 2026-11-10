@@ -27,7 +27,9 @@ export type Meters = {
   /** Percent used of the 7-day window; absent when the account reports none. */
   weekUsed?: number
   weekResetsAt?: string
+  /** Percent used of the 5-hour window; absent when the account reports none. */
   fiveHourUsed?: number
+  fiveHourResetsAt?: string
   costUsd?: number
 }
 

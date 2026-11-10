@@ -27,7 +27,7 @@ describe('fromMeasure', () => {
   test('reads the context, both windows and the cost', () => {
     expect(fromMeasure(SUBSCRIBER)).toEqual({
       contextPercent: 41, contextTokens: 82_000, window: 200_000,
-      weekUsed: 38, weekResetsAt: '2026-11-03T14:00:00Z', fiveHourUsed: 23.5, costUsd: 1.844,
+      weekUsed: 38, weekResetsAt: '2026-11-03T14:00:00Z', fiveHourUsed: 23.5, fiveHourResetsAt: '2026-11-01T12:00:00Z', costUsd: 1.844,
     })
   })
 

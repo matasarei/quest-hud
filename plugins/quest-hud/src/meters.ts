@@ -52,6 +52,7 @@ export const fromMeasure = (usage: UsageLike): Meters => {
   if (week) meters.weekUsed = week.percentUsed
   if (week?.resetsAt !== undefined) meters.weekResetsAt = week.resetsAt
   if (fiveHour) meters.fiveHourUsed = fiveHour.percentUsed
+  if (fiveHour?.resetsAt !== undefined) meters.fiveHourResetsAt = fiveHour.resetsAt
   if (usage.cost) meters.costUsd = usage.cost.usd
 
   return meters
