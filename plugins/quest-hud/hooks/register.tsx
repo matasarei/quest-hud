@@ -107,7 +107,7 @@ async function statusLines($: EngineInterface): Promise<string> {
   const list = await read($, tasks)
 
   return [
-    statusText(current, list, await currentMeters($), 'all'),
+    statusText(current, list, await currentMeters($), 'all', await $.clock.now()),
     `  ${zoneLine(current?.zone ?? 'wilds')}`,
     ...list.map(task => `  ${task.status === 'completed' ? '✓' : task.status === 'in_progress' ? '▸' : '·'} ${cleanTitle(task.subject)}`),
   ].join('\n')
@@ -829,7 +829,7 @@ export const register: Register = (on, options) => {
   on('ui.render', { component: 'PromptHint' }, async ($, e, next) => {
     if (detail !== 'status' || (await read($, hidden))) return next(e)
 
-    const text = hintText(await read($, quest), await read($, tasks), await currentMeters($), bars)
+    const text = hintText(await read($, quest), await read($, tasks), await currentMeters($), bars, await $.clock.now())
 
     return next({ ...e, props: { ...e.props, tail: e.props.tail === undefined ? text : `${e.props.tail} ${text}` } })
   }).catch(($, e, next) => next(e))

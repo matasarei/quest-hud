@@ -29,7 +29,7 @@ const statuslineText = (root: string): string =>
 
 const statusAnswer = (sim: Sim, now: number): string =>
   [
-    statusText(sim.quest, sim.tasks, metersOf(sim, now), 'all'),
+    statusText(sim.quest, sim.tasks, metersOf(sim, now), 'all', now),
     `  ${zoneLine(sim.quest?.zone ?? 'wilds')}`,
     ...sim.tasks.map(task => `  ${task.status === 'completed' ? '✓' : task.status === 'in_progress' ? '▸' : '·'} ${cleanTitle(task.subject)}`),
   ].join('\n')

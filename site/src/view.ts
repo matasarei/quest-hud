@@ -64,7 +64,7 @@ const drawBandSlot = (sim: Sim, slots: Slots, now: number): void => {
 }
 
 const drawHint = (sim: Sim, slot: HTMLElement, now: number): void => {
-  const tail = hasHint(sim) ? ` ${hintText(sim.quest, sim.tasks, metersOf(sim, now), sim.settings.bars)}` : ''
+  const tail = hasHint(sim) ? ` ${hintText(sim.quest, sim.tasks, metersOf(sim, now), sim.settings.bars, now)}` : ''
   slot.textContent = `${ENGINE_HINT}${tail}`
 }
 

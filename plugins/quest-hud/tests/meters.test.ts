@@ -241,7 +241,7 @@ describe('bandModel', () => {
   })
 
   test('the status line with no skill shows the task count alone', () => {
-    expect(statusText(null, tasks, null, 'hpmp')).toBe('task 1/3 ✦▰▰▰▰▰▰▰▰▰▰ 100%')
+    expect(statusText(null, tasks, null, 'hpmp', NOW)).toBe('task 1/3 ✦▰▰▰▰▰▰▰▰▰▰ 100%')
   })
 
   test('tasks with none in progress: the count and no subject', () => {
@@ -293,36 +293,41 @@ describe('hintText', () => {
 
   test('the bars come first, then the quest with its progress', () => {
     const tasks = [{ id: 'a', subject: 'x', status: 'completed' as const }, { id: 'b', subject: 'y', status: 'pending' as const }]
-    expect(hintText(quest, tasks, fromMeasure(SUBSCRIBER), 'hpmp')).toMatch(/^♥[▰▱]{10} \d+% ✦[▰▱]{10} \d+% ⚔ gku:implement 1\/2$/)
+    expect(hintText(quest, tasks, fromMeasure(SUBSCRIBER), 'hpmp', NOW)).toMatch(/^♥[▰▱]{10} \d+% ✦[▰▱]{10} \d+% ⚔ gku:implement 1\/2$/)
   })
 
   test('before any figures: a full MP, and no quest or tasks', () => {
-    expect(hintText(null, [], null, 'hpmp')).toBe('✦▰▰▰▰▰▰▰▰▰▰ 100%')
+    expect(hintText(null, [], null, 'hpmp', NOW)).toBe('✦▰▰▰▰▰▰▰▰▰▰ 100%')
   })
 
   test('tasks with no quest are counted after the bars', () => {
-    expect(hintText(null, [{ id: 'a', subject: 'x', status: 'pending' }], null, 'hpmp')).toBe('✦▰▰▰▰▰▰▰▰▰▰ 100% task 0/1')
+    expect(hintText(null, [{ id: 'a', subject: 'x', status: 'pending' }], null, 'hpmp', NOW)).toBe('✦▰▰▰▰▰▰▰▰▰▰ 100% task 0/1')
   })
 
-  test('all adds the 5-hour window and the cost at the end; hpmp does not', () => {
+  test('all adds the 5-hour window left and the cost at the end; hpmp, while it does not bind, neither', () => {
     const meters = { window: 200_000, contextPercent: 0, fiveHourUsed: 12, costUsd: 1.5 }
-    expect(hintText(null, [], meters, 'all')).toBe('✦▰▰▰▰▰▰▰▰▰▰ 100% ⚡12% ◉$1.50')
-    expect(hintText(null, [], meters, 'hpmp')).toBe('✦▰▰▰▰▰▰▰▰▰▰ 100%')
+    expect(hintText(null, [], meters, 'all', NOW)).toBe('✦▰▰▰▰▰▰▰▰▰▰ 100% ⚡88% ◉$1.50')
+    expect(hintText(null, [], meters, 'hpmp', NOW)).toBe('✦▰▰▰▰▰▰▰▰▰▰ 100%')
+  })
+
+  test('hpmp adds the 5-hour window once it binds, with the time it resets', () => {
+    const meters = { window: 200_000, contextPercent: 0, fiveHourUsed: 70, fiveHourResetsAt: '2026-11-01T12:00:00Z', costUsd: 1.5 }
+    expect(hintText(null, [], meters, 'hpmp', NOW)).toBe(`✦▰▰▰▰▰▰▰▰▰▰ 100% ⚡30% · ${RESET}`)
   })
 })
 
 describe('statusText', () => {
   test('one line with the quest, the count and both bars', () => {
-    expect(statusText(quest, tasks, fromMeasure(SUBSCRIBER), 'hpmp')).toBe('⚔ gku:implement 1/3 ♥▰▰▰▰▰▰▱▱▱▱ 62% ✦▰▰▰▰▰▰▱▱▱▱ 59%')
+    expect(statusText(quest, tasks, fromMeasure(SUBSCRIBER), 'hpmp', NOW)).toBe('⚔ gku:implement 1/3 ♥▰▰▰▰▰▰▱▱▱▱ 62% ✦▰▰▰▰▰▰▱▱▱▱ 59%')
   })
 
   test('nothing yet: only a full MP', () => {
-    expect(statusText(null, [], null, 'hpmp')).toBe('✦▰▰▰▰▰▰▰▰▰▰ 100%')
+    expect(statusText(null, [], null, 'hpmp', NOW)).toBe('✦▰▰▰▰▰▰▰▰▰▰ 100%')
   })
 
   test('bars = all adds the 5-hour window and the cost', () => {
     const meters: Meters = { window: 1, contextPercent: 0, fiveHourUsed: 9.6, costUsd: 0.5 }
-    expect(statusText(null, [], meters, 'all')).toBe('✦▰▰▰▰▰▰▰▰▰▰ 100% ⚡10% ◉$0.50')
+    expect(statusText(null, [], meters, 'all', NOW)).toBe('✦▰▰▰▰▰▰▰▰▰▰ 100% ⚡90% ◉$0.50')
   })
 })
 
