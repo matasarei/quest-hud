@@ -115,11 +115,11 @@ export const taskWindow = (tasks: readonly Task[], room: number): string[] => {
   return tasks.slice(start, start + size).map(task => `${mark(task)} ${cleanTitle(task.subject)}`)
 }
 
-/** A form of the bars row: the cells each bar takes, whether the 5-hour window keeps its reset time, and the gap between pieces. */
-type RoadForm = { barWidth: number; hasTime: boolean; gap: string }
+/** A form of the bars row: the cells each bar takes, whether the 5-hour window keeps its reset time, the gap between pieces, and the space after ◉. */
+type RoadForm = { barWidth: number; hasTime: boolean; gap: string; costSpace: string }
 
 /** The figures alone, drawn however narrow the pane. */
-const ROAD_FIGURES: RoadForm = { barWidth: 0, hasTime: false, gap: '  ' }
+const ROAD_FIGURES: RoadForm = { barWidth: 0, hasTime: false, gap: '  ', costSpace: '' }
 
 /**
  * Widest first, and the first that fits the pane is drawn, as the band's
@@ -127,15 +127,15 @@ const ROAD_FIGURES: RoadForm = { barWidth: 0, hasTime: false, gap: '  ' }
  * stay to the end. Narrower than the figures, the figures are still drawn.
  */
 const ROAD_FORMS: readonly RoadForm[] = [
-  { barWidth: BAR_WIDTH, hasTime: true, gap: '   ' },
-  { barWidth: BAR_WIDTH, hasTime: false, gap: '   ' },
-  { barWidth: 8, hasTime: false, gap: '  ' },
-  { barWidth: 4, hasTime: false, gap: '  ' },
+  { barWidth: BAR_WIDTH, hasTime: true, gap: '   ', costSpace: ' ' },
+  { barWidth: BAR_WIDTH, hasTime: false, gap: '   ', costSpace: ' ' },
+  { barWidth: 8, hasTime: false, gap: '  ', costSpace: '' },
+  { barWidth: 4, hasTime: false, gap: '  ', costSpace: '' },
   ROAD_FIGURES,
 ]
 
 const meterSegments = (form: RoadForm, meters: Meters | null, bars: Bars, now: number): Segment[] => {
-  const { barWidth, hasTime, gap } = form
+  const { barWidth, hasTime, gap, costSpace } = form
   const gauge = (glyph: string, left: number): string => `${glyph} ${barWidth > 0 ? `${bar(left, barWidth)} ` : ''}${left}%`
   const segments: Segment[] = []
   const hp = hpLeft(meters)
@@ -146,7 +146,7 @@ const meterSegments = (form: RoadForm, meters: Meters | null, bars: Bars, now: n
   const five = fiveSegment(meters, bars, now, hasTime)
   if (five) segments.push({ ...five, text: `${gap}${five.text}` })
   if (bars === 'all' && meters?.costUsd !== undefined) {
-    segments.push({ text: `${gap}◉${gap === '   ' ? ' ' : ''}$${meters.costUsd.toFixed(2)}`, tone: 'gold' })
+    segments.push({ text: `${gap}◉${costSpace}$${meters.costUsd.toFixed(2)}`, tone: 'gold' })
   }
 
   return segments
