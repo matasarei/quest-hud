@@ -198,6 +198,22 @@ describe('the band', () => {
     })
   }
 
+  test('hpmp draws the 5-hour window only once it binds, with its reset time, in HP\'s tones', async ($, on) => {
+    engine(on)
+    const week = { kind: 'seven_day', percentUsed: 38, resetsAt: '2026-11-03T14:00:00Z' }
+    session.rateLimits = [week, { kind: 'five_hour', percentUsed: 10, resetsAt: '2026-11-01T12:00:00Z' }]
+    const plenty = await $.ui.mount(band('terminal'))
+    expect(await plenty.find({ type: 'Text', text: /⚡/ })).toBeFalsy()
+    await plenty.unmount()
+
+    session.rateLimits = [week, { kind: 'five_hour', percentUsed: 92, resetsAt: '2026-11-01T12:00:00Z' }]
+    const tight = await $.ui.mount(band('terminal'))
+    const five = await tight.find({ type: 'Text', text: /⚡/ })
+    expect(five?.text).toMatch(/^ +⚡8% · \d\d:\d\d$/)
+    expect(five?.props.color).toBe(TONE_COLOR.hpCritical)
+    await tight.unmount()
+  })
+
   // A /clear wipes the host's state, and neither session.start nor session.measure follows:
   // the plugin's values are their initial ones while the engine still has the figures.
   test('after a /clear, HP comes back from the engine with nothing fired, and MP is full', async ($, on) => {

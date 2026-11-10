@@ -214,10 +214,9 @@ const meterRow = (form: MeterForm, meters: Meters | null, bars: Bars, now: numbe
 
   row.push(...gauge('✦', 'MP', mpLeft(meters), 'mp'), { text: tokenNote, tone: 'dim' })
 
-  if (bars === 'all' && meters?.fiveHourUsed !== undefined) {
-    const used = Math.round(meters.fiveHourUsed)
-    row.push({ text: notes === 'long' ? `   ⚡5h ${used}%` : `  ⚡${used}%`, tone: 'five' })
-  }
+  // The reset time goes with the words: a form that keeps none draws the figure alone.
+  const five = fiveSegment(meters, bars, now, notes !== 'none')
+  if (five) row.push({ ...five, text: `${notes === 'long' ? '   ' : '  '}${five.text}` })
 
   if (bars === 'all' && meters?.costUsd !== undefined) {
     const cost = meters.costUsd.toFixed(2)

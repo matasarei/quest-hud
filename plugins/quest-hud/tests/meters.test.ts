@@ -23,6 +23,8 @@ const tasks: Task[] = [
 ]
 
 const text = (segments: { text: string }[]) => segments.map(s => s.text).join('')
+/** SUBSCRIBER's 5-hour reset, in the machine's own time as the band draws it. */
+const RESET = clockTime(Date.parse('2026-11-01T12:00:00Z'))
 
 describe('fromMeasure', () => {
   test('reads the context, both windows and the cost', () => {
@@ -247,9 +249,20 @@ describe('bandModel', () => {
     expect(text(band.head)).toBe('⚔ gku:implement  Forge  task 0/1')
   })
 
-  test('bars = all adds the 5-hour window and the cost', () => {
+  test('bars = all adds the 5-hour window left, the time it resets, and the cost', () => {
     const band = bandModel(quest, [], fromMeasure(SUBSCRIBER), 'all', NOW)
-    expect(text(band.meters).endsWith('   ⚡5h 24%   ◉ $1.84')).toBe(true)
+    expect(text(band.meters).endsWith(`   ⚡77% · ${RESET}   ◉ $1.84`)).toBe(true)
+  })
+
+  test('hpmp leaves the 5-hour window out while HP is the tighter one', () => {
+    expect(text(bandModel(quest, [], fromMeasure(SUBSCRIBER), 'hpmp', NOW).meters).includes('⚡')).toBe(false)
+  })
+
+  test('hpmp adds it once it binds, in HP\'s tones, and never the cost', () => {
+    const tight = { ...fromMeasure(SUBSCRIBER), fiveHourUsed: 70 }
+    const meters = bandModel(quest, [], tight, 'hpmp', NOW).meters
+    expect(text(meters).endsWith(`ctx · 82k/200k   ⚡30% · ${RESET}`)).toBe(true)
+    expect(meters[meters.length - 1]?.tone).toBe('hpLow')
   })
 
   test('each segment carries its tone', () => {
@@ -364,10 +377,18 @@ describe('the bars row in the room it has', () => {
   })
 
   test('bars = all: the full words only in the full form, then the short ones to the end', () => {
-    expect(text(row(107, 'all')).endsWith('ctx · 82k/200k   ⚡5h 24%   ◉ $1.84')).toBe(true)
-    expect(text(row(106, 'all'))).toBe('♥ HP █████████░░░░░ 62% heals 2d 4h   ✦ MP ████████░░░░░░ 59% 82k/200k  ⚡24%  ◉$1.84')
-    expect(text(row(56, 'all'))).toBe('♥ HP ██████░░░░ 62%   ✦ MP ██████░░░░ 59%  ⚡24%  ◉$1.84')
-    expect(text(row(27, 'all'))).toBe('♥ 62%  ✦ 59%  ⚡24%  ◉$1.84')
+    expect(text(row(112, 'all')).endsWith(`ctx · 82k/200k   ⚡77% · ${RESET}   ◉ $1.84`)).toBe(true)
+    expect(cellWidth(row(112, 'all'))).toBe(112)
+    expect(text(row(111, 'all'))).toBe(`♥ HP █████████░░░░░ 62% heals 2d 4h   ✦ MP ████████░░░░░░ 59% 82k/200k  ⚡77% · ${RESET}  ◉$1.84`)
+    expect(text(row(56, 'all'))).toBe('♥ HP ██████░░░░ 62%   ✦ MP ██████░░░░ 59%  ⚡77%  ◉$1.84')
+    expect(text(row(27, 'all'))).toBe('♥ 62%  ✦ 59%  ⚡77%  ◉$1.84')
+  })
+
+  test('the reset time stays while the row has words, and goes with them', () => {
+    const tight = { ...measured, fiveHourUsed: 92 }
+    expect(text(row(67, 'hpmp', tight))).toBe(`♥ HP ██████░░░░ 62% heals 2d 4h   ✦ MP ██████░░░░ 59%  ⚡8% · ${RESET}`)
+    expect(text(row(48, 'hpmp', tight))).toBe('♥ HP ██████░░░░ 62%   ✦ MP ██████░░░░ 59%  ⚡8%')
+    expect(text(row(18, 'hpmp', tight))).toBe('♥ 62%  ✦ 59%  ⚡8%')
   })
 
   test('⚡ takes two cells, as the terminal draws it', () => {
@@ -399,10 +420,12 @@ describe('the bars row in the room it has', () => {
   })
 
   // The widest figures there are, in every combination: nothing may overflow, so nothing is cut.
-  const WIDEST: Meters = { window: 1_000_000, contextPercent: 0, contextTokens: 1_250_000, weekUsed: 0, weekResetsAt: '2026-11-08T07:30:00Z', fiveHourUsed: 100, costUsd: 123.45 }
-  const noWeek: Meters = { window: 1_000_000, contextPercent: 0, contextTokens: 1_250_000, fiveHourUsed: 100, costUsd: 123.45 }
+  // `all` draws a full 5-hour window; `hpmp` draws it once it binds, at most 99% left.
+  const WIDEST: Meters = { window: 1_000_000, contextPercent: 0, contextTokens: 1_250_000, weekUsed: 0, weekResetsAt: '2026-11-08T07:30:00Z', fiveHourUsed: 0, fiveHourResetsAt: '2026-11-01T14:30:00Z', costUsd: 123.45 }
+  const binding: Meters = { ...WIDEST, fiveHourUsed: 1 }
+  const noWeek: Meters = { window: 1_000_000, contextPercent: 0, contextTokens: 1_250_000, fiveHourUsed: 61, fiveHourResetsAt: '2026-11-01T14:30:00Z', costUsd: 123.45 }
 
-  for (const [name, meters, hasHp] of [['with HP', WIDEST, true], ['without HP', noWeek, false]] as const) {
+  for (const [name, meters, hasHp] of [['with HP', WIDEST, true], ['with HP and a binding 5-hour window', binding, true], ['without HP', noWeek, false]] as const) {
     for (const bars of ['hpmp', 'all'] as const) {
       test(`${name}, bars = ${bars}: from 12 to 130 cells the row fits or is the figures, its percentages whole`, () => {
         const figures = cellWidth(row(0, bars, meters))
@@ -414,6 +437,7 @@ describe('the bars row in the room it has', () => {
           expect(text(drawn).split('100%').length - 1).toBeGreaterThanOrEqual(hasHp ? 2 : 1)
           expect(text(drawn).startsWith(hasHp ? '♥' : '✦')).toBe(true)
           if (bars === 'all') expect(/⚡.*◉/.test(text(drawn))).toBe(true)
+          if (meters !== WIDEST || bars === 'all') expect(text(drawn).includes('⚡')).toBe(true)
         }
       })
     }
