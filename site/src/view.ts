@@ -10,7 +10,7 @@ import { road, roadArt, SCENE_MIN_COLUMNS } from '../../plugins/quest-hud/src/ro
 import { BAND, bandFits, bandPortrait, bandRoom } from '../../plugins/quest-hud/src/scene'
 import { $, blit, show } from './engine'
 import { lineParts, XTERM } from './hudline'
-import { flavorOf, hasBand, hasHint, isBoardShown, isRoadShown, metersOf, transitionOf, type Sim } from './session'
+import { FIVE_RESETS_MS, flavorOf, hasBand, hasHint, isBoardShown, isRoadShown, metersOf, transitionOf, type Sim } from './session'
 
 export type Slots = Readonly<{
   transcript: HTMLElement
@@ -122,10 +122,13 @@ const drawTabs = (sim: Sim, slots: Slots): void => {
 }
 
 /** The classic status line, which no setting of the mod's reaches: here Bars `all` stands for the script's --all. */
-const drawStatusLine = (sim: Sim, slot: HTMLElement): void => {
+const drawStatusLine = (sim: Sim, slot: HTMLElement, now: number): void => {
   const input = {
     context_window: { used_percentage: 100 - sim.mp },
-    rate_limits: { seven_day: { used_percentage: 100 - sim.hp }, five_hour: { used_percentage: sim.five } },
+    rate_limits: {
+      seven_day: { used_percentage: 100 - sim.hp },
+      five_hour: { used_percentage: sim.five, resets_at: Math.floor((now + FIVE_RESETS_MS) / 1000) },
+    },
     cost: { total_cost_usd: sim.cost },
   }
 
@@ -138,7 +141,7 @@ const drawStatusLine = (sim: Sim, slot: HTMLElement): void => {
 }
 
 export const drawAll = (sim: Sim, slots: Slots, now: number, onFold: () => void): void => {
-  drawStatusLine(sim, slots.statusLine)
+  drawStatusLine(sim, slots.statusLine, now)
   drawTranscript(sim, slots.transcript)
   drawTabs(sim, slots)
   drawRoadSlot(sim, slots, now)

@@ -4,6 +4,9 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# The status-line fixtures hold the 5-hour reset in UTC, as plugins/quest-hud/tests/hud-line.sh runs them.
+export TZ=UTC
+
 out="$(mktemp -d)"
 trap 'rm -rf "$out"' EXIT
 
