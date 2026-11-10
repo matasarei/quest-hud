@@ -397,7 +397,7 @@ describe('the bars row in the room it has', () => {
   })
 
   test('⚡ takes two cells, as the terminal draws it', () => {
-    expect(cellWidth([{ text: '⚡5h', tone: 'five' }])).toBe(4)
+    expect(cellWidth([{ text: '⚡5h', tone: 'hp' }])).toBe(4)
     expect(cellWidth([{ text: '♥ █░', tone: 'hp' }, { text: ' 62%', tone: 'hp' }])).toBe(8)
     expect(cellWidth(row(85, 'all'))).toBe(85)
   })

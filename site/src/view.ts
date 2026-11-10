@@ -99,7 +99,7 @@ const drawRoadSlot = (sim: Sim, slots: Slots, now: number): void => {
   if (!isShown) return
 
   const columns = roadColumns(slots)
-  const drawn = road({ ...sceneInputs(sim, columns), meters: metersOf(sim, now), log: sim.log, bars: sim.settings.bars, rows: ROAD_ROWS, level: sim.level })
+  const drawn = road({ ...sceneInputs(sim, columns), meters: metersOf(sim, now), log: sim.log, bars: sim.settings.bars, rows: ROAD_ROWS, level: sim.level, now })
   show(slots.road, drawRoad($, {} as RenderInput<'Pane'>, drawn, modeOf(sim)))
 }
 

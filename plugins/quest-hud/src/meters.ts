@@ -143,7 +143,7 @@ export const shortTokens = (tokens: number): string => {
   return String(tokens)
 }
 
-export type Tone = 'accent' | 'plain' | 'dim' | 'hp' | 'hpLow' | 'hpCritical' | 'mp' | 'five' | 'gold'
+export type Tone = 'accent' | 'plain' | 'dim' | 'hp' | 'hpLow' | 'hpCritical' | 'mp' | 'gold'
 
 /** The colour each tone is drawn in; undefined is the surface's own text colour. */
 export const TONE_COLOR: Readonly<Record<Tone, string | undefined>> = {
@@ -154,7 +154,6 @@ export const TONE_COLOR: Readonly<Record<Tone, string | undefined>> = {
   hpLow: '#f2d15b',
   hpCritical: '#ef5350',
   mp: '#5b9bff',
-  five: '#f0b43a',
   gold: '#f2d15b',
 }
 

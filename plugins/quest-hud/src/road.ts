@@ -4,7 +4,7 @@
 import type { Allies, Companion, Foes, LevelCard, LogEntry, Meters, Quest, Task, Zone } from '../types'
 import type { Grid } from './avatar'
 import { clockTime } from './log'
-import { bar, hpLeft, hpTone, mpLeft, zoneLine, type Bars, type Segment } from './meters'
+import { bar, cellWidth, fiveSegment, hpLeft, hpTone, mpLeft, zoneLine, type Bars, type Segment } from './meters'
 import { cleanTitle } from './quest'
 import { downsample } from './paint/pixels'
 import { MAX_GHOSTS, sceneArt, SCENE_HEIGHT, waypointsOf, type Motion, type Transition } from './scene'
@@ -52,6 +52,8 @@ export type RoadArgs = {
   bars: Bars
   columns: number
   rows: number
+  /** The time of the draw: when the 5-hour window resets, and whether it already has. */
+  now: number
   /** How far along the road the figures are, and how they stand; at rest when left out. */
   motion?: Motion
   /** A zone change under way. */
@@ -113,14 +115,15 @@ export const taskWindow = (tasks: readonly Task[], room: number): string[] => {
   return tasks.slice(start, start + size).map(task => `${mark(task)} ${cleanTitle(task.subject)}`)
 }
 
-const meterSegments = (meters: Meters | null, bars: Bars): Segment[] => {
+const meterSegments = (meters: Meters | null, bars: Bars, now: number): Segment[] => {
   const segments: Segment[] = []
   const hp = hpLeft(meters)
   const mp = mpLeft(meters)
 
   if (hp !== undefined) segments.push({ text: `♥ ${bar(hp, BAR_WIDTH)} ${hp}%   `, tone: hpTone(hp) })
   segments.push({ text: `✦ ${bar(mp, BAR_WIDTH)} ${mp}%`, tone: 'mp' })
-  if (bars === 'all' && meters?.fiveHourUsed !== undefined) segments.push({ text: `   ⚡${Math.round(meters.fiveHourUsed)}%`, tone: 'five' })
+  const five = fiveSegment(meters, bars, now)
+  if (five) segments.push({ ...five, text: `   ${five.text}` })
   if (bars === 'all' && meters?.costUsd !== undefined) segments.push({ text: `   ◉ $${meters.costUsd.toFixed(2)}`, tone: 'gold' })
 
   return segments
@@ -133,7 +136,7 @@ const LEVEL_GAP = 2
 const levelTag = (card: LevelCard | null | undefined, meters: readonly Segment[], columns: number): string | undefined => {
   if (!card) return undefined
 
-  const room = columns - LEVEL_GAP - meters.reduce((sum, segment) => sum + segment.text.length, 0)
+  const room = columns - LEVEL_GAP - cellWidth(meters)
   return [`Lv ${card.level} ${card.title}`, `Lv ${card.level}`].find(tag => tag.length <= room)
 }
 
@@ -143,7 +146,7 @@ const levelTag = (card: LevelCard | null | undefined, meters: readonly Segment[]
  * whatever room is left. The log goes first when room is short, then tasks.
  */
 export const road = (args: RoadArgs): Road => {
-  const { quest, tasks, meters, log, companions, loot, bars, columns, rows } = args
+  const { quest, tasks, meters, log, companions, loot, bars, columns, rows, now } = args
   const { done, total } = progress(tasks)
   const header = quest ? `⚔ ${quest.title} · ${zoneLine(quest.zone)}` : zoneLine('wilds')
   const shown = companions.slice(0, MAX_GHOSTS).map(c => c.type)
@@ -160,7 +163,7 @@ export const road = (args: RoadArgs): Road => {
     : []
 
   const art = hasScene ? roadArt({ ...args, columns }) : []
-  const meterRow = meterSegments(meters, bars)
+  const meterRow = meterSegments(meters, bars, now)
   const levelText = levelTag(args.level, meterRow, columns)
 
   return {

@@ -2,6 +2,8 @@ import { describe, expect, test } from 'claude-code/testing'
 
 import { MAX_TASK_ROWS, road, ROAD_ROWS_WANTED, roadScene, sceneFits, SCENE_MIN_COLUMNS, SCENE_ROWS, sceneZone, taskWindow, type RoadArgs } from '../src/road'
 import { SCENE_HEIGHT, skyColor } from '../src/scene'
+import { clockTime } from '../src/log'
+import { cellWidth } from '../src/meters'
 import type { LevelCard, LogEntry, Quest, Task } from '../types'
 
 const implement: Quest = { title: 'gku:implement', skill: 'gku:implement', zone: 'forge', startedAt: 0 }
@@ -9,6 +11,8 @@ const task = (id: string, status: Task['status']): Task => ({ id, subject: `task
 const five = [task('1', 'completed'), task('2', 'completed'), task('3', 'in_progress'), task('4', 'pending'), task('5', 'pending')]
 const entries = (count: number): LogEntry[] =>
   Array.from({ length: count }, (_, i) => ({ at: new Date(2026, 10, 1, 9, i).getTime(), kind: 'cast', text: `f${i}.ts +1 -0` }))
+
+const NOW = Date.parse('2026-11-01T10:00:00Z')
 
 const args = (over: Partial<RoadArgs> = {}): RoadArgs => ({
   quest: implement,
@@ -23,6 +27,7 @@ const args = (over: Partial<RoadArgs> = {}): RoadArgs => ({
   bars: 'hpmp',
   columns: 60,
   rows: 30,
+  now: NOW,
   ...over,
 })
 
@@ -161,6 +166,16 @@ describe('the level on the meters row', () => {
     expect(shown(width + 2 + 'Lv 8 Sage'.length - 1)).toBe('Lv 8')
     expect(shown(width + 2 + 'Lv 8'.length)).toBe('Lv 8')
     expect(shown(width + 2 + 'Lv 8'.length - 1)).toBeUndefined()
+  })
+
+  test('⚡ is two cells: a 5-hour window on the row leaves the level its true room', () => {
+    const resetsAt = '2026-11-01T12:00:00Z'
+    const meters = { window: 200_000, contextPercent: 43, weekUsed: 20, fiveHourUsed: 70, fiveHourResetsAt: resetsAt }
+    const row = road(args({ meters })).meters
+    expect(row[row.length - 1]).toEqual({ text: `   ⚡30% · ${clockTime(Date.parse(resetsAt))}`, tone: 'hpLow' })
+    const used = cellWidth(row)
+    expect(road(args({ meters, columns: used + 2 + 'Lv 8'.length, level: CARD })).level).toBe('Lv 8')
+    expect(road(args({ meters, columns: used + 2 + 'Lv 8'.length - 1, level: CARD })).level).toBeUndefined()
   })
 
   test('the wider bars of `all` leave it less room', () => {

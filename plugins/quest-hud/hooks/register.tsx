@@ -936,6 +936,7 @@ export const register: Register = (on, options) => {
       allies: await read($, allies),
       level: await currentLevel($),
       bars,
+      now: await $.clock.now(),
       columns: e.props.bodyColumns,
       // The pane's own rows, which an inline pane has far fewer of than the terminal.
       rows: e.props.scroll.bodyRows,
