@@ -397,7 +397,7 @@ await section('reduced motion', async () => {
 })
 
 await section('the band fits', async () => {
-  for (const width of [1920, 1600, 1440, 1366, 1320, 1319, 1280, 1250, 1249, 1100, 1000, 934]) {
+  for (const width of [1920, 1600, 1440, 1366, 1320, 1319, 1280, 1250, 1249, 1100, 1000, 934, 800, 600, 390]) {
     await load(width, 800)
     await pick('bars', 'all')
     const room = await ev(`(() => {
