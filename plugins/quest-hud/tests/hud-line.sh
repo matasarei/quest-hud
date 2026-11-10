@@ -3,6 +3,8 @@
 # it prints with the .expected file beside it, an escape byte reading as @ so the
 # files stay plain text; then checks the no-jq path.
 set -u
+# The 5-hour window's reset is drawn in local time: the expected lines are UTC's.
+export TZ=UTC
 here="$(cd "$(dirname "$0")" && pwd)"
 script="$here/../scripts/hud-line.sh"
 failed=0

@@ -1,0 +1,1 @@
+{"model":{"display_name":"Opus"},"context_window":{"total_input_tokens":82000,"context_window_size":200000,"used_percentage":41,"remaining_percentage":59},"rate_limits":{"five_hour":{"used_percentage":65,"resets_at":"soon"},"seven_day":{"used_percentage":38}}}
