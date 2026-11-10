@@ -140,6 +140,63 @@ describe('a pane too narrow for the scene', () => {
   })
 })
 
+describe('the bars row in the pane it has', () => {
+  const RESETS = '2026-11-01T12:00:00Z'
+  const T = clockTime(Date.parse(RESETS))
+  const SUB = { window: 200_000, contextPercent: 41, weekUsed: 38, fiveHourUsed: 70, fiveHourResetsAt: RESETS, costUsd: 1.84 }
+  const text = (columns: number, meters: RoadArgs['meters'] = SUB, bars: RoadArgs['bars'] = 'all') =>
+    road(args({ columns, meters, bars })).meters.map(segment => segment.text).join('')
+
+  const forms = [
+    [61, `♥ ██████░░░░ 62%   ✦ ██████░░░░ 59%   ⚡30% · ${T}   ◉ $1.84`],
+    [53, '♥ ██████░░░░ 62%   ✦ ██████░░░░ 59%   ⚡30%   ◉ $1.84'],
+    [45, '♥ █████░░░ 62%  ✦ █████░░░ 59%  ⚡30%  ◉$1.84'],
+    [37, '♥ ██░░ 62%  ✦ ██░░ 59%  ⚡30%  ◉$1.84'],
+    [27, '♥ 62%  ✦ 59%  ⚡30%  ◉$1.84'],
+  ] as const
+
+  forms.forEach(([columns, expected], i) => {
+    test(`${columns} columns: ${expected}`, () => {
+      expect(text(columns)).toBe(expected)
+      expect(cellWidth(road(args({ columns, meters: SUB, bars: 'all' })).meters)).toBe(columns)
+    })
+
+    const narrower = forms[i + 1]
+    if (narrower) {
+      test(`${columns - 1} columns: the next form down`, () => {
+        expect(text(columns - 1)).toBe(narrower[1])
+      })
+    }
+  })
+
+  test('narrower than the figures, still the figures, never cut', () => {
+    expect(text(10)).toBe('♥ 62%  ✦ 59%  ⚡30%  ◉$1.84')
+    expect(text(0)).toBe('♥ 62%  ✦ 59%  ⚡30%  ◉$1.84')
+  })
+
+  // The widest figures there are: nothing may overflow, so nothing is cut.
+  const WIDEST = { window: 1_000_000, contextPercent: 0, weekUsed: 0, fiveHourUsed: 1, fiveHourResetsAt: RESETS, costUsd: 123.45 }
+  const noWeek = { window: 1_000_000, contextPercent: 0, fiveHourUsed: 61, fiveHourResetsAt: RESETS, costUsd: 123.45 }
+
+  for (const [name, meters, hasHp] of [['with HP', WIDEST, true], ['without HP', noWeek, false]] as const) {
+    for (const bars of ['hpmp', 'all'] as const) {
+      test(`${name}, bars = ${bars}: from 12 to 90 columns the row fits or is the figures, its percentages whole`, () => {
+        const figures = cellWidth(road(args({ columns: 0, meters, bars })).meters)
+
+        for (let columns = 12; columns <= 90; columns++) {
+          const drawn = road(args({ columns, meters, bars })).meters
+
+          expect(cellWidth(drawn) <= columns || cellWidth(drawn) === figures).toBe(true)
+          expect(text(columns, meters, bars).split('100%').length - 1).toBe(hasHp ? 2 : 1)
+          expect(text(columns, meters, bars).startsWith(hasHp ? '♥' : '✦')).toBe(true)
+          expect(text(columns, meters, bars).includes('⚡')).toBe(true)
+          if (bars === 'all') expect(/⚡.*◉/.test(text(columns, meters, bars))).toBe(true)
+        }
+      })
+    }
+  }
+})
+
 describe('the level on the meters row', () => {
   const CARD: LevelCard = {
     level: 8,

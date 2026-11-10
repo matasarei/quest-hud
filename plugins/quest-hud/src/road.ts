@@ -115,16 +115,39 @@ export const taskWindow = (tasks: readonly Task[], room: number): string[] => {
   return tasks.slice(start, start + size).map(task => `${mark(task)} ${cleanTitle(task.subject)}`)
 }
 
-const meterSegments = (meters: Meters | null, bars: Bars, now: number, hasTime: boolean): Segment[] => {
+/** A form of the bars row: the cells each bar takes, whether the 5-hour window keeps its reset time, the gap between pieces, and the space after ◉. */
+type RoadForm = { barWidth: number; hasTime: boolean; gap: string; costSpace: string }
+
+/** The figures alone, drawn however narrow the pane. */
+const ROAD_FIGURES: RoadForm = { barWidth: 0, hasTime: false, gap: '  ', costSpace: '' }
+
+/**
+ * Widest first, and the first that fits the pane is drawn, as the band's
+ * METER_FORMS: the reset time goes, then the bars shorten, and the percentages
+ * stay to the end. Narrower than the figures, the figures are still drawn.
+ */
+const ROAD_FORMS: readonly RoadForm[] = [
+  { barWidth: BAR_WIDTH, hasTime: true, gap: '   ', costSpace: ' ' },
+  { barWidth: BAR_WIDTH, hasTime: false, gap: '   ', costSpace: ' ' },
+  { barWidth: 8, hasTime: false, gap: '  ', costSpace: '' },
+  { barWidth: 4, hasTime: false, gap: '  ', costSpace: '' },
+  ROAD_FIGURES,
+]
+
+const meterSegments = (form: RoadForm, meters: Meters | null, bars: Bars, now: number): Segment[] => {
+  const { barWidth, hasTime, gap, costSpace } = form
+  const gauge = (glyph: string, left: number): string => `${glyph} ${barWidth > 0 ? `${bar(left, barWidth)} ` : ''}${left}%`
   const segments: Segment[] = []
   const hp = hpLeft(meters)
   const mp = mpLeft(meters)
 
-  if (hp !== undefined) segments.push({ text: `♥ ${bar(hp, BAR_WIDTH)} ${hp}%   `, tone: hpTone(hp) })
-  segments.push({ text: `✦ ${bar(mp, BAR_WIDTH)} ${mp}%`, tone: 'mp' })
+  if (hp !== undefined) segments.push({ text: `${gauge('♥', hp)}${gap}`, tone: hpTone(hp) })
+  segments.push({ text: gauge('✦', mp), tone: 'mp' })
   const five = fiveSegment(meters, bars, now, hasTime)
-  if (five) segments.push({ ...five, text: `   ${five.text}` })
-  if (bars === 'all' && meters?.costUsd !== undefined) segments.push({ text: `   ◉ $${meters.costUsd.toFixed(2)}`, tone: 'gold' })
+  if (five) segments.push({ ...five, text: `${gap}${five.text}` })
+  if (bars === 'all' && meters?.costUsd !== undefined) {
+    segments.push({ text: `${gap}◉${costSpace}$${meters.costUsd.toFixed(2)}`, tone: 'gold' })
+  }
 
   return segments
 }
@@ -163,9 +186,8 @@ export const road = (args: RoadArgs): Road => {
     : []
 
   const art = hasScene ? roadArt({ ...args, columns }) : []
-  // The row has no shorter forms: the 5-hour window's reset time goes where it does not fit, as on the band.
-  const timed = meterSegments(meters, bars, now, true)
-  const meterRow = cellWidth(timed) <= columns ? timed : meterSegments(meters, bars, now, false)
+  const form = ROAD_FORMS.find(candidate => cellWidth(meterSegments(candidate, meters, bars, now)) <= columns) ?? ROAD_FIGURES
+  const meterRow = meterSegments(form, meters, bars, now)
   const levelText = levelTag(args.level, meterRow, columns)
 
   return {
