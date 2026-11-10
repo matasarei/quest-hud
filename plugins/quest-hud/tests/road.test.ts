@@ -148,11 +148,11 @@ describe('the bars row in the pane it has', () => {
     road(args({ columns, meters, bars })).meters.map(segment => segment.text).join('')
 
   const forms = [
-    [61, `♥ ██████░░░░ 62%   ✦ ██████░░░░ 59%   ⚡30% · ${T}   ◉ $1.84`],
-    [53, '♥ ██████░░░░ 62%   ✦ ██████░░░░ 59%   ⚡30%   ◉ $1.84'],
-    [45, '♥ █████░░░ 62%  ✦ █████░░░ 59%  ⚡30%  ◉$1.84'],
-    [37, '♥ ██░░ 62%  ✦ ██░░ 59%  ⚡30%  ◉$1.84'],
-    [27, '♥ 62%  ✦ 59%  ⚡30%  ◉$1.84'],
+    [60, `♥ ██████░░░░ 62%   ✦ ██████░░░░ 59%   ⏾30% · ${T}   ◉ $1.84`],
+    [52, '♥ ██████░░░░ 62%   ✦ ██████░░░░ 59%   ⏾30%   ◉ $1.84'],
+    [44, '♥ █████░░░ 62%  ✦ █████░░░ 59%  ⏾30%  ◉$1.84'],
+    [36, '♥ ██░░ 62%  ✦ ██░░ 59%  ⏾30%  ◉$1.84'],
+    [26, '♥ 62%  ✦ 59%  ⏾30%  ◉$1.84'],
   ] as const
 
   forms.forEach(([columns, expected], i) => {
@@ -170,8 +170,8 @@ describe('the bars row in the pane it has', () => {
   })
 
   test('narrower than the figures, still the figures, never cut', () => {
-    expect(text(10)).toBe('♥ 62%  ✦ 59%  ⚡30%  ◉$1.84')
-    expect(text(0)).toBe('♥ 62%  ✦ 59%  ⚡30%  ◉$1.84')
+    expect(text(10)).toBe('♥ 62%  ✦ 59%  ⏾30%  ◉$1.84')
+    expect(text(0)).toBe('♥ 62%  ✦ 59%  ⏾30%  ◉$1.84')
   })
 
   // The widest figures there are: nothing may overflow, so nothing is cut.
@@ -189,8 +189,8 @@ describe('the bars row in the pane it has', () => {
           expect(cellWidth(drawn) <= columns || cellWidth(drawn) === figures).toBe(true)
           expect(text(columns, meters, bars).split('100%').length - 1).toBe(hasHp ? 2 : 1)
           expect(text(columns, meters, bars).startsWith(hasHp ? '♥' : '✦')).toBe(true)
-          expect(text(columns, meters, bars).includes('⚡')).toBe(true)
-          if (bars === 'all') expect(/⚡.*◉/.test(text(columns, meters, bars))).toBe(true)
+          expect(text(columns, meters, bars).includes('⏾')).toBe(true)
+          if (bars === 'all') expect(/⏾.*◉/.test(text(columns, meters, bars))).toBe(true)
         }
       })
     }
@@ -225,11 +225,11 @@ describe('the level on the meters row', () => {
     expect(shown(width + 2 + 'Lv 8'.length - 1)).toBeUndefined()
   })
 
-  test('⚡ is two cells: a 5-hour window on the row leaves the level its true room', () => {
+  test('⏾ is two cells: a 5-hour window on the row leaves the level its true room', () => {
     const resetsAt = '2026-11-01T12:00:00Z'
     const meters = { window: 200_000, contextPercent: 43, weekUsed: 20, fiveHourUsed: 70, fiveHourResetsAt: resetsAt }
     const row = road(args({ meters })).meters
-    expect(row[row.length - 1]).toEqual({ text: `   ⚡30% · ${clockTime(Date.parse(resetsAt))}`, tone: 'hpLow' })
+    expect(row[row.length - 1]).toEqual({ text: `   ⏾30% · ${clockTime(Date.parse(resetsAt))}`, tone: 'hpLow' })
     const used = cellWidth(row)
     expect(road(args({ meters, columns: used + 2 + 'Lv 8'.length, level: CARD })).level).toBe('Lv 8')
     expect(road(args({ meters, columns: used + 2 + 'Lv 8'.length - 1, level: CARD })).level).toBeUndefined()
@@ -239,7 +239,7 @@ describe('the level on the meters row', () => {
     const meters = { window: 200_000, contextPercent: 43, weekUsed: 20, fiveHourUsed: 70, fiveHourResetsAt: '2026-11-01T12:00:00Z' }
     const timed = cellWidth(road(args({ meters })).meters)
     expect(road(args({ meters, columns: timed })).meters.at(-1)?.text).toContain(' · ')
-    expect(road(args({ meters, columns: timed - 1 })).meters.at(-1)?.text).toBe('   ⚡30%')
+    expect(road(args({ meters, columns: timed - 1 })).meters.at(-1)?.text).toBe('   ⏾30%')
   })
 
   test('the wider bars of `all` leave it less room', () => {

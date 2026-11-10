@@ -37,13 +37,13 @@ for (const name of ALL) {
 
 test('the cost, and a 5-hour window that does not bind, stay off the line without the flag', () => {
   const input = { rate_limits: { five_hour: { used_percentage: 43 } }, cost: { total_cost_usd: 4.29 } }
-  assert.doesNotMatch(lineText(input), /⚡|◉/)
-  assert.match(lineText(input, true), /⚡57%.*◉\$4\.29/)
+  assert.doesNotMatch(lineText(input), /⏾|◉/)
+  assert.match(lineText(input, true), /⏾57%.*◉\$4\.29/)
 })
 
 test('a 5-hour window that binds is on the line without the flag, with its reset', () => {
   const input = { rate_limits: { seven_day: { used_percentage: 38 }, five_hour: { used_percentage: 92, resets_at: 1738425600 } } }
-  assert.equal(lineParts(input).at(-1)?.text, '⚡8% · 16:00')
+  assert.equal(lineParts(input).at(-1)?.text, '⏾8% · 16:00')
 })
 
 const script = (input: object, ...args: string[]): string =>
