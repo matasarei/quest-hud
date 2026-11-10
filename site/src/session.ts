@@ -21,6 +21,8 @@ export type Settings = Readonly<{ detail: Detail; bars: Bars; avatar: Avatar; fl
 export const WINDOW = 200_000
 /** How long until the weekly window heals, as the sample shows it. */
 const HEALS_MS = (2 * 24 + 4) * 3_600_000
+/** How long until the 5-hour window resets, as the sample shows it. */
+export const FIVE_RESETS_MS = (2 * 60 + 20) * 60_000
 const MAX_TRANSCRIPT = 200
 
 export type Sim = Readonly<{
@@ -113,6 +115,7 @@ export const metersOf = (sim: Sim, now: number): Meters => {
     weekUsed: 100 - sim.hp,
     weekResetsAt: new Date(now + HEALS_MS).toISOString(),
     fiveHourUsed: sim.five,
+    fiveHourResetsAt: new Date(now + FIVE_RESETS_MS).toISOString(),
     costUsd: sim.cost,
   }
 }
@@ -212,7 +215,7 @@ export const nextTurn = (sim: Sim): Sim => ({ ...sim, flavorStep: sim.flavorStep
 /** The band's flavour line, from the zone its own label names; none when the setting is off. */
 export const flavorOf = (sim: Sim): string | undefined =>
   sim.settings.flavor === 'on'
-    ? bandLine({ zone: sim.quest?.zone ?? 'wilds', foes: sim.foes, hp: sim.hp, mp: sim.mp }, sim.flavorStep)
+    ? bandLine({ zone: sim.quest?.zone ?? 'wilds', foes: sim.foes, hp: sim.hp, mp: sim.mp, five: 100 - sim.five }, sim.flavorStep)
     : undefined
 
 /** `TaskCreate`. */

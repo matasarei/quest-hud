@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { bandModel, bar, cellWidth, fromMeasure, healsIn, hintText, hpLeft, hpTone, mpLeft, shortTokens, statusText, TONE_COLOR, ZONE_MEANING, zoneLine } from '../src/meters'
+import { clockTime } from '../src/log'
+import { bandModel, bar, cellWidth, fiveLeft, fiveSegment, fromMeasure, healsIn, hintText, hpLeft, hpTone, mpLeft, shortTokens, showsFive, statusText, TONE_COLOR, ZONE_MEANING, zoneLine } from '../src/meters'
 import type { Meters, Quest, Task } from '../types'
 
 const NOW = Date.parse('2026-11-01T10:00:00Z')
@@ -22,12 +23,14 @@ const tasks: Task[] = [
 ]
 
 const text = (segments: { text: string }[]) => segments.map(s => s.text).join('')
+/** SUBSCRIBER's 5-hour reset, in the machine's own time as the band draws it. */
+const RESET = clockTime(Date.parse('2026-11-01T12:00:00Z'))
 
 describe('fromMeasure', () => {
   test('reads the context, both windows and the cost', () => {
     expect(fromMeasure(SUBSCRIBER)).toEqual({
       contextPercent: 41, contextTokens: 82_000, window: 200_000,
-      weekUsed: 38, weekResetsAt: '2026-11-03T14:00:00Z', fiveHourUsed: 23.5, costUsd: 1.844,
+      weekUsed: 38, weekResetsAt: '2026-11-03T14:00:00Z', fiveHourUsed: 23.5, fiveHourResetsAt: '2026-11-01T12:00:00Z', costUsd: 1.844,
     })
   })
 
@@ -86,6 +89,91 @@ describe('hpTone', () => {
     expect(colors.every(color => color !== undefined)).toBe(true)
     expect(new Set(colors).size).toBe(3)
   })
+})
+
+describe('the 5-hour window', () => {
+  const LATER = NOW + 150 * 60_000
+  const RESETS = new Date(LATER).toISOString()
+  const five = (fiveHourUsed: number, weekUsed?: number, fiveHourResetsAt: string | null = RESETS): Meters => ({
+    window: 200_000,
+    fiveHourUsed,
+    ...(fiveHourResetsAt === null ? {} : { fiveHourResetsAt }),
+    ...(weekUsed === undefined ? {} : { weekUsed }),
+  })
+
+  test('what is left, rounded as HP is, and clamped', () => {
+    expect(fiveLeft(five(23.5), NOW)).toBe(77)
+    expect(fiveLeft(five(104), NOW)).toBe(0)
+  })
+
+  test('no window is undefined, not full', () => {
+    expect(fiveLeft(null, NOW)).toBeUndefined()
+    expect(fiveLeft({ window: 1, weekUsed: 10 }, NOW)).toBeUndefined()
+  })
+
+  test('a reset already passed is a full window, whatever the last measure said', () => {
+    expect(fiveLeft(five(92), LATER)).toBe(100)
+    expect(fiveLeft(five(92), LATER + 1)).toBe(100)
+    expect(fiveLeft(five(92), LATER - 1)).toBe(8)
+  })
+
+  test('a reset that cannot be read, or none, leaves the figure as measured', () => {
+    expect(fiveLeft(five(92, undefined, 'soon'), NOW)).toBe(8)
+    expect(fiveLeft(five(92, undefined, null), NOW)).toBe(8)
+  })
+
+  const shows = [
+    ['all, plenty left', five(10, 38), 'all', true],
+    ['hpmp, more left than HP', five(23.5, 38), 'hpmp', false],
+    ['hpmp, as much left as HP', five(38, 38), 'hpmp', false],
+    ['hpmp, less left than HP', five(39, 38), 'hpmp', true],
+    ['hpmp, HP full, 5-hour full', five(0, 0), 'hpmp', false],
+    ['hpmp, HP full, 99 left: tighter than HP', five(1, 0), 'hpmp', true],
+    ['hpmp, HP 20, 39 left: under 40', five(61, 80), 'hpmp', true],
+    ['hpmp, no HP, 40 left', five(60), 'hpmp', false],
+    ['hpmp, no HP, 39 left', five(61), 'hpmp', true],
+    ['all, no window', { window: 1, weekUsed: 38 }, 'all', false],
+  ] as const
+
+  for (const [name, meters, bars, expected] of shows) {
+    test(`${name}: ${expected ? 'drawn' : 'not drawn'}`, () => {
+      expect(showsFive(meters, bars, NOW)).toBe(expected)
+    })
+  }
+
+  test('hpmp lets it go once its reset has passed', () => {
+    expect(showsFive(five(92, 38), 'hpmp', NOW)).toBe(true)
+    expect(showsFive(five(92, 38), 'hpmp', LATER)).toBe(false)
+  })
+
+  test('the figure and the clock time it resets', () => {
+    expect(fiveSegment(five(70), 'hpmp', NOW)).toEqual({ text: `⚡30% · ${clockTime(LATER)}`, tone: 'hpLow' })
+  })
+
+  test('without the time where there is no room, or no reset to come', () => {
+    expect(fiveSegment(five(70), 'hpmp', NOW, false)?.text).toBe('⚡30%')
+    expect(fiveSegment(five(70, undefined, null), 'hpmp', NOW)?.text).toBe('⚡30%')
+    expect(fiveSegment(five(70, undefined, 'soon'), 'hpmp', NOW)?.text).toBe('⚡30%')
+    expect(fiveSegment(five(92), 'all', LATER)).toEqual({ text: '⚡100%', tone: 'hp' })
+  })
+
+  test('not drawn is undefined', () => {
+    expect(fiveSegment(five(10, 38), 'hpmp', NOW)).toBeUndefined()
+    expect(fiveSegment(null, 'all', NOW)).toBeUndefined()
+  })
+
+  const tones = [
+    [60, 'hp'],
+    [61, 'hpLow'],
+    [80, 'hpLow'],
+    [81, 'hpCritical'],
+  ] as const
+
+  for (const [used, tone] of tones) {
+    test(`${100 - used}% left is ${tone}, as HP would be`, () => {
+      expect(fiveSegment(five(used), 'all', NOW)?.tone).toBe(tone)
+    })
+  }
 })
 
 describe('bar', () => {
@@ -153,7 +241,7 @@ describe('bandModel', () => {
   })
 
   test('the status line with no skill shows the task count alone', () => {
-    expect(statusText(null, tasks, null, 'hpmp')).toBe('task 1/3 ✦▰▰▰▰▰▰▰▰▰▰ 100%')
+    expect(statusText(null, tasks, null, 'hpmp', NOW)).toBe('task 1/3 ✦▰▰▰▰▰▰▰▰▰▰ 100%')
   })
 
   test('tasks with none in progress: the count and no subject', () => {
@@ -161,9 +249,20 @@ describe('bandModel', () => {
     expect(text(band.head)).toBe('⚔ gku:implement  Forge  task 0/1')
   })
 
-  test('bars = all adds the 5-hour window and the cost', () => {
+  test('bars = all adds the 5-hour window left, the time it resets, and the cost', () => {
     const band = bandModel(quest, [], fromMeasure(SUBSCRIBER), 'all', NOW)
-    expect(text(band.meters).endsWith('   ⚡5h 24%   ◉ $1.84')).toBe(true)
+    expect(text(band.meters).endsWith(`   ⚡77% · ${RESET}   ◉ $1.84`)).toBe(true)
+  })
+
+  test('hpmp leaves the 5-hour window out while HP is the tighter one', () => {
+    expect(text(bandModel(quest, [], fromMeasure(SUBSCRIBER), 'hpmp', NOW).meters).includes('⚡')).toBe(false)
+  })
+
+  test('hpmp adds it once it binds, in HP\'s tones, and never the cost', () => {
+    const tight = { ...fromMeasure(SUBSCRIBER), fiveHourUsed: 70 }
+    const meters = bandModel(quest, [], tight, 'hpmp', NOW).meters
+    expect(text(meters).endsWith(`ctx · 82k/200k   ⚡30% · ${RESET}`)).toBe(true)
+    expect(meters[meters.length - 1]?.tone).toBe('hpLow')
   })
 
   test('each segment carries its tone', () => {
@@ -194,36 +293,41 @@ describe('hintText', () => {
 
   test('the bars come first, then the quest with its progress', () => {
     const tasks = [{ id: 'a', subject: 'x', status: 'completed' as const }, { id: 'b', subject: 'y', status: 'pending' as const }]
-    expect(hintText(quest, tasks, fromMeasure(SUBSCRIBER), 'hpmp')).toMatch(/^♥[▰▱]{10} \d+% ✦[▰▱]{10} \d+% ⚔ gku:implement 1\/2$/)
+    expect(hintText(quest, tasks, fromMeasure(SUBSCRIBER), 'hpmp', NOW)).toMatch(/^♥[▰▱]{10} \d+% ✦[▰▱]{10} \d+% ⚔ gku:implement 1\/2$/)
   })
 
   test('before any figures: a full MP, and no quest or tasks', () => {
-    expect(hintText(null, [], null, 'hpmp')).toBe('✦▰▰▰▰▰▰▰▰▰▰ 100%')
+    expect(hintText(null, [], null, 'hpmp', NOW)).toBe('✦▰▰▰▰▰▰▰▰▰▰ 100%')
   })
 
   test('tasks with no quest are counted after the bars', () => {
-    expect(hintText(null, [{ id: 'a', subject: 'x', status: 'pending' }], null, 'hpmp')).toBe('✦▰▰▰▰▰▰▰▰▰▰ 100% task 0/1')
+    expect(hintText(null, [{ id: 'a', subject: 'x', status: 'pending' }], null, 'hpmp', NOW)).toBe('✦▰▰▰▰▰▰▰▰▰▰ 100% task 0/1')
   })
 
-  test('all adds the 5-hour window and the cost at the end; hpmp does not', () => {
+  test('all adds the 5-hour window left and the cost at the end; hpmp, while it does not bind, neither', () => {
     const meters = { window: 200_000, contextPercent: 0, fiveHourUsed: 12, costUsd: 1.5 }
-    expect(hintText(null, [], meters, 'all')).toBe('✦▰▰▰▰▰▰▰▰▰▰ 100% ⚡12% ◉$1.50')
-    expect(hintText(null, [], meters, 'hpmp')).toBe('✦▰▰▰▰▰▰▰▰▰▰ 100%')
+    expect(hintText(null, [], meters, 'all', NOW)).toBe('✦▰▰▰▰▰▰▰▰▰▰ 100% ⚡88% ◉$1.50')
+    expect(hintText(null, [], meters, 'hpmp', NOW)).toBe('✦▰▰▰▰▰▰▰▰▰▰ 100%')
+  })
+
+  test('hpmp adds the 5-hour window once it binds, with the time it resets', () => {
+    const meters = { window: 200_000, contextPercent: 0, fiveHourUsed: 70, fiveHourResetsAt: '2026-11-01T12:00:00Z', costUsd: 1.5 }
+    expect(hintText(null, [], meters, 'hpmp', NOW)).toBe(`✦▰▰▰▰▰▰▰▰▰▰ 100% ⚡30% · ${RESET}`)
   })
 })
 
 describe('statusText', () => {
   test('one line with the quest, the count and both bars', () => {
-    expect(statusText(quest, tasks, fromMeasure(SUBSCRIBER), 'hpmp')).toBe('⚔ gku:implement 1/3 ♥▰▰▰▰▰▰▱▱▱▱ 62% ✦▰▰▰▰▰▰▱▱▱▱ 59%')
+    expect(statusText(quest, tasks, fromMeasure(SUBSCRIBER), 'hpmp', NOW)).toBe('⚔ gku:implement 1/3 ♥▰▰▰▰▰▰▱▱▱▱ 62% ✦▰▰▰▰▰▰▱▱▱▱ 59%')
   })
 
   test('nothing yet: only a full MP', () => {
-    expect(statusText(null, [], null, 'hpmp')).toBe('✦▰▰▰▰▰▰▰▰▰▰ 100%')
+    expect(statusText(null, [], null, 'hpmp', NOW)).toBe('✦▰▰▰▰▰▰▰▰▰▰ 100%')
   })
 
   test('bars = all adds the 5-hour window and the cost', () => {
     const meters: Meters = { window: 1, contextPercent: 0, fiveHourUsed: 9.6, costUsd: 0.5 }
-    expect(statusText(null, [], meters, 'all')).toBe('✦▰▰▰▰▰▰▰▰▰▰ 100% ⚡10% ◉$0.50')
+    expect(statusText(null, [], meters, 'all', NOW)).toBe('✦▰▰▰▰▰▰▰▰▰▰ 100% ⚡90% ◉$0.50')
   })
 })
 
@@ -278,14 +382,22 @@ describe('the bars row in the room it has', () => {
   })
 
   test('bars = all: the full words only in the full form, then the short ones to the end', () => {
-    expect(text(row(107, 'all')).endsWith('ctx · 82k/200k   ⚡5h 24%   ◉ $1.84')).toBe(true)
-    expect(text(row(106, 'all'))).toBe('♥ HP █████████░░░░░ 62% heals 2d 4h   ✦ MP ████████░░░░░░ 59% 82k/200k  ⚡24%  ◉$1.84')
-    expect(text(row(56, 'all'))).toBe('♥ HP ██████░░░░ 62%   ✦ MP ██████░░░░ 59%  ⚡24%  ◉$1.84')
-    expect(text(row(27, 'all'))).toBe('♥ 62%  ✦ 59%  ⚡24%  ◉$1.84')
+    expect(text(row(112, 'all')).endsWith(`ctx · 82k/200k   ⚡77% · ${RESET}   ◉ $1.84`)).toBe(true)
+    expect(cellWidth(row(112, 'all'))).toBe(112)
+    expect(text(row(111, 'all'))).toBe(`♥ HP █████████░░░░░ 62% heals 2d 4h   ✦ MP ████████░░░░░░ 59% 82k/200k  ⚡77% · ${RESET}  ◉$1.84`)
+    expect(text(row(56, 'all'))).toBe('♥ HP ██████░░░░ 62%   ✦ MP ██████░░░░ 59%  ⚡77%  ◉$1.84')
+    expect(text(row(27, 'all'))).toBe('♥ 62%  ✦ 59%  ⚡77%  ◉$1.84')
+  })
+
+  test('the reset time stays while the row has words, and goes with them', () => {
+    const tight = { ...measured, fiveHourUsed: 92 }
+    expect(text(row(67, 'hpmp', tight))).toBe(`♥ HP ██████░░░░ 62% heals 2d 4h   ✦ MP ██████░░░░ 59%  ⚡8% · ${RESET}`)
+    expect(text(row(48, 'hpmp', tight))).toBe('♥ HP ██████░░░░ 62%   ✦ MP ██████░░░░ 59%  ⚡8%')
+    expect(text(row(18, 'hpmp', tight))).toBe('♥ 62%  ✦ 59%  ⚡8%')
   })
 
   test('⚡ takes two cells, as the terminal draws it', () => {
-    expect(cellWidth([{ text: '⚡5h', tone: 'five' }])).toBe(4)
+    expect(cellWidth([{ text: '⚡5h', tone: 'hp' }])).toBe(4)
     expect(cellWidth([{ text: '♥ █░', tone: 'hp' }, { text: ' 62%', tone: 'hp' }])).toBe(8)
     expect(cellWidth(row(85, 'all'))).toBe(85)
   })
@@ -313,10 +425,12 @@ describe('the bars row in the room it has', () => {
   })
 
   // The widest figures there are, in every combination: nothing may overflow, so nothing is cut.
-  const WIDEST: Meters = { window: 1_000_000, contextPercent: 0, contextTokens: 1_250_000, weekUsed: 0, weekResetsAt: '2026-11-08T07:30:00Z', fiveHourUsed: 100, costUsd: 123.45 }
-  const noWeek: Meters = { window: 1_000_000, contextPercent: 0, contextTokens: 1_250_000, fiveHourUsed: 100, costUsd: 123.45 }
+  // `all` draws a full 5-hour window; `hpmp` draws it once it binds, at most 99% left.
+  const WIDEST: Meters = { window: 1_000_000, contextPercent: 0, contextTokens: 1_250_000, weekUsed: 0, weekResetsAt: '2026-11-08T07:30:00Z', fiveHourUsed: 0, fiveHourResetsAt: '2026-11-01T14:30:00Z', costUsd: 123.45 }
+  const binding: Meters = { ...WIDEST, fiveHourUsed: 1 }
+  const noWeek: Meters = { window: 1_000_000, contextPercent: 0, contextTokens: 1_250_000, fiveHourUsed: 61, fiveHourResetsAt: '2026-11-01T14:30:00Z', costUsd: 123.45 }
 
-  for (const [name, meters, hasHp] of [['with HP', WIDEST, true], ['without HP', noWeek, false]] as const) {
+  for (const [name, meters, hasHp] of [['with HP', WIDEST, true], ['with HP and a binding 5-hour window', binding, true], ['without HP', noWeek, false]] as const) {
     for (const bars of ['hpmp', 'all'] as const) {
       test(`${name}, bars = ${bars}: from 12 to 130 cells the row fits or is the figures, its percentages whole`, () => {
         const figures = cellWidth(row(0, bars, meters))
@@ -328,6 +442,7 @@ describe('the bars row in the room it has', () => {
           expect(text(drawn).split('100%').length - 1).toBeGreaterThanOrEqual(hasHp ? 2 : 1)
           expect(text(drawn).startsWith(hasHp ? '♥' : '✦')).toBe(true)
           if (bars === 'all') expect(/⚡.*◉/.test(text(drawn))).toBe(true)
+          if (meters !== WIDEST || bars === 'all') expect(text(drawn).includes('⚡')).toBe(true)
         }
       })
     }

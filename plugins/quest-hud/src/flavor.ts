@@ -4,8 +4,8 @@
 // and raid games: never a quoted line, a named character or a setting's name.
 import type { Foes, Zone } from '../types'
 
-/** What the line is chosen from: `hp` is absent on an account with no weekly limit. */
-export type FlavorFacts = { zone: Zone; foes: Foes; hp: number | undefined; mp: number }
+/** What the line is chosen from: `hp` and `five` are absent on an account with no weekly or 5-hour limit. */
+export type FlavorFacts = { zone: Zone; foes: Foes; hp: number | undefined; mp: number; five: number | undefined }
 
 /** Below this percent, a bar is worth a tip. */
 const LOW_PERCENT = 20
@@ -94,11 +94,12 @@ export const FLAVOR: Readonly<Record<Zone, readonly string[]>> = {
 }
 
 /** What this session calls for, most pressing first; undefined when nothing does. */
-export const tipFor = ({ foes, hp, mp }: FlavorFacts): string | undefined => {
+export const tipFor = ({ foes, hp, mp, five }: FlavorFacts): string | undefined => {
   if (foes.test === 'standing') return 'The monster stands until the tests pass.'
   if (foes.lint === 'standing') return 'The monster stands until the lint is clean.'
   if (mp < LOW_PERCENT) return 'MP runs low. /compact makes room, /clear starts fresh.'
   if (hp !== undefined && hp < LOW_PERCENT) return 'HP runs low. /usage shows what is left this week.'
+  if (five !== undefined && five < LOW_PERCENT) return 'The 5-hour window runs low. /usage shows when it resets.'
   return undefined
 }
 

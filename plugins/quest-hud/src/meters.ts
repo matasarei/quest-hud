@@ -2,6 +2,7 @@
 // window, MP what is left of the context window. Pure: the numbers come in,
 // text comes out, and the render hook only lays it out.
 import type { Meters, Quest, Task, Zone } from '../types'
+import { clockTime } from './log'
 import { cleanTitle } from './quest'
 import { progress } from './tasks'
 
@@ -52,6 +53,7 @@ export const fromMeasure = (usage: UsageLike): Meters => {
   if (week) meters.weekUsed = week.percentUsed
   if (week?.resetsAt !== undefined) meters.weekResetsAt = week.resetsAt
   if (fiveHour) meters.fiveHourUsed = fiveHour.percentUsed
+  if (fiveHour?.resetsAt !== undefined) meters.fiveHourResetsAt = fiveHour.resetsAt
   if (usage.cost) meters.costUsd = usage.cost.usd
 
   return meters
@@ -70,6 +72,47 @@ export const hpLeft = (meters: Meters | null): number | undefined =>
 
 /** The tone HP is drawn in, from the percent left as shown: yellow below 40, red below 20. */
 export const hpTone = (left: number): Tone => (left < 20 ? 'hpCritical' : left < 40 ? 'hpLow' : 'hp')
+
+/** Below this much of the 5-hour window left, `hpmp` draws it too: HP's own yellow line. */
+const FIVE_BINDS = 40
+
+/** When the 5-hour window resets, in milliseconds; NaN where it is not known or cannot be read. */
+const fiveResets = (meters: Meters | null): number =>
+  meters?.fiveHourResetsAt === undefined ? Number.NaN : Date.parse(meters.fiveHourResetsAt)
+
+/**
+ * Percent of the 5-hour window left; undefined where the account reports none.
+ * A reset already passed is a full window: the engine may not measure again at it.
+ */
+export const fiveLeft = (meters: Meters | null, now: number): number | undefined => {
+  if (meters?.fiveHourUsed === undefined) return undefined
+
+  return fiveResets(meters) <= now ? 100 : Math.round(clamp(100 - meters.fiveHourUsed))
+}
+
+/** Whether the 5-hour window is drawn: always with `all`; with `hpmp` once it binds, under 40% left or below HP. */
+export const showsFive = (meters: Meters | null, bars: Bars, now: number): boolean => {
+  const left = fiveLeft(meters, now)
+  const hp = hpLeft(meters)
+
+  if (left === undefined) return false
+  return bars === 'all' || left < FIVE_BINDS || (hp !== undefined && left < hp)
+}
+
+/**
+ * The 5-hour window as drawn, in HP's tones: `⚡30% · 14:30`, the reset as a clock
+ * time, which stays right between draws where a countdown would freeze. Without
+ * `hasTime`, or with no reset to come, the figure alone. Undefined when not drawn.
+ */
+export const fiveSegment = (meters: Meters | null, bars: Bars, now: number, hasTime = true): Segment | undefined => {
+  const left = fiveLeft(meters, now)
+  if (left === undefined || !showsFive(meters, bars, now)) return undefined
+
+  const resets = fiveResets(meters)
+  const time = hasTime && resets > now ? ` · ${clockTime(resets)}` : ''
+
+  return { text: `⚡${left}%${time}`, tone: hpTone(left) }
+}
 
 /** A bar of `width` cells, `left` percent of them full. */
 export const bar = (left: number, width: number, full = '█', empty = '░'): string => {
@@ -102,7 +145,7 @@ export const shortTokens = (tokens: number): string => {
   return String(tokens)
 }
 
-export type Tone = 'accent' | 'plain' | 'dim' | 'hp' | 'hpLow' | 'hpCritical' | 'mp' | 'five' | 'gold'
+export type Tone = 'accent' | 'plain' | 'dim' | 'hp' | 'hpLow' | 'hpCritical' | 'mp' | 'gold'
 
 /** The colour each tone is drawn in; undefined is the surface's own text colour. */
 export const TONE_COLOR: Readonly<Record<Tone, string | undefined>> = {
@@ -113,7 +156,6 @@ export const TONE_COLOR: Readonly<Record<Tone, string | undefined>> = {
   hpLow: '#f2d15b',
   hpCritical: '#ef5350',
   mp: '#5b9bff',
-  five: '#f0b43a',
   gold: '#f2d15b',
 }
 
@@ -173,10 +215,9 @@ const meterRow = (form: MeterForm, meters: Meters | null, bars: Bars, now: numbe
 
   row.push(...gauge('✦', 'MP', mpLeft(meters), 'mp'), { text: tokenNote, tone: 'dim' })
 
-  if (bars === 'all' && meters?.fiveHourUsed !== undefined) {
-    const used = Math.round(meters.fiveHourUsed)
-    row.push({ text: notes === 'long' ? `   ⚡5h ${used}%` : `  ⚡${used}%`, tone: 'five' })
-  }
+  // The reset time goes with the words: a form that keeps none draws the figure alone.
+  const five = fiveSegment(meters, bars, now, notes !== 'none')
+  if (five) row.push({ ...five, text: `${notes === 'long' ? '   ' : '  '}${five.text}` })
 
   if (bars === 'all' && meters?.costUsd !== undefined) {
     const cost = meters.costUsd.toFixed(2)
@@ -223,24 +264,25 @@ export const bandModel = (quest: Quest | null, tasks: readonly Task[], meters: M
 }
 
 /** The pieces of the one-line forms, for each form to put in its own order. */
-const lineParts = (quest: Quest | null, tasks: readonly Task[], meters: Meters | null, bars: Bars) => {
+const lineParts = (quest: Quest | null, tasks: readonly Task[], meters: Meters | null, bars: Bars, now: number) => {
   const { done, total } = progress(tasks)
   const hp = hpLeft(meters)
   const mp = mpLeft(meters)
+  const five = fiveSegment(meters, bars, now)
 
   return {
     work: quest ? [`⚔ ${quest.title}${total > 0 ? ` ${done}/${total}` : ''}`] : total > 0 ? [`task ${done}/${total}`] : [],
     gauges: [...(hp === undefined ? [] : [`♥${bar(hp, 10, '▰', '▱')} ${hp}%`]), `✦${bar(mp, 10, '▰', '▱')} ${mp}%`],
     extras: [
-      ...(bars === 'all' && meters?.fiveHourUsed !== undefined ? [`⚡${Math.round(meters.fiveHourUsed)}%`] : []),
+      ...(five ? [five.text] : []),
       ...(bars === 'all' && meters?.costUsd !== undefined ? [`◉$${meters.costUsd.toFixed(2)}`] : []),
     ],
   }
 }
 
 /** The one-line form, for /quest-hud:status. */
-export const statusText = (quest: Quest | null, tasks: readonly Task[], meters: Meters | null, bars: Bars): string => {
-  const { work, gauges, extras } = lineParts(quest, tasks, meters, bars)
+export const statusText = (quest: Quest | null, tasks: readonly Task[], meters: Meters | null, bars: Bars, now: number): string => {
+  const { work, gauges, extras } = lineParts(quest, tasks, meters, bars, now)
 
   return [...work, ...gauges, ...extras].join(' ')
 }
@@ -249,8 +291,8 @@ export const statusText = (quest: Quest | null, tasks: readonly Task[], meters: 
  * The same figures for the prompt's hint line, the bars first: the row cuts from
  * the right, and a quest's title can be long.
  */
-export const hintText = (quest: Quest | null, tasks: readonly Task[], meters: Meters | null, bars: Bars): string => {
-  const { work, gauges, extras } = lineParts(quest, tasks, meters, bars)
+export const hintText = (quest: Quest | null, tasks: readonly Task[], meters: Meters | null, bars: Bars, now: number): string => {
+  const { work, gauges, extras } = lineParts(quest, tasks, meters, bars, now)
 
   return [...gauges, ...work, ...extras].join(' ')
 }

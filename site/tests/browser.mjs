@@ -192,10 +192,14 @@ await section('settings', async () => {
   ok('detail pane: the Road', await shown('#road img.picture'))
 
   await pick('bars', 'all')
-  ok('bars all: 5-hour and cost on the band', /⚡5h 34%.*◉ \$1\.84/.test(await text('band')), await text('band'))
-  ok('bars all: on the status line too', /⚡34% ◉\$1\.84/.test(await text('status-line')), await text('status-line'))
+  ok('bars all: 5-hour left, its reset and the cost on the band', /⚡66% · \d\d:\d\d.*◉ ?\$1\.84/.test(await text('band')), await text('band'))
+  ok('bars all: on the status line too', /⚡66% · \d\d:\d\d ◉\$1\.84/.test(await text('status-line')), await text('status-line'))
   await pick('bars', 'hpmp')
   ok('bars hpmp: neither', !/⚡|◉/.test((await text('band')) + (await text('status-line'))))
+  await slide('hp', 80)
+  ok('bars hpmp: the 5-hour window once it binds, below HP', /⚡66% · \d\d:\d\d/.test(await text('band')) && /⚡66% · \d\d:\d\d/.test(await text('status-line')), await text('band'))
+  ok('bars hpmp: still no cost', !/◉/.test((await text('band')) + (await text('status-line'))))
+  await slide('hp', 62)
 
   const portrait = () => ev(`document.querySelector('#band canvas').toDataURL()`)
   const portraits = [await portrait()]
@@ -300,7 +304,7 @@ await section('Play a session', async () => {
   })()`)
   await click('play')
   const figures = async () => {
-    const found = /⚡5h (\d+)%.*◉ \$([\d.]+)/.exec(await text('band'))
+    const found = /⚡(\d+)%.*◉ ?\$([\d.]+)/.exec(await text('band'))
     return [Number(found[1]), Number(found[2])]
   }
   const before = await figures()
@@ -310,7 +314,7 @@ await section('Play a session', async () => {
   const lines = new Set(await ev('[...window.__lines]'))
   const after = await figures()
   ok('HP goes through all three colours', colours.size === 3, [...colours].join(', '))
-  ok('the 5-hour window rises', after[0] > before[0], `${before} to ${after}`)
+  ok('the 5-hour window left falls', after[0] < before[0], `${before} to ${after}`)
   ok('the cost rises', after[1] > before[1], `${before} to ${after}`)
   ok('a monster tip', lines.has('The monster stands until the tests pass.'))
   ok('an MP tip', [...lines].some(line => line.startsWith('MP runs low')))

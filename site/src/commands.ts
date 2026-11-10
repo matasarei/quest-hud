@@ -22,14 +22,14 @@ const statuslineText = (root: string): string =>
     '',
     '  "statusLine": { "type": "command", "command": "~/.claude/hud-line.sh" }',
     '',
-    'For the 5-hour window and the cost as well, end the command with --all.',
+    'The 5-hour window shows once it runs low. To show it always, and the cost as well, end the command with --all.',
     '',
     'It needs jq.',
   ].join('\n')
 
 const statusAnswer = (sim: Sim, now: number): string =>
   [
-    statusText(sim.quest, sim.tasks, metersOf(sim, now), 'all'),
+    statusText(sim.quest, sim.tasks, metersOf(sim, now), 'all', now),
     `  ${zoneLine(sim.quest?.zone ?? 'wilds')}`,
     ...sim.tasks.map(task => `  ${task.status === 'completed' ? '✓' : task.status === 'in_progress' ? '▸' : '·'} ${cleanTitle(task.subject)}`),
   ].join('\n')

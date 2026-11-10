@@ -4,7 +4,7 @@ import { NO_FOES } from '../src/bash'
 import { bandLine, FLAVOR, flavorStart, tipFor, type FlavorFacts } from '../src/flavor'
 import { ZONES } from '../src/zones'
 
-const calm: FlavorFacts = { zone: 'forge', foes: NO_FOES, hp: 62, mp: 59 }
+const calm: FlavorFacts = { zone: 'forge', foes: NO_FOES, hp: 62, mp: 59, five: 77 }
 const LOW = { hp: 19, mp: 19 }
 
 describe('tipFor', () => {
@@ -35,8 +35,22 @@ describe('tipFor', () => {
     expect(tip).toContain('/usage')
   })
 
-  test('20% is not yet low, on either bar', () => {
-    expect(tipFor({ ...calm, hp: 20, mp: 20 })).toBeUndefined()
+  test('then the 5-hour window, naming the command that shows when it resets', () => {
+    const tip = tipFor({ ...calm, five: 19 })
+    expect(tip).toContain('5-hour window runs low')
+    expect(tip).toContain('/usage')
+  })
+
+  test('low HP speaks before a low 5-hour window', () => {
+    expect(tipFor({ ...calm, hp: 19, five: 5 })).toContain('HP runs low')
+  })
+
+  test('20% is not yet low, on any bar', () => {
+    expect(tipFor({ ...calm, hp: 20, mp: 20, five: 20 })).toBeUndefined()
+  })
+
+  test('an account with no 5-hour window has none to warn about', () => {
+    expect(tipFor({ ...calm, five: undefined })).toBeUndefined()
   })
 
   test('an account with no weekly limit has no HP to warn about', () => {

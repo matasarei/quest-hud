@@ -17,7 +17,7 @@
     "bars": {
       "type": "string",
       "title": "Bars",
-      "description": "HP and MP only, or also the 5-hour window and the session cost.",
+      "description": "HP and MP, with the 5-hour window once it runs low; or the 5-hour window always, and the session cost.",
       "options": ["hpmp", "all"],
       "default": "hpmp"
     },

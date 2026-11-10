@@ -12,7 +12,7 @@ import { unknownText, usageText } from '../src/help'
 import { levelLogText, levelText, levelUpText, NO_LEVEL_YET, rereadingText, scoutRidesText, STILL_READING } from '../src/levelup'
 import { bandLine, flavorStart } from '../src/flavor'
 import { appendEntry, castText, scoutCounts, scoutText } from '../src/log'
-import { bandModel, fromMeasure, hintText, hpLeft, mpLeft, shortTokens, statusText, TONE_COLOR, ZONE_LABEL, zoneLine, type Bars } from '../src/meters'
+import { bandModel, fiveLeft, fromMeasure, hintText, hpLeft, mpLeft, shortTokens, statusText, TONE_COLOR, ZONE_LABEL, zoneLine, type Bars } from '../src/meters'
 import { afterPrompt, cleanTitle, fromSkill } from '../src/quest'
 import { road, ROAD_ROWS_WANTED, roadArt, sceneFits, sceneZone } from '../src/road'
 import { atRest, bandFits, bandPortrait, bandRoom, nextMotion, REST, TRANSITION_STEPS, type Motion, type Transition } from '../src/scene'
@@ -78,7 +78,7 @@ const help = (root: string): string =>
     '',
     '  "statusLine": { "type": "command", "command": "~/.claude/hud-line.sh" }',
     '',
-    'For the 5-hour window and the cost as well, end the command with --all.',
+    'The 5-hour window shows once it runs low. To show it always, and the cost as well, end the command with --all.',
     '',
     'It needs jq.',
   ].join('\n')
@@ -107,7 +107,7 @@ async function statusLines($: EngineInterface): Promise<string> {
   const list = await read($, tasks)
 
   return [
-    statusText(current, list, await currentMeters($), 'all'),
+    statusText(current, list, await currentMeters($), 'all', await $.clock.now()),
     `  ${zoneLine(current?.zone ?? 'wilds')}`,
     ...list.map(task => `  ${task.status === 'completed' ? '✓' : task.status === 'in_progress' ? '▸' : '·'} ${cleanTitle(task.subject)}`),
   ].join('\n')
@@ -829,7 +829,7 @@ export const register: Register = (on, options) => {
   on('ui.render', { component: 'PromptHint' }, async ($, e, next) => {
     if (detail !== 'status' || (await read($, hidden))) return next(e)
 
-    const text = hintText(await read($, quest), await read($, tasks), await currentMeters($), bars)
+    const text = hintText(await read($, quest), await read($, tasks), await currentMeters($), bars, await $.clock.now())
 
     return next({ ...e, props: { ...e.props, tail: e.props.tail === undefined ? text : `${e.props.tail} ${text}` } })
   }).catch(($, e, next) => next(e))
@@ -848,7 +848,8 @@ export const register: Register = (on, options) => {
     const columns = e.surface === 'terminal' ? e.props.bodyColumns : Number.POSITIVE_INFINITY
     const hasRoom = bandFits(e.props.maxRows, columns)
     const room = bandRoom(columns, hasRoom)
-    const band = bandModel(current, await read($, tasks), measured, bars, await $.clock.now(), room)
+    const now = await $.clock.now()
+    const band = bandModel(current, await read($, tasks), measured, bars, now, room)
     const elements = $.ui.resolve(e)
     const { Box } = elements
     // resolve() names every element on every surface, and one a surface lacks
@@ -858,7 +859,7 @@ export const register: Register = (on, options) => {
     // A turn that began before the band's first draw: the draw starts it, as the pane's draw does.
     if (anim.band !== undefined && (await read($, isWorking))) startAnim($).catch(() => stopTimer())
     // The zone the band's own label names, and no line where the portrait has no room: the band stays two rows there.
-    const facts = { zone: current?.zone ?? 'wilds', foes: await read($, foes), hp: hpLeft(measured), mp: mpLeft(measured) } as const
+    const facts = { zone: current?.zone ?? 'wilds', foes: await read($, foes), hp: hpLeft(measured), mp: mpLeft(measured), five: fiveLeft(measured, now) } as const
     // The start comes from the id here, not from session.start: the first draw can come before it, and /clear fires none.
     const line = hasFlavor && hasRoom ? bandLine(facts, flavorStart(await $.session.id()) + (await read($, flavorStep))) : undefined
 
@@ -936,6 +937,7 @@ export const register: Register = (on, options) => {
       allies: await read($, allies),
       level: await currentLevel($),
       bars,
+      now: await $.clock.now(),
       columns: e.props.bodyColumns,
       // The pane's own rows, which an inline pane has far fewer of than the terminal.
       rows: e.props.scroll.bodyRows,
