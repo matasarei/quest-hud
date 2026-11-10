@@ -76,6 +76,10 @@ export const hpTone = (left: number): Tone => (left < 20 ? 'hpCritical' : left <
 /** Below this much of the 5-hour window left, `hpmp` draws it too: HP's own yellow line. */
 const FIVE_BINDS = 40
 
+/** When the 5-hour window resets, in milliseconds; NaN where it is not known or cannot be read. */
+const fiveResets = (meters: Meters | null): number =>
+  meters?.fiveHourResetsAt === undefined ? Number.NaN : Date.parse(meters.fiveHourResetsAt)
+
 /**
  * Percent of the 5-hour window left; undefined where the account reports none.
  * A reset already passed is a full window: the engine may not measure again at it.
@@ -83,9 +87,7 @@ const FIVE_BINDS = 40
 export const fiveLeft = (meters: Meters | null, now: number): number | undefined => {
   if (meters?.fiveHourUsed === undefined) return undefined
 
-  const resets = meters.fiveHourResetsAt === undefined ? Number.NaN : Date.parse(meters.fiveHourResetsAt)
-
-  return resets <= now ? 100 : Math.round(clamp(100 - meters.fiveHourUsed))
+  return fiveResets(meters) <= now ? 100 : Math.round(clamp(100 - meters.fiveHourUsed))
 }
 
 /** Whether the 5-hour window is drawn: always with `all`; with `hpmp` once it binds, under 40% left or below HP. */
@@ -106,7 +108,7 @@ export const fiveSegment = (meters: Meters | null, bars: Bars, now: number, hasT
   const left = fiveLeft(meters, now)
   if (left === undefined || !showsFive(meters, bars, now)) return undefined
 
-  const resets = meters?.fiveHourResetsAt === undefined ? Number.NaN : Date.parse(meters.fiveHourResetsAt)
+  const resets = fiveResets(meters)
   const time = hasTime && resets > now ? ` · ${clockTime(resets)}` : ''
 
   return { text: `⚡${left}%${time}`, tone: hpTone(left) }
