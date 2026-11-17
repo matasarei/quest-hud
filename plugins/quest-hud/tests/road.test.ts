@@ -175,7 +175,7 @@ describe('the bars row in the pane it has', () => {
   })
 
   // The widest figures there are: nothing may overflow, so nothing is cut.
-  const WIDEST = { window: 1_000_000, contextPercent: 0, weekUsed: 0, fiveHourUsed: 1, fiveHourResetsAt: RESETS, costUsd: 123.45 }
+  const WIDEST = { window: 1_000_000, contextPercent: 0, weekUsed: 0, fiveHourUsed: 51, fiveHourResetsAt: RESETS, costUsd: 123.45 }
   const noWeek = { window: 1_000_000, contextPercent: 0, fiveHourUsed: 61, fiveHourResetsAt: RESETS, costUsd: 123.45 }
 
   for (const [name, meters, hasHp] of [['with HP', WIDEST, true], ['without HP', noWeek, false]] as const) {

@@ -39,14 +39,14 @@ const isObject = (value: unknown): value is Record<string, unknown> => typeof va
 
 /**
  * The 5-hour window left, and the local time it resets, as the script draws it:
- * once it binds (under 40 left, or below HP), always with --all, in HP's colours.
+ * once it runs low (under 50 left, whatever HP), always with --all, in HP's colours.
  */
-const fivePart = (window: unknown, hp: number | undefined, all: boolean): LinePart[] => {
+const fivePart = (window: unknown, all: boolean): LinePart[] => {
   const used = isObject(window) ? window.used_percentage : undefined
   if (!isFigure(used)) return []
 
   const five = left(used)
-  if (!all && five >= 40 && (hp === undefined || five >= hp)) return []
+  if (!all && five >= 50) return []
 
   const resets = isObject(window) ? window.resets_at : undefined
   // The script's `clock`: a time outside year 0 to 9999 is unreadable, and the figure is drawn alone.
@@ -68,7 +68,7 @@ export const lineParts = (input: StatusInput, all = false): LinePart[] => {
   return [
     ...(hp === undefined ? [] : [{ text: `♥${bar(hp)} ${hp}%`, code: hpCode(hp) }]),
     ...(mp === undefined ? [] : [{ text: `✦${bar(mp)} ${mp}%`, code: 69 }]),
-    ...fivePart(input.rate_limits?.five_hour, hp, all),
+    ...fivePart(input.rate_limits?.five_hour, all),
     ...(all && isFigure(cost) ? [{ text: `◉$${money(cost)}`, code: 221 }] : []),
   ]
 }

@@ -124,14 +124,14 @@ describe('the 5-hour window', () => {
 
   const shows = [
     ['all, plenty left', five(10, 38), 'all', true],
-    ['hpmp, more left than HP', five(23.5, 38), 'hpmp', false],
-    ['hpmp, as much left as HP', five(38, 38), 'hpmp', false],
-    ['hpmp, less left than HP', five(39, 38), 'hpmp', true],
+    ['hpmp, 76 left', five(23.5, 38), 'hpmp', false],
+    ['hpmp, 50 left, less than HP', five(50, 38), 'hpmp', false],
+    ['hpmp, 49 left, more than HP', five(51, 38), 'hpmp', true],
     ['hpmp, HP full, 5-hour full', five(0, 0), 'hpmp', false],
-    ['hpmp, HP full, 99 left: tighter than HP', five(1, 0), 'hpmp', true],
-    ['hpmp, HP 20, 39 left: under 40', five(61, 80), 'hpmp', true],
-    ['hpmp, no HP, 40 left', five(60), 'hpmp', false],
-    ['hpmp, no HP, 39 left', five(61), 'hpmp', true],
+    ['hpmp, HP full, 89 left: still plenty', five(11, 1), 'hpmp', false],
+    ['hpmp, HP 10, 45 left: under half, whatever HP', five(55, 90), 'hpmp', true],
+    ['hpmp, no HP, 50 left', five(50), 'hpmp', false],
+    ['hpmp, no HP, 49 left', five(51), 'hpmp', true],
     ['all, no window', { window: 1, weekUsed: 38 }, 'all', false],
   ] as const
 
@@ -426,9 +426,9 @@ describe('the bars row in the room it has', () => {
   })
 
   // The widest figures there are, in every combination: nothing may overflow, so nothing is cut.
-  // `all` draws a full 5-hour window; `hpmp` draws it once it binds, at most 99% left.
+  // `all` draws a full 5-hour window; `hpmp` draws it under half, at most 49% left.
   const WIDEST: Meters = { window: 1_000_000, contextPercent: 0, contextTokens: 1_250_000, weekUsed: 0, weekResetsAt: '2026-11-08T07:30:00Z', fiveHourUsed: 0, fiveHourResetsAt: '2026-11-01T14:30:00Z', costUsd: 123.45 }
-  const binding: Meters = { ...WIDEST, fiveHourUsed: 1 }
+  const binding: Meters = { ...WIDEST, fiveHourUsed: 51 }
   const noWeek: Meters = { window: 1_000_000, contextPercent: 0, contextTokens: 1_250_000, fiveHourUsed: 61, fiveHourResetsAt: '2026-11-01T14:30:00Z', costUsd: 123.45 }
 
   for (const [name, meters, hasHp] of [['with HP', WIDEST, true], ['with HP and a binding 5-hour window', binding, true], ['without HP', noWeek, false]] as const) {

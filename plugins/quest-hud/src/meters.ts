@@ -73,8 +73,11 @@ export const hpLeft = (meters: Meters | null): number | undefined =>
 /** The tone HP is drawn in, from the percent left as shown: yellow below 40, red below 20. */
 export const hpTone = (left: number): Tone => (left < 20 ? 'hpCritical' : left < 40 ? 'hpLow' : 'hp')
 
-/** Below this much of the 5-hour window left, `hpmp` draws it too: HP's own yellow line. */
-const FIVE_BINDS = 40
+/**
+ * Below this much of the 5-hour window left, `hpmp` draws it too: from half spent, it is worth
+ * watching. HP is not compared, as a percent of a week says nothing about a percent of five hours.
+ */
+const FIVE_SHOWS = 50
 
 /** When the 5-hour window resets, in milliseconds; NaN where it is not known or cannot be read. */
 const fiveResets = (meters: Meters | null): number =>
@@ -90,13 +93,12 @@ export const fiveLeft = (meters: Meters | null, now: number): number | undefined
   return fiveResets(meters) <= now ? 100 : Math.round(clamp(100 - meters.fiveHourUsed))
 }
 
-/** Whether the 5-hour window is drawn: always with `all`; with `hpmp` once it binds, under 40% left or below HP. */
+/** Whether the 5-hour window is drawn: always with `all`; with `hpmp` under 50% left, whatever HP. */
 export const showsFive = (meters: Meters | null, bars: Bars, now: number): boolean => {
   const left = fiveLeft(meters, now)
-  const hp = hpLeft(meters)
 
   if (left === undefined) return false
-  return bars === 'all' || left < FIVE_BINDS || (hp !== undefined && left < hp)
+  return bars === 'all' || left < FIVE_SHOWS
 }
 
 /**

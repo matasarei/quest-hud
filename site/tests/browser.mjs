@@ -197,7 +197,7 @@ await section('settings', async () => {
   await pick('bars', 'hpmp')
   ok('bars hpmp: neither', !/⏾|◉/.test((await text('band')) + (await text('status-line'))))
   await slide('hp', 80)
-  ok('bars hpmp: the 5-hour window once it binds, below HP', /⏾ 66% · \d\d:\d\d/.test(await text('band')) && /⏾ 66% · \d\d:\d\d/.test(await text('status-line')), await text('band'))
+  ok('bars hpmp: no 5-hour window above half left, even below HP', !/⏾/.test((await text('band')) + (await text('status-line'))), await text('band'))
   ok('bars hpmp: still no cost', !/◉/.test((await text('band')) + (await text('status-line'))))
   await slide('hp', 62)
 

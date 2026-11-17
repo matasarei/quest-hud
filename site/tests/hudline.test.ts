@@ -68,8 +68,8 @@ test('the --all line matches the script itself, across percents and awkward cent
 })
 
 test('without the flag, the 5-hour window shows and hides as the script does', { skip: !hasJq }, () => {
-  for (const week of [undefined, 0, 38, 70]) {
-    for (const five of [0, 37.5, 38, 38.5, 59.5, 60, 60.5, 61, 61.5, 92, 100]) {
+  for (const week of [undefined, 0, 38, 70, 90]) {
+    for (const five of [0, 37.5, 38, 38.5, 49.5, 50, 50.5, 51, 59.5, 60, 60.5, 61, 61.5, 92, 100]) {
       const input = { rate_limits: { ...(week === undefined ? {} : { seven_day: { used_percentage: week } }), five_hour: { used_percentage: five, resets_at: 1738425600 } } }
       assert.equal(lineText(input), script(input), `at ${five}% with the week at ${week}`)
     }
