@@ -22,8 +22,8 @@ play. Quest HUD is a Claude Code mod that draws your session that way, above the
 - **♥ HP**: what is left of your weekly usage window. It turns yellow below 40% and red below 20%.
 - **✦ MP**: what is left of the context window.
 - **⏾**: what is left of your 5-hour window, and the time it resets, as `⏾ 30% · 14:30`: the power
-  sleep symbol, as even a wizard needs to rest. It shows once it runs low (under 40% left, or less
-  than HP) and takes HP's colours; `bars = all` shows it always.
+  sleep symbol, as even a wizard needs to rest. It shows once it runs low (under 50% left, whatever
+  HP) and takes HP's colours; `bars = all` shows it always.
 - **⚔ the quest**: the running skill, from any plugin, and its zone, with Claude Code's task list.
 - **The line above it**: a tip when this session calls for one, otherwise a word from the zone. It changes at each turn, and `flavor = off` removes it.
 
